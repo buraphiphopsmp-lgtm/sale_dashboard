@@ -294,13 +294,18 @@ function guessMapping(schema){
   const lc=n=>n.toLowerCase();
   const num=c=>NUMERIC_TYPES.includes(c.type);
   const str=c=>c.type==="STRING";
-  const date=schema.find(c=>DATE_TYPES.includes(c.type)&&/date|time|created|order|trans/.test(lc(c.name)))
+  const has=n=>schema.find(c=>c.name===n)?n:null;
+  const date=(has("date")?{name:"date"}:null)
+          || schema.find(c=>DATE_TYPES.includes(c.type)&&/date|time|created|order|trans/.test(lc(c.name)))
           || schema.find(c=>DATE_TYPES.includes(c.type));
-  const metric=schema.find(c=>num(c)&&/amount|total|revenue|sales|net|gross|paid|grand|subtotal/.test(lc(c.name)))
-            || schema.find(c=>num(c)&&/price|value|cost/.test(lc(c.name)))
+  const metric=(has("product_price_amount")?{name:"product_price_amount"}:null)
+            || schema.find(c=>num(c)&&/amount|revenue|net|gross|paid|grand|subtotal/.test(lc(c.name)))
+            || schema.find(c=>num(c)&&/sales|price|value|cost/.test(lc(c.name)))
             || schema.find(num);
-  const dim=schema.find(c=>str(c)&&/categor|channel|region|segment|status|type|group|brand|store|branch|class/.test(lc(c.name)))
-         || schema.find(c=>str(c)&&/name|product/.test(lc(c.name)))
+  const dim=(has("final_category")?{name:"final_category"}:null)||(has("category")?{name:"category"}:null)
+         || schema.find(c=>str(c)&&/categor|prod.*group|channel|region|brand|department/.test(lc(c.name)))
+         || schema.find(c=>str(c)&&/segment|type|class|group|status|province|state/.test(lc(c.name)))
+         || schema.find(c=>str(c)&&/name/.test(lc(c.name)))
          || schema.find(str);
   return {date:date?.name||null, metric:metric?.name||null, dim:dim?.name||null};
 }
