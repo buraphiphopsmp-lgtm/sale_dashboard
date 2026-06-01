@@ -107,7 +107,8 @@
       <div class="cfg-body">
         <div class="field"><label>Project ID</label><input id="cfgProject" value="futuretech-468203" /></div>
         <div class="field"><label>Dataset</label><input id="cfgDataset" value="sales_data" /></div>
-        <div class="field"><label>Table</label><input id="cfgTable" value="sale_transaction" /></div>
+        <div class="field"><label>Table (ธุรกรรม/สินค้า)</label><input id="cfgTable" value="sale_transaction" /></div>
+        <div class="field"><label>Table (สรุปลูกค้า/segment)</label><input id="cfgAgg" value="customer_agg_dasboard_final" /></div>
         <div class="field full"><label>OAuth Client ID</label>
           <input id="cfgClientId" value="860556755032-m7itkb5ljeiddlb1iii02kdv9l3f6j7g.apps.googleusercontent.com" /></div>
         <div class="field"><label>วันที่</label><select id="mDate"></select></div>
@@ -192,7 +193,7 @@ const LS="vipMon.cfg";
 
 const S={mode:"demo",token:null,schema:[],map:{},rows:[],
   filt:{segment:"",custCode:"",custName:"",sales:"",from:"",to:""},
-  hvOnly:false,custPage:0,prodPage:0,selCust:null,chart:null};
+  hvOnly:true,aggSchema:[],amap:{},custPage:0,prodPage:0,selCust:null,chart:null};
 
 /* ---- toast/status ---- */
 let tt; function toast(m,e){const t=$("#toast");t.textContent=m;t.className="toast show"+(e?" err":"");clearTimeout(tt);tt=setTimeout(()=>t.className="toast",4500);}
@@ -200,8 +201,8 @@ function status(m,b){$("#status").innerHTML=(b?'<span class="spinner"></span> ':
 function badge(){const b=$("#modeBadge");if(S.mode==="live"){b.className="badge live";b.textContent="LIVE · BigQuery";}else{b.className="badge demo";b.textContent="DEMO MODE";}}
 
 /* ---- config ---- */
-function readCfg(){return{project:$("#cfgProject").value.trim(),dataset:$("#cfgDataset").value.trim(),table:$("#cfgTable").value.trim(),clientId:$("#cfgClientId").value.trim(),billing:$("#cfgProject").value.trim()};}
-function loadCfg(){try{const c=JSON.parse(localStorage.getItem(LS)||"{}");if(c.project)$("#cfgProject").value=c.project;if(c.dataset)$("#cfgDataset").value=c.dataset;if(c.table)$("#cfgTable").value=c.table;if(c.clientId)$("#cfgClientId").value=c.clientId;}catch(e){}}
+function readCfg(){return{project:$("#cfgProject").value.trim(),dataset:$("#cfgDataset").value.trim(),table:$("#cfgTable").value.trim(),aggTable:$("#cfgAgg").value.trim(),clientId:$("#cfgClientId").value.trim(),billing:$("#cfgProject").value.trim()};}
+function loadCfg(){try{const c=JSON.parse(localStorage.getItem(LS)||"{}");if(c.project)$("#cfgProject").value=c.project;if(c.dataset)$("#cfgDataset").value=c.dataset;if(c.table)$("#cfgTable").value=c.table;if(c.aggTable)$("#cfgAgg").value=c.aggTable;if(c.clientId)$("#cfgClientId").value=c.clientId;}catch(e){}}
 function saveCfg(){localStorage.setItem(LS,JSON.stringify(readCfg()));}
 
 /* ---- OAuth ---- */
@@ -227,8 +228,8 @@ async function bq(sql){const c=readCfg();
   return{fields:f.map(x=>({name:x.name,type:x.type})),rows:(d.rows||[]).map(r=>{const o={};r.f.forEach((c,i)=>o[f[i].name]=NUMERIC.includes((f[i].type||"").toUpperCase())?Number(c.v):c.v);return o;})};}
 function qq(c){return "`"+String(c).replace(/`/g,"")+"`";}
 
-async function fetchSchema(){const c=readCfg();
-  const{rows}=await bq(`SELECT column_name name,data_type type FROM \`${c.project}.${c.dataset}.INFORMATION_SCHEMA.COLUMNS\` WHERE table_name='${c.table}' ORDER BY ordinal_position`);
+async function fetchSchema(tableName){const c=readCfg();const tbl=tableName||c.table;
+  const{rows}=await bq(`SELECT column_name name,data_type type FROM \`${c.project}.${c.dataset}.INFORMATION_SCHEMA.COLUMNS\` WHERE table_name='${tbl}' ORDER BY ordinal_position`);
   return rows.map(r=>({name:r.name,type:norm(r.type)}));}
 function norm(t){t=(t||"").toUpperCase();if(t.startsWith("INT"))return"INT64";if(/FLOAT|NUMERIC/.test(t))return"FLOAT64";if(t.startsWith("TIMESTAMP"))return"TIMESTAMP";if(t.startsWith("DATETIME"))return"DATETIME";if(t.startsWith("DATE"))return"DATE";return"STRING";}
 
@@ -254,6 +255,21 @@ const MAPSEL={date:"#mDate",amount:"#mAmount",qty:"#mQty",bill:"#mBill",custCode
 function fillMapSelects(){for(const k in MAPSEL){const el=$(MAPSEL[k]);el.innerHTML='<option value="">—</option>';
   S.schema.forEach(c=>{const o=document.createElement("option");o.value=c.name;o.textContent=`${c.name} · ${c.type}`;if(c.name===S.map[k])o.selected=true;el.appendChild(o);});}}
 function readMapSelects(){for(const k in MAPSEL)S.map[k]=$(MAPSEL[k]).value||S.map[k];}
+// auto-map the customer-aggregate table (1 row per customer)
+function guessAgg(sc){const has=n=>sc.find(c=>c.name===n)?n:"";
+  const find=(t,re)=>sc.find(c=>t.includes(c.type)&&re.test(c.name.toLowerCase()))?.name||"";
+  const N=NUMERIC,Sx=["STRING"],D=DATES;
+  return{
+    cust: has("customer_id")||find(Sx,/customer.*id|cust.*id|รหัสลูกค้า/)||"",
+    seg: has("DBsegment_final")||has("DBsegment")||find(Sx,/segment|กลุ่ม|ประเภท/)||"",
+    sales25: has("sales_2025")||find(N,/2025|_25|sales.*25/)||"",
+    sales24: has("sales_2024")||find(N,/2024|_24|sales.*24/)||"",
+    monetary: has("monetary")||find(N,/monetary|total.*sale|ยอดรวม/)||"",
+    freq: has("frequency")||has("total_orders")||find(N,/freq|orders|จำนวนบิล/)||"",
+    last: find(D,/last.*purchas|ล่าสุด/)||has("last_purchase")||sc.find(c=>D.includes(c.type))?.name||"",
+    name: has("best_customer_name")||has("customer_name")||find(Sx,/cust.*name|ชื่อลูกค้า/)||"",
+    seller: has("best_seller_name")||has("sale_name_new")||find(Sx,/seller|sale.*name|เซลล์/)||"",
+  };}
 
 /* =========================================================================
    DEMO DATA
@@ -302,68 +318,77 @@ function buildDemo(){
    LIVE (best-effort: pulls a working sample for the selected filter and
    computes client-side; aggregate scorecards use full-table queries)
    ========================================================================= */
-// find the column whose values look like "1.HighValue.. / 3.HighPotential.." and scope to it
-async function detectHVSegment(){
-  const strs=S.schema.filter(c=>c.type==="STRING"); if(!strs.length)return;
-  const c=readCfg(); const t=`\`${c.project}.${c.dataset}.${c.table}\``;
-  const sel=strs.map((col,i)=>`COUNTIF(${qq(col.name)} LIKE '%HighValue%' OR ${qq(col.name)} LIKE '%HighPotential%') v${i}`).join(",");
-  try{
-    const{rows}=await bq(`SELECT ${sel} FROM ${t}`);
-    const r=rows[0]||{}; let best="",bestN=0;
-    strs.forEach((col,i)=>{const n=Number(r["v"+i])||0;if(n>bestN){bestN=n;best=col.name;}});
-    if(best){ S.map.segment=best; S.hvOnly=true; const el=$("#mSegment"); if(el)el.value=best;
-      status(`พบคอลัมน์กลุ่ม High Value: ${best}`); }
-  }catch(e){console.warn("HV detect failed",e);}
-}
+function esc(s){return String(s).replace(/'/g,"\\'");}
+function yearOf(name){const m=(name||"").match(/(20\d\d)/);return m?+m[1]:0;}
+function aggT(){const c=readCfg();return `\`${c.project}.${c.dataset}.${c.aggTable}\``;}
+function txnT(){const c=readCfg();return `\`${c.project}.${c.dataset}.${c.table}\``;}
+// WHERE on the customer-aggregate table: High Value scope + active filters
+function aggWhere(px){const a=S.amap;const p=px?px+".":"";const c=[];
+  if(a.seg)c.push(`${p}${qq(a.seg)} IS NOT NULL AND TRIM(CAST(${p}${qq(a.seg)} AS STRING))<>''`);
+  if(S.filt.segment&&a.seg)c.push(`${p}${qq(a.seg)}='${esc(S.filt.segment)}'`);
+  if(S.filt.custCode&&a.cust)c.push(`${p}${qq(a.cust)}='${esc(S.filt.custCode)}'`);
+  if(S.selCust&&a.cust)c.push(`${p}${qq(a.cust)}='${esc(S.selCust)}'`);
+  if(S._codes&&S._codes.length&&a.cust)c.push(`${p}${qq(a.cust)} IN (${S._codes.map(x=>`'${esc(x)}'`).join(",")})`);
+  return c.length?("WHERE "+c.join(" AND ")):"";}
+// transaction-table scope: customers in the filtered HV set (+ date range)
+function txnScope(withDate){const a=S.amap,m=S.map;const c=[];
+  if(a.cust&&m.custCode)c.push(`${qq(m.custCode)} IN (SELECT ${qq(a.cust)} FROM ${aggT()} ${aggWhere()})`);
+  if(withDate&&S.filt.from&&m.date)c.push(`DATE(${qq(m.date)})>='${esc(S.filt.from)}'`);
+  if(withDate&&S.filt.to&&m.date)c.push(`DATE(${qq(m.date)})<='${esc(S.filt.to)}'`);
+  return c.length?("WHERE "+c.join(" AND ")):"";}
+
 async function bootLive(){
-  try{ status("กำลังอ่าน schema…",true); S.schema=await fetchSchema();
-    if(!S.schema.length)throw new Error("ไม่พบคอลัมน์");
+  try{ status("กำลังอ่าน schema…",true); const c=readCfg();
+    S.schema=await fetchSchema(c.table);
+    S.aggSchema=c.aggTable? await fetchSchema(c.aggTable).catch(()=>[]) : [];
+    if(!S.schema.length)throw new Error("ไม่พบคอลัมน์ในตารางธุรกรรม");
     S.map=guessMap(S.schema); fillMapSelects();
-    await detectHVSegment();
+    S.amap=S.aggSchema.length? guessAgg(S.aggSchema) : {};
     await initRangeLive();
     await loadLive();
   }catch(e){status("");toast("โหลดไม่สำเร็จ: "+e.message,1);console.error(e);}
 }
-function liveWhere(){const m=S.map;const c=[];
-  if(S.hvOnly&&m.segment&&!S.filt.segment)c.push(`${qq(m.segment)} IS NOT NULL AND TRIM(CAST(${qq(m.segment)} AS STRING))<>''`);
-  if(S.filt.segment&&m.segment)c.push(`${qq(m.segment)}='${esc(S.filt.segment)}'`);
-  if(S.filt.custCode&&m.custCode)c.push(`${qq(m.custCode)}='${esc(S.filt.custCode)}'`);
-  if(S.filt.custName&&m.custName)c.push(`${qq(m.custName)}='${esc(S.filt.custName)}'`);
-  if(S.filt.sales&&m.sales)c.push(`${qq(m.sales)}='${esc(S.filt.sales)}'`);
-  if(S.filt.from&&m.date)c.push(`DATE(${qq(m.date)})>='${esc(S.filt.from)}'`);
-  if(S.filt.to&&m.date)c.push(`DATE(${qq(m.date)})<='${esc(S.filt.to)}'`);
-  if(S.selCust&&m.custCode)c.push(`${qq(m.custCode)}='${esc(S.selCust)}'`);
-  return c.length?("WHERE "+c.join(" AND ")):"";}
-function esc(s){return String(s).replace(/'/g,"\\'");}
 async function loadLive(){
-  readMapSelects(); const m=S.map; const c=readCfg(); const t=`\`${c.project}.${c.dataset}.${c.table}\``;
-  if(!m.date||!m.amount){toast("ต้องระบุคอลัมน์ วันที่ และ ยอดซื้อ ในการตั้งค่า",1);$("#cfgPanel").open=true;return;}
+  readMapSelects(); const a=S.amap,m=S.map;
+  if(!a.seg||!a.cust){toast("ไม่พบคอลัมน์ segment/customer ในตารางสรุปลูกค้า — ตรวจชื่อตารางใน ⚙",1);$("#cfgPanel").open=true;return;}
   status("กำลังคำนวณ…",true);
-  const wh=liveWhere(); const A=qq(m.amount),D=`DATE(${qq(m.date)})`;
+  const AGG=aggT(), aw=aggWhere();
+  const s25=a.sales25?qq(a.sales25):"0", s24=a.sales24?qq(a.sales24):"0";
   try{
     const Q=[];
-    // 0 segments
-    Q.push(m.segment?bq(`SELECT CAST(${qq(m.segment)} AS STRING) k, COUNT(DISTINCT ${m.custCode?qq(m.custCode):"1"}) n FROM ${t} ${wh} GROUP BY k ORDER BY n DESC`):Promise.resolve({rows:[]}));
-    // 1 monthly
-    Q.push(bq(`SELECT FORMAT_DATE('%Y-%m',${D}) m, SUM(${A}) v FROM ${t} ${wh} GROUP BY m ORDER BY m`));
-    // 2 by year
-    Q.push(bq(`SELECT EXTRACT(YEAR FROM ${D}) y, EXTRACT(MONTH FROM ${D}) mo, SUM(${A}) v${m.bill?`, COUNT(DISTINCT ${qq(m.bill)}) b`:", COUNT(*) b"} FROM ${t} ${wh} GROUP BY y,mo`));
-    // 3 last date
-    Q.push(bq(`SELECT MAX(${D}) d FROM ${t} ${wh}`));
-    // 4 customers
-    Q.push(m.custCode?bq(`SELECT CAST(${qq(m.custCode)} AS STRING) code${m.custName?`, ANY_VALUE(${qq(m.custName)}) name`:""}${m.sales?`, ANY_VALUE(${qq(m.sales)}) sales`:""}, SUM(${A}) v FROM ${t} ${wh} GROUP BY code ORDER BY v DESC LIMIT 500`):Promise.resolve({rows:[]}));
-    // 5 products
-    Q.push(bq(`SELECT ${D} d${m.prodGroup?`, ANY_VALUE(${qq(m.prodGroup)}) pg`:""}${m.prodCode?`, CAST(${qq(m.prodCode)} AS STRING) pc`:", '' pc"}${m.prodName?`, ANY_VALUE(${qq(m.prodName)}) pn`:""}${m.qty?`, SUM(${qq(m.qty)}) qty`:", COUNT(*) qty"}, SUM(${A}) v FROM ${t} ${wh} GROUP BY d${m.prodCode?",pc":""} ORDER BY v DESC LIMIT 500`));
-    const[seg,mon,yr,last,cu,pr]=await Promise.all(Q);
+    // 0 segment breakdown (1 row = 1 customer)
+    Q.push(bq(`SELECT CAST(${qq(a.seg)} AS STRING) k, COUNT(*) n FROM ${AGG} ${aw} GROUP BY k ORDER BY n DESC`));
+    // 1 scorecards from the aggregate table
+    Q.push(bq(`SELECT SUM(${s25}) cur, SUM(${s24}) prev, COUNT(*) custn${a.last?`, MAX(${qq(a.last)}) last`:""} FROM ${AGG} ${aw}`));
+    // 2 customer list (names from agg if present, else join the txn table)
+    if(a.name||a.seller){
+      Q.push(bq(`SELECT CAST(${qq(a.cust)} AS STRING) code, ${a.name?qq(a.name):"CAST(NULL AS STRING)"} name, ${a.seller?qq(a.seller):"CAST(NULL AS STRING)"} seller, ${s25} v, CAST(${qq(a.seg)} AS STRING) seg FROM ${AGG} ${aw} ORDER BY v DESC LIMIT 500`));
+    }else{
+      const tn=m.custName?`ANY_VALUE(t.${qq(m.custName)})`:"CAST(NULL AS STRING)";
+      const ts=m.sales?`ANY_VALUE(t.${qq(m.sales)})`:"CAST(NULL AS STRING)";
+      Q.push(bq(`SELECT CAST(g.${qq(a.cust)} AS STRING) code, ${tn} name, ${ts} seller, ANY_VALUE(g.${s25}) v, CAST(ANY_VALUE(g.${qq(a.seg)}) AS STRING) seg FROM ${AGG} g LEFT JOIN ${txnT()} t ON CAST(g.${qq(a.cust)} AS STRING)=CAST(t.${qq(m.custCode)} AS STRING) ${aggWhere("g")} GROUP BY code ORDER BY v DESC LIMIT 500`));
+    }
+    // 3 monthly trend (txn, scoped to HV customers + date range)
+    Q.push((m.date&&m.amount)?bq(`SELECT FORMAT_DATE('%Y-%m',DATE(${qq(m.date)})) m, SUM(${qq(m.amount)}) v FROM ${txnT()} ${txnScope(true)} GROUP BY m ORDER BY m`):Promise.resolve({rows:[]}));
+    // 4 bills by year (txn, no date filter)
+    Q.push((m.date&&m.bill)?bq(`SELECT EXTRACT(YEAR FROM DATE(${qq(m.date)})) y, COUNT(DISTINCT ${qq(m.bill)}) b FROM ${txnT()} ${txnScope(false)} GROUP BY y`):Promise.resolve({rows:[]}));
+    // 5 products (txn, scoped + date range)
+    Q.push((m.date&&m.amount)?bq(`SELECT DATE(${qq(m.date)}) d${m.prodGroup?`, ANY_VALUE(${qq(m.prodGroup)}) pg`:", '' pg"}${m.prodCode?`, CAST(${qq(m.prodCode)} AS STRING) pc`:", '' pc"}${m.prodName?`, ANY_VALUE(${qq(m.prodName)}) pn`:", '' pn"}${m.qty?`, SUM(${qq(m.qty)}) qty`:", COUNT(*) qty"}, SUM(${qq(m.amount)}) v FROM ${txnT()} ${txnScope(true)} GROUP BY d${m.prodCode?",pc":""} ORDER BY v DESC LIMIT 500`):Promise.resolve({rows:[]}));
+
+    const[seg,kpi,cu,mon,billsY,pr]=await Promise.all(Q);
+    const k=kpi.rows[0]||{};
+    const cy=yearOf(a.sales25)||(mon.rows.length?Math.max(...mon.rows.map(r=>+r.m.slice(0,4))):new Date().getFullYear());
+    const py=yearOf(a.sales24)||cy-1;
+    const byY={}; billsY.rows.forEach(r=>byY[Number(r.y)]=Number(r.b)||0);
     S.live={
       seg:seg.rows.map(r=>({k:r.k??"(ว่าง)",n:Number(r.n)||0})),
+      custn:Number(k.custn)||0, cur:Number(k.cur)||0, prev:Number(k.prev)||0,
+      curYear:cy, prevYear:py, bills:byY[cy]||0, billsPrev:byY[py]||0, last:k.last||null,
       mon:mon.rows.map(r=>({m:r.m,v:Number(r.v)||0})),
-      yr:yr.rows.map(r=>({y:Number(r.y),mo:Number(r.mo),v:Number(r.v)||0,b:Number(r.b)||0})),
-      last:last.rows[0]?.d||null,
-      cust:cu.rows.map(r=>({code:r.code,name:r.name||r.code,sales:r.sales||"",v:Number(r.v)||0})),
+      cust:cu.rows.map(r=>({code:r.code,name:r.name||r.code,sales:r.seller||"",v:Number(r.v)||0})),
       prod:pr.rows.map(r=>({d:String(r.d).slice(0,10),pg:r.pg||"",pc:r.pc||"",pn:r.pn||"",qty:Number(r.qty)||0,v:Number(r.v)||0})),
     };
-    status("");
+    status(`กลุ่ม High Value ${S.live.custn.toLocaleString()} ลูกค้า`);
     renderLive();
   }catch(e){status("");toast("คำนวณไม่สำเร็จ: "+e.message,1);console.error(e);}
 }
@@ -393,16 +418,17 @@ function computeDemo(){
     const cc=r[m.custCode]; if(!custMap.has(cc))custMap.set(cc,{code:cc,name:r[m.custName],sales:r[m.sales],v:0}); custMap.get(cc).v+=Number(r[m.amount])||0;
     if(!last||d>last)last=d;
   });
+  const yrArr=[...yrMap.entries()].map(([y,o])=>({y:+y,v:o.v,bills:o.bills.size}));
+  const segArr=[...segMap.entries()].map(([k,s])=>({k,n:s.size})).sort((a,b)=>b.n-a.n);
+  const cy=yrArr.length?Math.max(...yrArr.map(x=>x.y)):new Date().getFullYear(),py=cy-1;
+  const cur=yrArr.find(x=>x.y===cy)||{v:0,bills:0},prev=yrArr.find(x=>x.y===py)||{v:0,bills:0};
   S.live={
-    seg:[...segMap.entries()].map(([k,s])=>({k,n:s.size})).sort((a,b)=>b.n-a.n),
+    seg:segArr, custn:segArr.reduce((s,x)=>s+x.n,0),
+    cur:cur.v, prev:prev.v, curYear:cy, prevYear:py, bills:cur.bills, billsPrev:prev.bills, last,
     mon:[...monMap.entries()].sort((a,b)=>a[0]<b[0]?-1:1).map(([mm,v])=>({m:mm,v})),
-    yr:[...yrMap.entries()].map(([y,o])=>({y:+y,v:o.v,bills:o.bills.size})),
-    last,
     cust:[...custMap.values()].sort((a,b)=>b.v-a.v),
     prod:rows.map(r=>({d:(r[m.date]||"").slice(0,10),pg:r[m.prodGroup],pc:r[m.prodCode],pn:r[m.prodName],qty:Number(r[m.qty])||0,v:Number(r[m.amount])||0})).sort((a,b)=>b.v-a.v),
-    _bymo:rows,
   };
-  // YTD YoY using month sets
   renderLive();
 }
 
@@ -454,25 +480,18 @@ function renderTrend(){
 function thMonth(ym){const[y,m]=ym.split("-");return MONTHS[(+m)-1]+" "+be(+y).toString().slice(2);}
 
 function renderScores(){
-  const yr=S.live.yr||[]; const cy=curYear(),py=cy-1;
-  const cur=yr.find(x=>x.y===cy)||{v:0,bills:0,b:0}; const prev=yr.find(x=>x.y===py)||{v:0,bills:0,b:0};
-  // YTD YoY: compare months present in current year vs same months last year (approx via monthly series)
-  const mon=S.live.mon||[]; const cyMonths=mon.filter(x=>+x.m.slice(0,4)===cy);
-  const curMoSet=new Set(cyMonths.map(x=>+x.m.slice(5,7)));
-  const curYTD=cyMonths.reduce((s,x)=>s+x.v,0);
-  const prevYTD=mon.filter(x=>+x.m.slice(0,4)===py&&curMoSet.has(+x.m.slice(5,7))).reduce((s,x)=>s+x.v,0);
-  const growth=prevYTD?((curYTD-prevYTD)/prevYTD*100):null;
-  const bills=cur.bills!=null?cur.bills:cur.b; const pbills=prev.bills!=null?prev.bills:prev.b;
+  const L=S.live; const cy=L.curYear,py=L.prevYear;
+  const growth=L.prev?((L.cur-L.prev)/L.prev*100):null;
   $("#scYearK").textContent=`ยอดซื้อปี ${be(cy)} จนถึงปัจจุบัน`;
-  $("#scYearV").textContent=num(cur.v)+" บาท";
-  $("#scYearSub").textContent=`${num(prev.v)} บาท (ทั้งหมดในปี ${be(py)})`;
+  $("#scYearV").textContent=num(L.cur)+" บาท";
+  $("#scYearSub").textContent=`${num(L.prev)} บาท (ทั้งหมดในปี ${be(py)})`;
   $("#scGrowV").textContent=growth==null?"–":growth.toFixed(2)+"%";
-  $("#scGrowSub").textContent="ยอดปีนี้ช่วงเดียวกัน เทียบปีก่อน";
+  $("#scGrowSub").textContent="ยอดปีนี้เทียบทั้งปีก่อน";
   $("#scBillK").textContent=`จำนวนบิลทั้งหมด ปี ${be(cy).toString().slice(2)}`;
-  $("#scBillV").textContent=num(bills)+" ใบ";
-  $("#scBillSub").textContent=`${num(pbills)} ใบ (ทั้งหมดในปี ${be(py).toString().slice(2)})`;
-  $("#scAovV").textContent=num(bills?cur.v/bills:0);
-  $("#scLastV").textContent=S.live.last?fmtDate(S.live.last):"–";
+  $("#scBillV").textContent=num(L.bills)+" ใบ";
+  $("#scBillSub").textContent=`${num(L.billsPrev)} ใบ (ทั้งหมดในปี ${be(py).toString().slice(2)})`;
+  $("#scAovV").textContent=num(L.bills?L.cur/L.bills:0);
+  $("#scLastV").textContent=L.last?fmtDate(String(L.last).slice(0,10)):"–";
 }
 function fmtDate(iso){const[y,m,d]=iso.split("-");return `${["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][(+m)-1]} ${+d}, ${y}`;}
 
@@ -513,7 +532,16 @@ function renderProducts(){
 function reCompute(){ S.custPage=0;S.prodPage=0; if(S.mode==="live")loadLive(); else computeDemo(); }
 function readDates(){S.filt.from=$("#fFrom").value;S.filt.to=$("#fTo").value;}
 function readFilters(){S.filt.segment=$("#fSegment").value;S.filt.custCode=$("#fCustCode").value;
-  S.filt.custName=$("#fCustName").value;S.filt.sales=$("#fSales").value;readDates();S.selCust=null;reCompute();}
+  S.filt.custName=$("#fCustName").value;S.filt.sales=$("#fSales").value;readDates();
+  // resolve name/seller selections to customer codes (live mode uses agg WHERE; demo uses filtered())
+  S._codes=null;
+  if(S.mode==="live"&&(S.filt.custName||S.filt.sales)&&S.live&&S.live.cust){
+    let list=S.live.cust;
+    if(S.filt.custName)list=list.filter(c=>c.name===S.filt.custName);
+    if(S.filt.sales)list=list.filter(c=>c.sales===S.filt.sales);
+    S._codes=list.map(c=>c.code);
+  }
+  S.selCust=null;reCompute();}
 // default the date range to the full span of available data
 function setRange(lo,hi){ if(lo){$("#fFrom").value=lo;S.filt.from=lo;} if(hi){$("#fTo").value=hi;S.filt.to=hi;} }
 function setDemoRange(){const m=S.map;let lo=null,hi=null;
@@ -529,7 +557,6 @@ $("#signinBtn").onclick=signIn;
 $("#connectBtn").onclick=()=>{saveCfg();readMapSelects();$("#cfgPanel").open=false;if(S.token){S.mode="live";loadLive();}else signIn();};
 $("#refreshBtn").onclick=()=>{if(S.mode==="live")loadLive();else{buildDemo();computeDemo();}};
 Object.values(MAPSEL).forEach(s=>$(s).addEventListener("change",()=>{readMapSelects();}));
-$("#mSegment").addEventListener("change",()=>{S.hvOnly=false;}); // manual choice = no auto HV scoping
 
 /* ---- boot ---- */
 loadCfg(); buildDemo(); setDemoRange(); computeDemo();
