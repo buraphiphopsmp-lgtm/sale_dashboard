@@ -43,7 +43,7 @@
   .filterbar .flabel{background:var(--red);color:#fff;font-weight:600;font-size:12px;padding:7px 14px;border-radius:6px;display:flex;align-items:center;white-space:nowrap}
   .filterbar .fsel{display:flex;flex-direction:column;gap:2px}
   .filterbar .fsel small{font-size:10px;color:var(--muted)}
-  .filterbar select{font:inherit;padding:6px 9px;border:1px solid var(--line);border-radius:6px;background:#fff;min-width:170px}
+  .filterbar select,.filterbar input{font:inherit;padding:6px 9px;border:1px solid var(--line);border-radius:6px;background:#fff;min-width:150px}
   .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:14px}
   .s5{grid-column:span 5}.s7{grid-column:span 7}.s12{grid-column:span 12}.s4{grid-column:span 4}
   @media(max-width:980px){.grid>div{grid-column:span 12 !important}}
@@ -131,6 +131,8 @@
       <div class="fsel"><small>รหัสลูกค้า</small><select id="fCustCode"></select></div>
       <div class="fsel"><small>ชื่อลูกค้า</small><select id="fCustName"></select></div>
       <div class="fsel"><small>เซลล์ผู้ดูแล</small><select id="fSales"></select></div>
+      <div class="fsel"><small>ตั้งแต่วันที่</small><input type="date" id="fFrom"></div>
+      <div class="fsel"><small>ถึงวันที่</small><input type="date" id="fTo"></div>
     </div>
 
     <div class="grid">
@@ -189,7 +191,7 @@ const MONTHS=["ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","ม�
 const LS="vipMon.cfg";
 
 const S={mode:"demo",token:null,schema:[],map:{},rows:[],
-  filt:{segment:"",custCode:"",custName:"",sales:""},
+  filt:{segment:"",custCode:"",custName:"",sales:"",from:"",to:""},
   custPage:0,prodPage:0,selCust:null,chart:null};
 
 /* ---- toast/status ---- */
@@ -304,6 +306,7 @@ async function bootLive(){
   try{ status("กำลังอ่าน schema…",true); S.schema=await fetchSchema();
     if(!S.schema.length)throw new Error("ไม่พบคอลัมน์");
     S.map=guessMap(S.schema); fillMapSelects();
+    await initRangeLive();
     await loadLive();
   }catch(e){status("");toast("โหลดไม่สำเร็จ: "+e.message,1);console.error(e);}
 }
@@ -312,6 +315,8 @@ function liveWhere(){const m=S.map;const c=[];
   if(S.filt.custCode&&m.custCode)c.push(`${qq(m.custCode)}='${esc(S.filt.custCode)}'`);
   if(S.filt.custName&&m.custName)c.push(`${qq(m.custName)}='${esc(S.filt.custName)}'`);
   if(S.filt.sales&&m.sales)c.push(`${qq(m.sales)}='${esc(S.filt.sales)}'`);
+  if(S.filt.from&&m.date)c.push(`DATE(${qq(m.date)})>='${esc(S.filt.from)}'`);
+  if(S.filt.to&&m.date)c.push(`DATE(${qq(m.date)})<='${esc(S.filt.to)}'`);
   if(S.selCust&&m.custCode)c.push(`${qq(m.custCode)}='${esc(S.selCust)}'`);
   return c.length?("WHERE "+c.join(" AND ")):"";}
 function esc(s){return String(s).replace(/'/g,"\\'");}
@@ -356,6 +361,8 @@ function filtered(){const m=S.map;return S.rows.filter(r=>{
   if(S.filt.custCode&&r[m.custCode]!==S.filt.custCode)return false;
   if(S.filt.custName&&r[m.custName]!==S.filt.custName)return false;
   if(S.filt.sales&&r[m.sales]!==S.filt.sales)return false;
+  if(S.filt.from||S.filt.to){const d=(r[m.date]||"").slice(0,10);
+    if(S.filt.from&&d<S.filt.from)return false; if(S.filt.to&&d>S.filt.to)return false;}
   if(S.selCust&&r[m.custCode]!==S.selCust)return false;
   return true;});}
 function computeDemo(){
@@ -489,18 +496,27 @@ function renderProducts(){
 
 /* ---- recompute on filter/selection change ---- */
 function reCompute(){ S.custPage=0;S.prodPage=0; if(S.mode==="live")loadLive(); else computeDemo(); }
+function readDates(){S.filt.from=$("#fFrom").value;S.filt.to=$("#fTo").value;}
 function readFilters(){S.filt.segment=$("#fSegment").value;S.filt.custCode=$("#fCustCode").value;
-  S.filt.custName=$("#fCustName").value;S.filt.sales=$("#fSales").value;S.selCust=null;reCompute();}
+  S.filt.custName=$("#fCustName").value;S.filt.sales=$("#fSales").value;readDates();S.selCust=null;reCompute();}
+// default the date range to the full span of available data
+function setRange(lo,hi){ if(lo){$("#fFrom").value=lo;S.filt.from=lo;} if(hi){$("#fTo").value=hi;S.filt.to=hi;} }
+function setDemoRange(){const m=S.map;let lo=null,hi=null;
+  S.rows.forEach(r=>{const d=(r[m.date]||"").slice(0,10);if(!d)return;if(!lo||d<lo)lo=d;if(!hi||d>hi)hi=d;});
+  setRange(lo,hi);}
+async function initRangeLive(){ if(S.filt._init||!S.map.date)return; const c=readCfg();
+  try{const{rows}=await bq(`SELECT FORMAT_DATE('%Y-%m-%d',MIN(DATE(${qq(S.map.date)}))) lo, FORMAT_DATE('%Y-%m-%d',MAX(DATE(${qq(S.map.date)}))) hi FROM \`${c.project}.${c.dataset}.${c.table}\``);
+    const r=rows[0]; if(r){setRange(r.lo,r.hi);S.filt._init=true;}}catch(e){console.warn("range init",e);}}
 
 /* ---- events ---- */
-["#fSegment","#fCustCode","#fCustName","#fSales"].forEach(s=>$(s).addEventListener("change",readFilters));
+["#fSegment","#fCustCode","#fCustName","#fSales","#fFrom","#fTo"].forEach(s=>$(s).addEventListener("change",readFilters));
 $("#signinBtn").onclick=signIn;
 $("#connectBtn").onclick=()=>{saveCfg();readMapSelects();$("#cfgPanel").open=false;if(S.token){S.mode="live";loadLive();}else signIn();};
 $("#refreshBtn").onclick=()=>{if(S.mode==="live")loadLive();else{buildDemo();computeDemo();}};
 Object.values(MAPSEL).forEach(s=>$(s).addEventListener("change",()=>{readMapSelects();}));
 
 /* ---- boot ---- */
-loadCfg(); buildDemo(); computeDemo();
+loadCfg(); buildDemo(); setDemoRange(); computeDemo();
 (function(){let tok=null;try{tok=sessionStorage.getItem("bqToken");}catch(e){}
   if(tok){S.token=tok;S.mode="live";badge();bootLive();}})();
 </script>

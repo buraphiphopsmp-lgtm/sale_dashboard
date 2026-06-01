@@ -346,8 +346,19 @@ async function bootLive(){
     state.schema=await fetchSchema();
     if(!state.schema.length) throw new Error("ไม่พบคอลัมน์ — ตรวจชื่อ dataset/table");
     state.map=guessMapping(state.schema); fillMapSelects();
+    if(!state.rangeInit){ await initLatestRange(); state.rangeInit=true; }
     await loadLive();
   }catch(e){ setStatus(""); toast("โหลดไม่สำเร็จ: "+e.message,1); console.error(e); }
+}
+// default the date range to the latest month that actually has data
+async function initLatestRange(){
+  if(!state.map.date) return;
+  const cfg=readCfg();
+  try{
+    const {rows}=await bqQuery(`SELECT FORMAT_DATE('%Y-%m-%d',MAX(DATE(${qq(state.map.date)}))) hi FROM \`${cfg.project}.${cfg.dataset}.${cfg.table}\``);
+    const hi=rows[0]?.hi;
+    if(hi){ $("#dateTo").value=hi; $("#dateFrom").value=hi.slice(0,8)+"01"; }
+  }catch(e){ console.warn("range init failed",e); }
 }
 async function loadLive(){
   readMapSelections();
