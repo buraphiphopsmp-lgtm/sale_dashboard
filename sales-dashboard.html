@@ -39,6 +39,11 @@
   button.primary{background:var(--brand);color:#fff;border-color:var(--brand)}
   button.primary:hover{background:#1765cc}
   button:disabled{opacity:.5;cursor:not-allowed}
+  .appnav{display:flex;align-items:center;gap:2px;background:#202124;padding:0 16px;height:46px;overflow-x:auto}
+  .appnav .brand{color:#fff;font-weight:600;font-size:14px;margin-right:18px;display:flex;align-items:center;gap:8px;white-space:nowrap}
+  .appnav a.tab{color:#bdc1c6;text-decoration:none;font-size:13px;padding:0 16px;height:46px;display:flex;align-items:center;border-bottom:3px solid transparent;white-space:nowrap}
+  .appnav a.tab:hover{color:#fff;background:rgba(255,255,255,.06)}
+  .appnav a.tab.active{color:#fff;border-bottom-color:var(--brand)}
   .wrap{max-width:1400px;margin:0 auto;padding:18px 20px 60px}
   .toolbar{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-bottom:16px}
   .toolbar label{font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:3px}
@@ -95,6 +100,12 @@
 </style>
 </head>
 <body>
+
+<nav class="appnav">
+  <div class="brand">📊 Futuretech Dashboards</div>
+  <a href="sales-dashboard.html" class="tab active">Sales Dashboard</a>
+  <a href="high-value-monitor.html" class="tab">High Value Monitor</a>
+</nav>
 
 <div class="topbar">
   <h1>Sales Dashboard</h1>
@@ -230,6 +241,7 @@ function initAuth(clientId){
     callback:(resp)=>{
       if(resp.error){ toast("ล็อกอินไม่สำเร็จ: "+resp.error,1); return; }
       state.token=resp.access_token; state.mode="live"; setModeBadge();
+      try{ sessionStorage.setItem("bqToken",resp.access_token); }catch(e){}
       toast("เชื่อมต่อ BigQuery สำเร็จ"); bootLive();
     },
   });
@@ -251,7 +263,8 @@ async function bqQuery(sql){
     body:JSON.stringify({query:sql,useLegacySql:false,timeoutMs:60000,maxResults:2000}),
   });
   const data=await res.json();
-  if(!res.ok) throw new Error(data.error?.message||("HTTP "+res.status));
+  if(!res.ok){ if(res.status===401){ try{sessionStorage.removeItem("bqToken");}catch(e){} state.token=null; }
+    throw new Error(data.error?.message||("HTTP "+res.status)); }
   if(data.jobComplete===false) throw new Error("Query ใช้เวลานานเกินไป ลองแคบช่วงวันที่ลง");
   const fields=(data.schema?.fields)||[];
   const rows=(data.rows||[]).map(r=>{ const o={};
@@ -532,6 +545,10 @@ $("#applyBtn").onclick=()=>{ readMapSelections(); applyData(); };
 loadCfg();
 $("#originHint").textContent=(location.origin&&location.origin!=="null")?location.origin:"http://localhost:8080";
 buildDemo(); setModeBadge(); computeDemoAgg(); drawAll();
+
+// restore session from a previous login on the other page
+(function(){ let tok=null; try{tok=sessionStorage.getItem("bqToken");}catch(e){}
+  if(tok){ state.token=tok; state.mode="live"; setModeBadge(); bootLive(); } })();
 </script>
 </body>
 </html>
