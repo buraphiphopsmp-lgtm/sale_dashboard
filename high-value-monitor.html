@@ -192,7 +192,7 @@ const LS="vipMon.cfg";
 
 const S={mode:"demo",token:null,schema:[],map:{},rows:[],
   filt:{segment:"",custCode:"",custName:"",sales:"",from:"",to:""},
-  custPage:0,prodPage:0,selCust:null,chart:null};
+  hvOnly:false,custPage:0,prodPage:0,selCust:null,chart:null};
 
 /* ---- toast/status ---- */
 let tt; function toast(m,e){const t=$("#toast");t.textContent=m;t.className="toast show"+(e?" err":"");clearTimeout(tt);tt=setTimeout(()=>t.className="toast",4500);}
@@ -302,15 +302,30 @@ function buildDemo(){
    LIVE (best-effort: pulls a working sample for the selected filter and
    computes client-side; aggregate scorecards use full-table queries)
    ========================================================================= */
+// find the column whose values look like "1.HighValue.. / 3.HighPotential.." and scope to it
+async function detectHVSegment(){
+  const strs=S.schema.filter(c=>c.type==="STRING"); if(!strs.length)return;
+  const c=readCfg(); const t=`\`${c.project}.${c.dataset}.${c.table}\``;
+  const sel=strs.map((col,i)=>`COUNTIF(${qq(col.name)} LIKE '%HighValue%' OR ${qq(col.name)} LIKE '%HighPotential%') v${i}`).join(",");
+  try{
+    const{rows}=await bq(`SELECT ${sel} FROM ${t}`);
+    const r=rows[0]||{}; let best="",bestN=0;
+    strs.forEach((col,i)=>{const n=Number(r["v"+i])||0;if(n>bestN){bestN=n;best=col.name;}});
+    if(best){ S.map.segment=best; S.hvOnly=true; const el=$("#mSegment"); if(el)el.value=best;
+      status(`พบคอลัมน์กลุ่ม High Value: ${best}`); }
+  }catch(e){console.warn("HV detect failed",e);}
+}
 async function bootLive(){
   try{ status("กำลังอ่าน schema…",true); S.schema=await fetchSchema();
     if(!S.schema.length)throw new Error("ไม่พบคอลัมน์");
     S.map=guessMap(S.schema); fillMapSelects();
+    await detectHVSegment();
     await initRangeLive();
     await loadLive();
   }catch(e){status("");toast("โหลดไม่สำเร็จ: "+e.message,1);console.error(e);}
 }
 function liveWhere(){const m=S.map;const c=[];
+  if(S.hvOnly&&m.segment&&!S.filt.segment)c.push(`${qq(m.segment)} IS NOT NULL AND TRIM(CAST(${qq(m.segment)} AS STRING))<>''`);
   if(S.filt.segment&&m.segment)c.push(`${qq(m.segment)}='${esc(S.filt.segment)}'`);
   if(S.filt.custCode&&m.custCode)c.push(`${qq(m.custCode)}='${esc(S.filt.custCode)}'`);
   if(S.filt.custName&&m.custName)c.push(`${qq(m.custName)}='${esc(S.filt.custName)}'`);
@@ -514,6 +529,7 @@ $("#signinBtn").onclick=signIn;
 $("#connectBtn").onclick=()=>{saveCfg();readMapSelects();$("#cfgPanel").open=false;if(S.token){S.mode="live";loadLive();}else signIn();};
 $("#refreshBtn").onclick=()=>{if(S.mode==="live")loadLive();else{buildDemo();computeDemo();}};
 Object.values(MAPSEL).forEach(s=>$(s).addEventListener("change",()=>{readMapSelects();}));
+$("#mSegment").addEventListener("change",()=>{S.hvOnly=false;}); // manual choice = no auto HV scoping
 
 /* ---- boot ---- */
 loadCfg(); buildDemo(); setDemoRange(); computeDemo();
