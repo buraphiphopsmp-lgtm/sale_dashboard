@@ -4,6 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Sales Dashboard · sale_transaction</title>
+<link rel="icon" href="data:," />
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
@@ -13,7 +14,6 @@
     --green:#188038; --red:#d93025; --amber:#f29900;
     --shadow:0 1px 2px rgba(60,64,67,.1),0 1px 3px rgba(60,64,67,.08);
     --radius:8px;
-    --c1:#1a73e8;--c2:#12b5cb;--c3:#e8710a;--c4:#9334e6;--c5:#188038;--c6:#d01884;--c7:#f9ab00;--c8:#5f6368;
   }
   *{box-sizing:border-box}
   html,body{margin:0;padding:0}
@@ -21,18 +21,16 @@
     font-family:"Google Sans","Segoe UI",Roboto,Arial,"Noto Sans Thai",sans-serif;
     background:var(--bg);color:var(--ink);font-size:14px;line-height:1.4;
   }
-  /* ---------- top bar ---------- */
   .topbar{
     background:var(--panel);border-bottom:1px solid var(--line);
-    padding:10px 20px;display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:20;
+    padding:10px 20px;display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:20;flex-wrap:wrap;
   }
   .topbar h1{font-size:18px;font-weight:500;margin:0;flex:0 0 auto}
   .topbar .sub{color:var(--muted);font-size:12px;border-left:1px solid var(--line);padding-left:14px}
   .topbar .spacer{flex:1}
-  .badge{font-size:11px;padding:3px 9px;border-radius:999px;font-weight:500}
+  .badge{font-size:11px;padding:3px 9px;border-radius:999px;font-weight:500;white-space:nowrap}
   .badge.demo{background:var(--amber);color:#fff}
   .badge.live{background:var(--green);color:#fff}
-  .badge.off{background:#e8eaed;color:var(--muted)}
   button,.btn{
     font:inherit;cursor:pointer;border:1px solid var(--line);background:#fff;color:var(--ink);
     padding:7px 14px;border-radius:6px;display:inline-flex;align-items:center;gap:7px;transition:.15s;
@@ -41,14 +39,12 @@
   button.primary{background:var(--brand);color:#fff;border-color:var(--brand)}
   button.primary:hover{background:#1765cc}
   button:disabled{opacity:.5;cursor:not-allowed}
-  /* ---------- layout ---------- */
   .wrap{max-width:1400px;margin:0 auto;padding:18px 20px 60px}
-  .toolbar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
+  .toolbar{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-bottom:16px}
   .toolbar label{font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:3px}
   .toolbar input,.toolbar select{
     font:inherit;padding:6px 9px;border:1px solid var(--line);border-radius:6px;background:#fff;min-width:140px;
   }
-  /* ---------- config ---------- */
   details.cfg{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
     margin-bottom:16px;box-shadow:var(--shadow)}
   details.cfg>summary{cursor:pointer;padding:12px 16px;font-weight:500;list-style:none;display:flex;align-items:center;gap:8px}
@@ -61,43 +57,39 @@
   .field input,.field select{font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:6px}
   .hint{font-size:11px;color:var(--muted);margin-top:2px}
   .hint code{background:#f1f3f4;padding:1px 5px;border-radius:4px;font-size:11px}
-  /* ---------- KPI ---------- */
-  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-bottom:16px}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:16px}
   .kpi{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
     padding:16px 18px;box-shadow:var(--shadow);position:relative;overflow:hidden}
   .kpi .accent{position:absolute;left:0;top:0;bottom:0;width:4px}
   .kpi .label{font-size:12px;color:var(--muted);font-weight:500;text-transform:uppercase;letter-spacing:.4px}
-  .kpi .value{font-size:28px;font-weight:500;margin:6px 0 2px;letter-spacing:-.5px}
-  .kpi .delta{font-size:12px;font-weight:500;display:inline-flex;align-items:center;gap:3px}
+  .kpi .value{font-size:27px;font-weight:500;margin:6px 0 2px;letter-spacing:-.5px}
+  .kpi .delta{font-size:12px;font-weight:500;display:inline-flex;align-items:center;gap:3px;min-height:17px}
   .kpi .delta.up{color:var(--green)} .kpi .delta.down{color:var(--red)}
-  /* ---------- charts grid ---------- */
   .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:14px}
   .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
     box-shadow:var(--shadow);padding:16px;min-height:60px}
-  .card h3{margin:0 0 12px;font-size:14px;font-weight:500;display:flex;justify-content:space-between;align-items:center}
-  .card h3 .tag{font-size:11px;color:var(--muted);font-weight:400}
-  .span12{grid-column:span 12}.span8{grid-column:span 8}.span6{grid-column:span 6}
-  .span4{grid-column:span 4}.span5{grid-column:span 5}.span7{grid-column:span 7}
+  .card h3{margin:0 0 12px;font-size:14px;font-weight:500;display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .card h3 .tag{font-size:11px;color:var(--muted);font-weight:400;white-space:nowrap}
+  .span12{grid-column:span 12}.span8{grid-column:span 8}.span4{grid-column:span 4}
+  .span5{grid-column:span 5}.span7{grid-column:span 7}
   @media(max-width:1000px){.grid>div{grid-column:span 12 !important}}
   .chart-box{position:relative;height:300px}
   .chart-box.tall{height:340px}
-  /* ---------- table ---------- */
-  .tbl-wrap{overflow:auto;max-height:420px;border:1px solid var(--line);border-radius:6px}
+  .tbl-wrap{overflow:auto;max-height:440px;border:1px solid var(--line);border-radius:6px}
   table{border-collapse:collapse;width:100%;font-size:13px}
   th,td{padding:9px 12px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
   th{background:#f8f9fa;position:sticky;top:0;font-weight:500;color:var(--muted);cursor:pointer;user-select:none}
   th:hover{background:#f1f3f4}
   td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
   tbody tr:hover{background:var(--brand-weak)}
-  /* ---------- misc ---------- */
   #status{font-size:12px;color:var(--muted)}
   .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#202124;color:#fff;
     padding:10px 18px;border-radius:8px;font-size:13px;box-shadow:0 4px 12px rgba(0,0,0,.3);z-index:50;
-    opacity:0;pointer-events:none;transition:.25s}
+    opacity:0;pointer-events:none;transition:.25s;max-width:90vw}
   .toast.show{opacity:1}
   .toast.err{background:var(--red)}
-  .spinner{width:16px;height:16px;border:2px solid #fff;border-top-color:transparent;border-radius:50%;
-    animation:spin .7s linear infinite;display:inline-block}
+  .spinner{width:16px;height:16px;border:2px solid currentColor;border-top-color:transparent;border-radius:50%;
+    animation:spin .7s linear infinite;display:inline-block;vertical-align:-3px}
   @keyframes spin{to{transform:rotate(360deg)}}
   .empty{color:var(--muted);text-align:center;padding:40px;font-size:13px}
 </style>
@@ -118,28 +110,17 @@
   <details class="cfg" id="cfgPanel">
     <summary>การตั้งค่าการเชื่อมต่อ BigQuery</summary>
     <div class="cfg-body">
-      <div class="field">
-        <label>Project ID</label>
-        <input id="cfgProject" value="futuretech-468203" />
-      </div>
-      <div class="field">
-        <label>Dataset</label>
-        <input id="cfgDataset" value="sales_data" />
-      </div>
-      <div class="field">
-        <label>Table</label>
-        <input id="cfgTable" value="sale_transaction" />
-      </div>
+      <div class="field"><label>Project ID</label><input id="cfgProject" value="futuretech-468203" /></div>
+      <div class="field"><label>Dataset</label><input id="cfgDataset" value="sales_data" /></div>
+      <div class="field"><label>Table</label><input id="cfgTable" value="sale_transaction" /></div>
       <div class="field full">
         <label>OAuth Client ID</label>
-        <input id="cfgClientId" value="860556755032-m7itkb5ljeiddlb1iii02kdv9l3f6j7g.apps.googleusercontent.com" placeholder="xxxxxxxx.apps.googleusercontent.com" />
-        <span class="hint">สร้างที่ GCP Console → APIs &amp; Services → Credentials → <b>OAuth client ID</b> (Web application).
-        เพิ่ม <code id="originHint"></code> ใน <i>Authorized JavaScript origins</i> และเปิด <b>BigQuery API</b> ในโปรเจกต์</span>
+        <input id="cfgClientId" value="860556755032-m7itkb5ljeiddlb1iii02kdv9l3f6j7g.apps.googleusercontent.com" />
+        <span class="hint">เพิ่ม origin <code id="originHint"></code> ใน <i>Authorized JavaScript origins</i> ของ OAuth client และเปิด <b>BigQuery API</b></span>
       </div>
       <div class="field">
         <label>Billing / Query project</label>
         <input id="cfgBilling" placeholder="(เว้นว่าง = ใช้ Project ID)" />
-        <span class="hint">โปรเจกต์ที่ใช้คิดค่า query (ต้องมีสิทธิ์ bigquery.jobs.create)</span>
       </div>
       <div class="field" style="justify-content:flex-end">
         <button id="connectBtn" class="primary">บันทึก &amp; เชื่อมต่อ</button>
@@ -154,18 +135,10 @@
         <input type="date" id="dateTo" />
       </span>
     </label>
-    <label>คอลัมน์วันที่
-      <select id="mapDate"><option value="">— ตรวจอัตโนมัติ —</option></select>
-    </label>
-    <label>คอลัมน์ยอดเงิน (metric)
-      <select id="mapMetric"><option value="">— ตรวจอัตโนมัติ —</option></select>
-    </label>
-    <label>คอลัมน์หมวดหมู่ (dimension)
-      <select id="mapDim"><option value="">— ตรวจอัตโนมัติ —</option></select>
-    </label>
-    <label style="align-self:flex-end">
-      <button id="applyBtn" class="primary">ใช้ตัวกรอง</button>
-    </label>
+    <label>คอลัมน์วันที่<select id="mapDate"></select></label>
+    <label>คอลัมน์ยอดเงิน (metric)<select id="mapMetric"></select></label>
+    <label>คอลัมน์หมวดหมู่ (dimension)<select id="mapDim"></select></label>
+    <button id="applyBtn" class="primary">ใช้ตัวกรอง</button>
     <span class="spacer" style="flex:1"></span>
     <span id="status"></span>
   </div>
@@ -201,78 +174,63 @@
 <script>
 "use strict";
 /* =========================================================================
-   Sales Dashboard — BigQuery (client-side OAuth) + Demo mode
+   Sales Dashboard — BigQuery (client-side OAuth) with server-side aggregation
    ========================================================================= */
 const $ = s => document.querySelector(s);
-const fmtMoney = n => "฿" + (n||0).toLocaleString("en-US",{maximumFractionDigits:0});
-const fmtNum   = n => (n||0).toLocaleString("en-US",{maximumFractionDigits:0});
-const fmtDec   = n => (n||0).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
-
+const fmtMoney = n => "฿" + Math.round(n||0).toLocaleString("en-US");
+const fmtNum   = n => Math.round(n||0).toLocaleString("en-US");
 const PALETTE = ["#1a73e8","#12b5cb","#e8710a","#9334e6","#188038","#d01884","#f9ab00","#5f6368","#1e8e3e","#a142f4"];
 Chart.defaults.font.family = getComputedStyle(document.body).fontFamily;
 Chart.defaults.font.size = 12;
 Chart.defaults.color = "#5f6368";
 
+const NUMERIC_TYPES=["INTEGER","INT64","FLOAT","FLOAT64","NUMERIC","BIGNUMERIC"];
+const DATE_TYPES=["DATE","DATETIME","TIMESTAMP"];
+const LS_KEY="salesDash.cfg";
+
 const state = {
-  mode:"demo",            // "demo" | "live"
-  token:null,
-  schema:[],              // [{name,type}]
-  map:{date:null,metric:null,dim:null},
-  rows:[],                // current dataset (array of objects)
-  charts:{},
-  sort:{col:null,dir:1},
+  mode:"demo", token:null,
+  schema:[], map:{date:null,metric:null,dim:null},
+  rows:[],                 // demo rows only
+  agg:null,                // {count,total,qty,byDay,byDim,sample}
+  tableFields:[],          // [{name,type}] for the data table
+  charts:{}, sort:{col:null,dir:1},
 };
 
-const LS_KEY = "salesDash.cfg";
-
-/* ---------------- toast ---------------- */
+/* ---------------- toast / status ---------------- */
 let toastT;
 function toast(msg,isErr){
   const t=$("#toast"); t.textContent=msg; t.className="toast show"+(isErr?" err":"");
-  clearTimeout(toastT); toastT=setTimeout(()=>t.className="toast",3500);
+  clearTimeout(toastT); toastT=setTimeout(()=>t.className="toast",4500);
 }
-function setStatus(msg,busy){
-  $("#status").innerHTML = (busy?'<span class="spinner"></span> ':'') + (msg||"");
-}
+function setStatus(msg,busy){ $("#status").innerHTML=(busy?'<span class="spinner"></span> ':'')+(msg||""); }
 
-/* ---------------- config persistence ---------------- */
+/* ---------------- config ---------------- */
 function loadCfg(){
-  try{
-    const c=JSON.parse(localStorage.getItem(LS_KEY)||"{}");
-    if(c.project)  $("#cfgProject").value=c.project;
-    if(c.dataset)  $("#cfgDataset").value=c.dataset;
-    if(c.table)    $("#cfgTable").value=c.table;
-    if(c.clientId) $("#cfgClientId").value=c.clientId;
-    if(c.billing)  $("#cfgBilling").value=c.billing;
+  try{ const c=JSON.parse(localStorage.getItem(LS_KEY)||"{}");
+    if(c.project)$("#cfgProject").value=c.project; if(c.dataset)$("#cfgDataset").value=c.dataset;
+    if(c.table)$("#cfgTable").value=c.table; if(c.clientId)$("#cfgClientId").value=c.clientId;
+    if(c.billing)$("#cfgBilling").value=c.billing;
   }catch(e){}
 }
-function readCfg(){
-  return {
-    project:  $("#cfgProject").value.trim(),
-    dataset:  $("#cfgDataset").value.trim(),
-    table:    $("#cfgTable").value.trim(),
-    clientId: $("#cfgClientId").value.trim(),
-    billing:  $("#cfgBilling").value.trim() || $("#cfgProject").value.trim(),
-  };
-}
-function saveCfg(){ localStorage.setItem(LS_KEY, JSON.stringify(readCfg())); }
+function readCfg(){return{
+  project:$("#cfgProject").value.trim(), dataset:$("#cfgDataset").value.trim(),
+  table:$("#cfgTable").value.trim(), clientId:$("#cfgClientId").value.trim(),
+  billing:$("#cfgBilling").value.trim()||$("#cfgProject").value.trim(),
+};}
+function saveCfg(){ localStorage.setItem(LS_KEY,JSON.stringify(readCfg())); }
 
-/* =========================================================================
-   OAuth (Google Identity Services)
-   ========================================================================= */
+/* ---------------- OAuth ---------------- */
 let tokenClient=null;
 function initAuth(clientId){
   if(!window.google||!google.accounts){ toast("Google SDK ยังโหลดไม่เสร็จ ลองใหม่",1); return false; }
-  tokenClient = google.accounts.oauth2.initTokenClient({
-    client_id: clientId,
-    scope: "https://www.googleapis.com/auth/bigquery.readonly https://www.googleapis.com/auth/cloud-platform.read-only",
-    callback: (resp)=>{
+  tokenClient=google.accounts.oauth2.initTokenClient({
+    client_id:clientId,
+    scope:"https://www.googleapis.com/auth/bigquery.readonly https://www.googleapis.com/auth/cloud-platform.read-only",
+    callback:(resp)=>{
       if(resp.error){ toast("ล็อกอินไม่สำเร็จ: "+resp.error,1); return; }
-      state.token = resp.access_token;
-      state.mode="live";
-      setModeBadge();
-      toast("เชื่อมต่อ BigQuery สำเร็จ");
-      bootLive();
+      state.token=resp.access_token; state.mode="live"; setModeBadge();
+      toast("เชื่อมต่อ BigQuery สำเร็จ"); bootLive();
     },
   });
   return true;
@@ -280,385 +238,300 @@ function initAuth(clientId){
 function signIn(){
   const cfg=readCfg();
   if(!cfg.clientId){ $("#cfgPanel").open=true; toast("กรุณาใส่ OAuth Client ID ก่อน",1); return; }
-  if(!tokenClient && !initAuth(cfg.clientId)) return;
+  if(!tokenClient&&!initAuth(cfg.clientId)) return;
   tokenClient.requestAccessToken({prompt: state.token?"":"consent"});
 }
 
-/* =========================================================================
-   BigQuery REST
-   ========================================================================= */
+/* ---------------- BigQuery REST ---------------- */
 async function bqQuery(sql){
   const cfg=readCfg();
-  const url=`https://bigquery.googleapis.com/bigquery/v2/projects/${cfg.billing}/queries`;
-  const res=await fetch(url,{
+  const res=await fetch(`https://bigquery.googleapis.com/bigquery/v2/projects/${cfg.billing}/queries`,{
     method:"POST",
     headers:{Authorization:"Bearer "+state.token,"Content-Type":"application/json"},
-    body:JSON.stringify({query:sql,useLegacySql:false,timeoutMs:30000,maxResults:5000}),
+    body:JSON.stringify({query:sql,useLegacySql:false,timeoutMs:60000,maxResults:2000}),
   });
   const data=await res.json();
-  if(!res.ok){ throw new Error(data.error?.message||("HTTP "+res.status)); }
-  return bqToRows(data);
-}
-function bqToRows(data){
+  if(!res.ok) throw new Error(data.error?.message||("HTTP "+res.status));
+  if(data.jobComplete===false) throw new Error("Query ใช้เวลานานเกินไป ลองแคบช่วงวันที่ลง");
   const fields=(data.schema?.fields)||[];
-  const rows=(data.rows||[]).map(r=>{
-    const o={};
-    r.f.forEach((cell,i)=>{ o[fields[i].name]=castVal(cell.v,fields[i].type); });
-    return o;
-  });
-  return {fields,rows};
+  const rows=(data.rows||[]).map(r=>{ const o={};
+    r.f.forEach((c,i)=>o[fields[i].name]=cast(c.v,fields[i].type)); return o; });
+  return {fields:fields.map(f=>({name:f.name,type:f.type})),rows};
 }
-function castVal(v,type){
-  if(v===null||v===undefined) return null;
-  if(["INTEGER","INT64","FLOAT","FLOAT64","NUMERIC","BIGNUMERIC"].includes(type)) return Number(v);
-  return v;
-}
-const NUMERIC_TYPES=["INTEGER","INT64","FLOAT","FLOAT64","NUMERIC","BIGNUMERIC"];
-const DATE_TYPES=["DATE","DATETIME","TIMESTAMP"];
+function cast(v,type){ if(v==null)return null; return NUMERIC_TYPES.includes((type||"").toUpperCase())?Number(v):v; }
+function qq(c){ return "`"+String(c).replace(/`/g,"")+"`"; }
 
 async function fetchSchema(){
   const cfg=readCfg();
-  const sql=`SELECT column_name AS name, data_type AS type
-             FROM \`${cfg.project}.${cfg.dataset}.INFORMATION_SCHEMA.COLUMNS\`
-             WHERE table_name='${cfg.table}' ORDER BY ordinal_position`;
-  const {rows}=await bqQuery(sql);
-  return rows.map(r=>({name:r.name, type:normType(r.type)}));
+  const {rows}=await bqQuery(`SELECT column_name AS name, data_type AS type
+    FROM \`${cfg.project}.${cfg.dataset}.INFORMATION_SCHEMA.COLUMNS\`
+    WHERE table_name='${cfg.table}' ORDER BY ordinal_position`);
+  return rows.map(r=>({name:r.name,type:normType(r.type)}));
 }
-function normType(t){
-  t=(t||"").toUpperCase();
+function normType(t){ t=(t||"").toUpperCase();
   if(t.startsWith("INT"))return "INT64";
   if(t.startsWith("FLOAT")||t.startsWith("NUMERIC")||t.startsWith("BIGNUMERIC"))return "FLOAT64";
   if(t.startsWith("TIMESTAMP"))return "TIMESTAMP";
   if(t.startsWith("DATETIME"))return "DATETIME";
   if(t.startsWith("DATE"))return "DATE";
-  return "STRING";
-}
+  return "STRING"; }
 
-/* =========================================================================
-   Schema mapping heuristics
-   ========================================================================= */
+/* ---------------- mapping heuristics ---------------- */
 function guessMapping(schema){
   const lc=n=>n.toLowerCase();
-  const dateCol = schema.find(c=>DATE_TYPES.includes(c.type) && /date|time|created|order|trans/.test(lc(c.name)))
-               || schema.find(c=>DATE_TYPES.includes(c.type));
-  const metricCol = schema.find(c=>NUMERIC_TYPES.includes(c.type) && /amount|total|revenue|sales|price|sale|net|gross|value|paid/.test(lc(c.name)))
-                 || schema.find(c=>NUMERIC_TYPES.includes(c.type));
-  const dimCol = schema.find(c=>c.type==="STRING" && /categor|product|type|channel|region|store|branch|segment|status|name|group|brand/.test(lc(c.name)))
-              || schema.find(c=>c.type==="STRING");
-  return {
-    date: dateCol?.name || null,
-    metric: metricCol?.name || null,
-    dim: dimCol?.name || null,
-  };
+  const num=c=>NUMERIC_TYPES.includes(c.type);
+  const str=c=>c.type==="STRING";
+  const date=schema.find(c=>DATE_TYPES.includes(c.type)&&/date|time|created|order|trans/.test(lc(c.name)))
+          || schema.find(c=>DATE_TYPES.includes(c.type));
+  const metric=schema.find(c=>num(c)&&/amount|total|revenue|sales|net|gross|paid|grand|subtotal/.test(lc(c.name)))
+            || schema.find(c=>num(c)&&/price|value|cost/.test(lc(c.name)))
+            || schema.find(num);
+  const dim=schema.find(c=>str(c)&&/categor|channel|region|segment|status|type|group|brand|store|branch|class/.test(lc(c.name)))
+         || schema.find(c=>str(c)&&/name|product/.test(lc(c.name)))
+         || schema.find(str);
+  return {date:date?.name||null, metric:metric?.name||null, dim:dim?.name||null};
+}
+function detectQtyCol(){
+  return state.schema.find(c=>NUMERIC_TYPES.includes(c.type)
+    && /(^|[_\s])(qty|quantity|units_sold|qnty)([_\s]|$)/.test(c.name.toLowerCase())
+    && !/price|amount|total|revenue|cost/.test(c.name.toLowerCase()))?.name || null;
 }
 function fillMapSelects(){
-  const fill=(sel,filter,selected)=>{
-    const el=$(sel);
-    el.querySelectorAll("option:not([value=''])").forEach(o=>o.remove());
-    state.schema.filter(filter).forEach(c=>{
-      const o=document.createElement("option");
-      o.value=c.name; o.textContent=`${c.name} · ${c.type}`;
-      if(c.name===selected)o.selected=true;
-      el.appendChild(o);
-    });
+  const fill=(sel,filter,selected)=>{ const el=$(sel); el.innerHTML="";
+    state.schema.filter(filter).forEach(c=>{ const o=document.createElement("option");
+      o.value=c.name; o.textContent=`${c.name} · ${c.type}`; if(c.name===selected)o.selected=true; el.appendChild(o); });
   };
-  fill("#mapDate",  c=>DATE_TYPES.includes(c.type), state.map.date);
-  fill("#mapMetric",c=>NUMERIC_TYPES.includes(c.type), state.map.metric);
-  fill("#mapDim",   c=>c.type==="STRING", state.map.dim);
+  fill("#mapDate",c=>DATE_TYPES.includes(c.type),state.map.date);
+  fill("#mapMetric",c=>NUMERIC_TYPES.includes(c.type),state.map.metric);
+  fill("#mapDim",c=>c.type==="STRING",state.map.dim);
 }
 function readMapSelections(){
-  state.map.date   = $("#mapDate").value   || state.map.date;
-  state.map.metric = $("#mapMetric").value || state.map.metric;
-  state.map.dim    = $("#mapDim").value    || state.map.dim;
+  state.map.date=$("#mapDate").value||state.map.date;
+  state.map.metric=$("#mapMetric").value||state.map.metric;
+  state.map.dim=$("#mapDim").value||state.map.dim;
+}
+
+/* ---------------- WHERE ---------------- */
+function whereClause(){
+  const {date}=state.map; const from=$("#dateFrom").value,to=$("#dateTo").value;
+  if(!date||(!from&&!to)) return "";
+  const c=[]; if(from)c.push(`DATE(${qq(date)}) >= '${from}'`); if(to)c.push(`DATE(${qq(date)}) <= '${to}'`);
+  return "WHERE "+c.join(" AND ");
 }
 
 /* =========================================================================
-   LIVE data load
+   LIVE — aggregate in BigQuery (no row cap)
    ========================================================================= */
 async function bootLive(){
   try{
     setStatus("กำลังอ่าน schema…",true);
-    state.schema = await fetchSchema();
+    state.schema=await fetchSchema();
     if(!state.schema.length) throw new Error("ไม่พบคอลัมน์ — ตรวจชื่อ dataset/table");
-    state.map = guessMapping(state.schema);
-    fillMapSelects();
-    await loadLiveRows();
-  }catch(e){
-    setStatus("");
-    toast("โหลดไม่สำเร็จ: "+e.message,1);
-    console.error(e);
-  }
+    state.map=guessMapping(state.schema); fillMapSelects();
+    await loadLive();
+  }catch(e){ setStatus(""); toast("โหลดไม่สำเร็จ: "+e.message,1); console.error(e); }
 }
-async function loadLiveRows(){
-  const cfg=readCfg(); readMapSelections();
-  const {date}=state.map;
-  let where="";
-  const from=$("#dateFrom").value, to=$("#dateTo").value;
-  if(date && (from||to)){
-    const conds=[];
-    if(from) conds.push(`DATE(\`${date}\`) >= '${from}'`);
-    if(to)   conds.push(`DATE(\`${date}\`) <= '${to}'`);
-    where="WHERE "+conds.join(" AND ");
-  }
-  const sql=`SELECT * FROM \`${cfg.project}.${cfg.dataset}.${cfg.table}\` ${where} LIMIT 5000`;
-  setStatus("กำลังดึงข้อมูล…",true);
-  const {rows}=await bqQuery(sql);
-  state.rows=rows;
-  setStatus(`${rows.length.toLocaleString()} แถว`);
-  render();
+async function loadLive(){
+  readMapSelections();
+  const cfg=readCfg(); const {date,metric,dim}=state.map;
+  const t=`\`${cfg.project}.${cfg.dataset}.${cfg.table}\``;
+  const wh=whereClause(); const qty=detectQtyCol();
+  const mSum=metric?`SUM(${qq(metric)})`:"0";
+  const kpiSql=`SELECT COUNT(*) cnt, ${mSum} total${qty?`, SUM(${qq(qty)}) qty`:""} FROM ${t} ${wh}`;
+  const daySql=date?`SELECT DATE(${qq(date)}) d, ${mSum} total, COUNT(*) cnt FROM ${t} ${wh} GROUP BY d ORDER BY d`:null;
+  const dimSql=(dim&&metric)?`SELECT CAST(${qq(dim)} AS STRING) k, SUM(${qq(metric)}) v, COUNT(*) c FROM ${t} ${wh} GROUP BY k ORDER BY v DESC LIMIT 50`:null;
+  const sampSql=`SELECT * FROM ${t} ${wh} ${date?`ORDER BY ${qq(date)} DESC`:""} LIMIT 200`;
+  try{
+    setStatus("กำลังคำนวณข้อมูล…",true);
+    const [kpi,day,dimr,samp]=await Promise.all([
+      bqQuery(kpiSql),
+      daySql?bqQuery(daySql):Promise.resolve({rows:[]}),
+      dimSql?bqQuery(dimSql):Promise.resolve({rows:[]}),
+      bqQuery(sampSql),
+    ]);
+    const k=kpi.rows[0]||{};
+    state.agg={
+      count:Number(k.cnt)||0, total:Number(k.total)||0, qty:qty?(Number(k.qty)||0):null,
+      byDay:day.rows.map(r=>({d:String(r.d).slice(0,10),total:Number(r.total)||0,count:Number(r.cnt)||0})),
+      byDim:dimr.rows.map(r=>({k:r.k??"(ว่าง)",v:Number(r.v)||0,c:Number(r.c)||0})),
+      sample:samp.rows,
+    };
+    state.tableFields=samp.fields.length?samp.fields:state.schema;
+    setStatus(`รวมทั้งหมด ${state.agg.count.toLocaleString()} ธุรกรรม`);
+    drawAll();
+  }catch(e){ setStatus(""); toast("คำนวณไม่สำเร็จ: "+e.message,1); console.error(e); }
 }
 
 /* =========================================================================
-   DEMO data
+   DEMO — compute the same aggregate shape locally
    ========================================================================= */
 function buildDemo(){
   state.schema=[
-    {name:"transaction_id",type:"STRING"},
-    {name:"transaction_date",type:"DATE"},
-    {name:"product_category",type:"STRING"},
-    {name:"channel",type:"STRING"},
-    {name:"region",type:"STRING"},
-    {name:"quantity",type:"INT64"},
-    {name:"sales_amount",type:"FLOAT64"},
+    {name:"transaction_id",type:"STRING"},{name:"transaction_date",type:"DATE"},
+    {name:"product_category",type:"STRING"},{name:"channel",type:"STRING"},
+    {name:"region",type:"STRING"},{name:"quantity",type:"INT64"},{name:"sales_amount",type:"FLOAT64"},
   ];
   state.map={date:"transaction_date",metric:"sales_amount",dim:"product_category"};
   fillMapSelects();
   const cats=["อิเล็กทรอนิกส์","เครื่องแต่งกาย","ของใช้ในบ้าน","อาหาร & เครื่องดื่ม","ความงาม","กีฬา"];
   const chans=["หน้าร้าน","ออนไลน์","ตัวแทนจำหน่าย"];
   const regions=["กรุงเทพฯ","ภาคกลาง","ภาคเหนือ","ภาคอีสาน","ภาคใต้"];
-  const rows=[]; const today=new Date(); const start=new Date(today); start.setDate(start.getDate()-89);
-  let id=1000;
-  for(let d=0; d<90; d++){
-    const day=new Date(start); day.setDate(start.getDate()+d);
-    const iso=day.toISOString().slice(0,10);
-    const wk=day.getDay(); const weekendBoost=(wk===0||wk===6)?1.4:1;
-    const trend=1+d*0.004;
-    const n=Math.round((6+Math.random()*8)*weekendBoost);
-    for(let i=0;i<n;i++){
-      const cat=cats[(Math.random()*cats.length)|0];
+  const rows=[]; const today=new Date(); const start=new Date(today); start.setDate(start.getDate()-89); let id=1000;
+  for(let d=0;d<90;d++){ const day=new Date(start); day.setDate(start.getDate()+d);
+    const iso=day.toISOString().slice(0,10); const wk=day.getDay(); const boost=(wk===0||wk===6)?1.4:1; const trend=1+d*0.004;
+    const n=Math.round((6+Math.random()*8)*boost);
+    for(let i=0;i<n;i++){ const cat=cats[(Math.random()*cats.length)|0];
       const base={"อิเล็กทรอนิกส์":4500,"เครื่องแต่งกาย":1200,"ของใช้ในบ้าน":900,"อาหาร & เครื่องดื่ม":350,"ความงาม":800,"กีฬา":1500}[cat];
       const qty=1+((Math.random()*4)|0);
-      rows.push({
-        transaction_id:"TXN"+(id++),
-        transaction_date:iso,
-        product_category:cat,
-        channel:chans[(Math.random()*chans.length)|0],
-        region:regions[(Math.random()*regions.length)|0],
-        quantity:qty,
-        sales_amount:Math.round(base*qty*(0.7+Math.random()*0.7)*trend),
-      });
+      rows.push({transaction_id:"TXN"+(id++),transaction_date:iso,product_category:cat,
+        channel:chans[(Math.random()*chans.length)|0],region:regions[(Math.random()*regions.length)|0],
+        quantity:qty,sales_amount:Math.round(base*qty*(0.7+Math.random()*0.7)*trend)});
     }
   }
   state.rows=rows;
-  // default date range = last 30 days
   $("#dateTo").value=today.toISOString().slice(0,10);
-  const d30=new Date(today); d30.setDate(d30.getDate()-29);
-  $("#dateFrom").value=d30.toISOString().slice(0,10);
+  const d30=new Date(today); d30.setDate(d30.getDate()-29); $("#dateFrom").value=d30.toISOString().slice(0,10);
 }
-
-/* =========================================================================
-   Filtering (client-side, applies to current rows)
-   ========================================================================= */
 function filteredRows(){
-  const {date}=state.map; const from=$("#dateFrom").value, to=$("#dateTo").value;
+  const {date}=state.map; const from=$("#dateFrom").value,to=$("#dateTo").value;
   if(!date||(!from&&!to)) return state.rows;
-  return state.rows.filter(r=>{
-    const v=(r[date]||"").toString().slice(0,10);
-    if(!v) return false;
-    if(from&&v<from) return false;
-    if(to&&v>to) return false;
-    return true;
-  });
+  return state.rows.filter(r=>{ const v=(r[date]||"").toString().slice(0,10);
+    if(!v)return false; if(from&&v<from)return false; if(to&&v>to)return false; return true; });
+}
+function computeDemoAgg(){
+  readMapSelections();
+  const rows=filteredRows(); const {date,metric,dim}=state.map; const qty=detectQtyCol();
+  const dayMap=new Map();
+  rows.forEach(r=>{ const d=(r[date]||"").toString().slice(0,10); if(!d)return;
+    const o=dayMap.get(d)||{total:0,count:0}; o.total+=Number(r[metric])||0; o.count++; dayMap.set(d,o); });
+  const dimMap=new Map();
+  rows.forEach(r=>{ const kk=r[dim]??"(ว่าง)"; const o=dimMap.get(kk)||{v:0,c:0}; o.v+=Number(r[metric])||0; o.c++; dimMap.set(kk,o); });
+  state.agg={
+    count:rows.length,
+    total:rows.reduce((s,r)=>s+(Number(r[metric])||0),0),
+    qty:qty?rows.reduce((s,r)=>s+(Number(r[qty])||0),0):null,
+    byDay:[...dayMap.entries()].sort((a,b)=>a[0]<b[0]?-1:1).map(([d,o])=>({d,total:o.total,count:o.count})),
+    byDim:[...dimMap.entries()].sort((a,b)=>b[1].v-a[1].v).map(([k,o])=>({k,v:o.v,c:o.c})),
+    sample:rows.slice(0,200),
+  };
+  state.tableFields=state.schema;
 }
 
 /* =========================================================================
-   Aggregation helpers
+   Draw
    ========================================================================= */
-function sumBy(rows,keyCol,valCol){
-  const m=new Map();
-  rows.forEach(r=>{ const k=r[keyCol]??"(ว่าง)"; m.set(k,(m.get(k)||0)+(Number(r[valCol])||0)); });
-  return [...m.entries()].sort((a,b)=>b[1]-a[1]);
-}
-function countBy(rows,keyCol){
-  const m=new Map();
-  rows.forEach(r=>{ const k=(r[keyCol]||"").toString().slice(0,10); m.set(k,(m.get(k)||0)+1); });
-  return [...m.entries()].sort((a,b)=>a[0]<b[0]?-1:1);
-}
-function sumByDay(rows,dateCol,valCol){
-  const m=new Map();
-  rows.forEach(r=>{ const k=(r[dateCol]||"").toString().slice(0,10); if(k) m.set(k,(m.get(k)||0)+(Number(r[valCol])||0)); });
-  return [...m.entries()].sort((a,b)=>a[0]<b[0]?-1:1);
-}
-
-/* =========================================================================
-   Render
-   ========================================================================= */
+function applyData(){ if(state.mode==="live") loadLive(); else { computeDemoAgg(); drawAll(); } }
 function destroyCharts(){ Object.values(state.charts).forEach(c=>c&&c.destroy()); state.charts={}; }
 
-function render(){
-  const rows=filteredRows();
-  const {date,metric,dim}=state.map;
-  renderKPIs(rows,metric);
-  destroyCharts();
-  if(date&&metric){ renderTime(rows,date,metric); renderCount(rows,date); }
-  if(dim&&metric){ renderPie(rows,dim,metric); renderBar(rows,dim,metric); }
-  renderTable(rows);
-  // tags
-  $("#tsTag").textContent = date?`ตาม ${date}`:"";
-  $("#cntTag").textContent= date?`ตาม ${date}`:"";
-  $("#pieTag").textContent= dim?`ตาม ${dim}`:"";
-  $("#barTag").textContent= dim?`ตาม ${dim}`:"";
-  $("#tblTag").textContent= `${rows.length.toLocaleString()} แถว (สูงสุด 5,000)`;
+function drawAll(){
+  if(!state.agg) return;
+  const {date,metric,dim}=state.map; const a=state.agg;
+  renderKPIs(a); destroyCharts();
+  if(a.byDay.length){ renderTime(a.byDay); renderCount(a.byDay); }
+  if(a.byDim.length){ renderPie(a.byDim); renderBar(a.byDim); }
+  renderTable(a.sample,state.tableFields);
+  $("#tsTag").textContent=date?`ตาม ${date}`:"";
+  $("#cntTag").textContent=date?`ตาม ${date}`:"";
+  $("#pieTag").textContent=dim?`ตาม ${dim}`:"";
+  $("#barTag").textContent=(dim&&metric)?`${dim} × ${metric}`:"";
+  $("#tblTag").textContent=`ตัวอย่าง ${a.sample.length.toLocaleString()} แถวล่าสุด`;
 }
 
-function renderKPIs(rows,metric){
-  const total = metric? rows.reduce((s,r)=>s+(Number(r[metric])||0),0):0;
-  const cnt = rows.length;
-  const aov = cnt? total/cnt : 0;
-  // qty if present
-  const qtyCol = state.schema.find(c=>NUMERIC_TYPES.includes(c.type)&&/qty|quantity|unit/.test(c.name.toLowerCase()));
-  const qty = qtyCol? rows.reduce((s,r)=>s+(Number(r[qtyCol.name])||0),0):null;
-  // period-over-period (split range in half)
-  const delta = periodDelta(rows,metric);
+function renderKPIs(a){
+  const aov=a.count?a.total/a.count:0;
+  const delta=periodDelta(a.byDay);
   const cards=[
-    {label:"ยอดขายรวม",value:fmtMoney(total),accent:PALETTE[0],delta},
-    {label:"จำนวนธุรกรรม",value:fmtNum(cnt),accent:PALETTE[1]},
+    {label:"ยอดขายรวม",value:fmtMoney(a.total),accent:PALETTE[0],delta},
+    {label:"จำนวนธุรกรรม",value:fmtNum(a.count),accent:PALETTE[1]},
     {label:"ยอดเฉลี่ย/รายการ",value:fmtMoney(aov),accent:PALETTE[2]},
   ];
-  if(qty!=null) cards.push({label:"จำนวนหน่วยขาย",value:fmtNum(qty),accent:PALETTE[3]});
-  $("#kpis").innerHTML = cards.map(c=>`
-    <div class="kpi">
-      <div class="accent" style="background:${c.accent}"></div>
-      <div class="label">${c.label}</div>
-      <div class="value">${c.value}</div>
-      ${c.delta!=null?`<div class="delta ${c.delta>=0?'up':'down'}">${c.delta>=0?'▲':'▼'} ${Math.abs(c.delta).toFixed(1)}% เทียบครึ่งก่อนหน้า</div>`:`<div class="delta" style="color:transparent">.</div>`}
+  if(a.qty!=null) cards.push({label:"จำนวนหน่วยขาย",value:fmtNum(a.qty),accent:PALETTE[3]});
+  $("#kpis").innerHTML=cards.map(c=>`
+    <div class="kpi"><div class="accent" style="background:${c.accent}"></div>
+      <div class="label">${c.label}</div><div class="value">${c.value}</div>
+      ${c.delta!=null?`<div class="delta ${c.delta>=0?'up':'down'}">${c.delta>=0?'▲':'▼'} ${Math.abs(c.delta).toFixed(1)}% เทียบครึ่งก่อนหน้า</div>`:`<div class="delta">&nbsp;</div>`}
     </div>`).join("");
 }
-function periodDelta(rows,metric){
-  const {date}=state.map; if(!date||!metric) return null;
-  const series=sumByDay(rows,date,metric); if(series.length<4) return null;
-  const half=Math.floor(series.length/2);
-  const a=series.slice(0,half).reduce((s,x)=>s+x[1],0);
-  const b=series.slice(half).reduce((s,x)=>s+x[1],0);
-  if(!a) return null;
-  return (b-a)/a*100;
+function periodDelta(byDay){
+  if(!byDay||byDay.length<4) return null;
+  const half=Math.floor(byDay.length/2);
+  const a=byDay.slice(0,half).reduce((s,x)=>s+x.total,0);
+  const b=byDay.slice(half).reduce((s,x)=>s+x.total,0);
+  if(!a) return null; return (b-a)/a*100;
 }
 
-function renderTime(rows,date,metric){
-  const data=sumByDay(rows,date,metric);
-  state.charts.time=new Chart($("#chartTime"),{
-    type:"line",
-    data:{labels:data.map(d=>d[0]),datasets:[{
-      label:metric,data:data.map(d=>d[1]),
-      borderColor:PALETTE[0],backgroundColor:"rgba(26,115,232,.12)",
-      fill:true,tension:.3,pointRadius:0,borderWidth:2,
-    }]},
-    options:baseOpts({money:true}),
-  });
+function renderTime(byDay){
+  state.charts.time=new Chart($("#chartTime"),{type:"line",
+    data:{labels:byDay.map(d=>d.d),datasets:[{label:"ยอดขาย",data:byDay.map(d=>d.total),
+      borderColor:PALETTE[0],backgroundColor:"rgba(26,115,232,.12)",fill:true,tension:.3,pointRadius:0,borderWidth:2}]},
+    options:axisOpts(true)});
 }
-function renderCount(rows,date){
-  const data=countBy(rows,date);
-  state.charts.count=new Chart($("#chartCount"),{
-    type:"bar",
-    data:{labels:data.map(d=>d[0]),datasets:[{
-      label:"จำนวนรายการ",data:data.map(d=>d[1]),
-      backgroundColor:PALETTE[1],borderRadius:3,
-    }]},
-    options:baseOpts({}),
-  });
+function renderCount(byDay){
+  state.charts.count=new Chart($("#chartCount"),{type:"bar",
+    data:{labels:byDay.map(d=>d.d),datasets:[{label:"จำนวนรายการ",data:byDay.map(d=>d.count),
+      backgroundColor:PALETTE[1],borderRadius:3}]},
+    options:axisOpts(false)});
 }
-function renderPie(rows,dim,metric){
-  const data=sumBy(rows,dim,metric).slice(0,8);
-  state.charts.pie=new Chart($("#chartPie"),{
-    type:"doughnut",
-    data:{labels:data.map(d=>d[0]),datasets:[{
-      data:data.map(d=>d[1]),backgroundColor:PALETTE,borderWidth:2,borderColor:"#fff",
-    }]},
+function renderPie(byDim){
+  const top=byDim.slice(0,8); const rest=byDim.slice(8).reduce((s,x)=>s+x.v,0);
+  const labels=top.map(d=>d.k), data=top.map(d=>d.v);
+  if(rest>0){ labels.push("อื่นๆ"); data.push(rest); }
+  state.charts.pie=new Chart($("#chartPie"),{type:"doughnut",
+    data:{labels,datasets:[{data,backgroundColor:PALETTE,borderWidth:2,borderColor:"#fff"}]},
     options:{responsive:true,maintainAspectRatio:false,cutout:"58%",
-      plugins:{legend:{position:"right",labels:{boxWidth:12,padding:10}},
-      tooltip:{callbacks:{label:c=>` ${c.label}: ${fmtMoney(c.raw)}`}}}},
-  });
+      plugins:{legend:{position:"right",labels:{boxWidth:12,padding:8,font:{size:11}}},
+        tooltip:{callbacks:{label:c=>{ const tot=c.dataset.data.reduce((s,x)=>s+x,0);
+          const p=tot?(c.raw/tot*100).toFixed(1):0; return ` ${c.label}: ${fmtMoney(c.raw)} (${p}%)`; }}}}}});
 }
-function renderBar(rows,dim,metric){
-  const data=sumBy(rows,dim,metric).slice(0,10);
-  state.charts.bar=new Chart($("#chartBar"),{
-    type:"bar",
-    data:{labels:data.map(d=>d[0]),datasets:[{
-      label:metric,data:data.map(d=>d[1]),
-      backgroundColor:data.map((_,i)=>PALETTE[i%PALETTE.length]),borderRadius:4,
-    }]},
+function renderBar(byDim){
+  const d=byDim.slice(0,10);
+  state.charts.bar=new Chart($("#chartBar"),{type:"bar",
+    data:{labels:d.map(x=>x.k),datasets:[{label:"ยอดขาย",data:d.map(x=>x.v),
+      backgroundColor:d.map((_,i)=>PALETTE[i%PALETTE.length]),borderRadius:4}]},
     options:{indexAxis:"y",responsive:true,maintainAspectRatio:false,
       plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>" "+fmtMoney(c.raw)}}},
-      scales:{x:{ticks:{callback:v=>fmtMoney(v)},grid:{color:"#f1f3f4"}},y:{grid:{display:false}}}},
-  });
+      scales:{x:{ticks:{callback:v=>fmtMoney(v)},grid:{color:"#f1f3f4"}},y:{grid:{display:false}}}}});
 }
-function baseOpts({money}){
-  return {responsive:true,maintainAspectRatio:false,
-    interaction:{mode:"index",intersect:false},
-    plugins:{legend:{display:false},
-      tooltip:{callbacks:{label:c=>" "+(money?fmtMoney(c.raw):fmtNum(c.raw))}}},
-    scales:{
-      x:{grid:{display:false},ticks:{maxRotation:0,autoSkip:true,maxTicksLimit:10}},
-      y:{grid:{color:"#f1f3f4"},ticks:{callback:v=>money?fmtMoney(v):fmtNum(v)},beginAtZero:true},
-    }};
+function axisOpts(money){
+  return {responsive:true,maintainAspectRatio:false,interaction:{mode:"index",intersect:false},
+    plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>" "+(money?fmtMoney(c.raw):fmtNum(c.raw))}}},
+    scales:{x:{grid:{display:false},ticks:{maxRotation:0,autoSkip:true,maxTicksLimit:10}},
+      y:{grid:{color:"#f1f3f4"},ticks:{callback:v=>money?fmtMoney(v):fmtNum(v)},beginAtZero:true}}};
 }
 
-/* ---------------- data table ---------------- */
-function renderTable(rows){
-  const cols=state.schema.map(c=>c.name);
-  const numCols=new Set(state.schema.filter(c=>NUMERIC_TYPES.includes(c.type)).map(c=>c.name));
+function renderTable(sample,fields){
+  const cols=fields.map(c=>c.name);
+  const numCols=new Set(fields.filter(c=>NUMERIC_TYPES.includes((c.type||"").toUpperCase())).map(c=>c.name));
   const thead=$("#dataTable thead"), tbody=$("#dataTable tbody");
-  thead.innerHTML="<tr>"+cols.map(c=>{
-    const arrow=state.sort.col===c?(state.sort.dir>0?" ▲":" ▼"):"";
-    return `<th class="${numCols.has(c)?'num':''}" data-col="${c}">${c}${arrow}</th>`;
-  }).join("")+"</tr>";
-  let view=rows;
-  if(state.sort.col){
-    const c=state.sort.col, d=state.sort.dir, isNum=numCols.has(c);
-    view=[...rows].sort((a,b)=>{
-      let x=a[c],y=b[c];
-      if(isNum){x=Number(x)||0;y=Number(y)||0;return (x-y)*d;}
-      x=(x??"").toString();y=(y??"").toString();return x<y?-d:x>y?d:0;
-    });
-  }
-  const slice=view.slice(0,500);
-  tbody.innerHTML = slice.length? slice.map(r=>"<tr>"+cols.map(c=>{
-    const isNum=numCols.has(c); let v=r[c];
-    if(isNum&&v!=null) v=Number(v).toLocaleString("en-US",{maximumFractionDigits:2});
-    return `<td class="${isNum?'num':''}">${v??""}</td>`;
-  }).join("")+"</tr>").join("") : `<tr><td colspan="${cols.length}" class="empty">ไม่มีข้อมูลในช่วงที่เลือก</td></tr>`;
-  thead.querySelectorAll("th").forEach(th=>th.onclick=()=>{
-    const c=th.dataset.col;
-    if(state.sort.col===c) state.sort.dir*=-1; else {state.sort.col=c;state.sort.dir=1;}
-    renderTable(rows);
-  });
+  thead.innerHTML="<tr>"+cols.map(c=>{ const ar=state.sort.col===c?(state.sort.dir>0?" ▲":" ▼"):"";
+    return `<th class="${numCols.has(c)?'num':''}" data-col="${c}">${c}${ar}</th>`; }).join("")+"</tr>";
+  let view=sample;
+  if(state.sort.col){ const c=state.sort.col,dr=state.sort.dir,isN=numCols.has(c);
+    view=[...sample].sort((a,b)=>{ let x=a[c],y=b[c];
+      if(isN){x=Number(x)||0;y=Number(y)||0;return (x-y)*dr;}
+      x=(x??"").toString();y=(y??"").toString();return x<y?-dr:x>y?dr:0; }); }
+  tbody.innerHTML=view.length?view.map(r=>"<tr>"+cols.map(c=>{ const isN=numCols.has(c); let v=r[c];
+    if(isN&&v!=null)v=Number(v).toLocaleString("en-US",{maximumFractionDigits:2});
+    return `<td class="${isN?'num':''}">${v??""}</td>`; }).join("")+"</tr>").join("")
+    :`<tr><td colspan="${cols.length}" class="empty">ไม่มีข้อมูลในช่วงที่เลือก</td></tr>`;
+  thead.querySelectorAll("th").forEach(th=>th.onclick=()=>{ const c=th.dataset.col;
+    if(state.sort.col===c)state.sort.dir*=-1; else{state.sort.col=c;state.sort.dir=1;} renderTable(sample,fields); });
 }
 
-/* =========================================================================
-   Mode badge / init
-   ========================================================================= */
-function setModeBadge(){
-  const b=$("#modeBadge");
+/* ---------------- mode / events / boot ---------------- */
+function setModeBadge(){ const b=$("#modeBadge");
   if(state.mode==="live"){b.className="badge live";b.textContent="LIVE · BigQuery";}
-  else{b.className="badge demo";b.textContent="DEMO MODE";}
-}
+  else{b.className="badge demo";b.textContent="DEMO MODE";} }
 
-/* ---------------- events ---------------- */
 $("#signinBtn").onclick=signIn;
 $("#connectBtn").onclick=()=>{ saveCfg(); $("#cfgPanel").open=false; signIn(); };
-$("#refreshBtn").onclick=()=>{ if(state.mode==="live") loadLiveRows(); else { buildDemo(); render(); } };
-$("#applyBtn").onclick=()=>{
-  readMapSelections();
-  if(state.mode==="live") loadLiveRows(); else render();
-};
-["#mapDate","#mapMetric","#mapDim"].forEach(s=>$(s).onchange=()=>{ readMapSelections(); render(); });
+$("#refreshBtn").onclick=()=>{ if(state.mode==="live") loadLive(); else { buildDemo(); computeDemoAgg(); drawAll(); } };
+$("#applyBtn").onclick=()=>{ readMapSelections(); applyData(); };
+["#mapDate","#mapMetric","#mapDim"].forEach(s=>$(s).onchange=()=>{ readMapSelections(); applyData(); });
 
-/* ---------------- boot ---------------- */
 loadCfg();
-$("#originHint").textContent = location.origin && location.origin!=="null" ? location.origin : "http://localhost:8080";
-buildDemo();
-setModeBadge();
-render();
+$("#originHint").textContent=(location.origin&&location.origin!=="null")?location.origin:"http://localhost:8080";
+buildDemo(); setModeBadge(); computeDemoAgg(); drawAll();
 </script>
 </body>
 </html>
