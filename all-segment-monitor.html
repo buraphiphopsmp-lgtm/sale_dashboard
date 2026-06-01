@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>High Value Monitor · Futuretech</title>
+<title>All Segment Monitor · Futuretech</title>
 <link rel="icon" href="data:," />
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
@@ -87,8 +87,8 @@
 <nav class="appnav">
   <div class="brand">📊 Futuretech Dashboards</div>
   <a href="sales-dashboard.html" class="tab">Sales Dashboard</a>
-  <a href="high-value-monitor.html" class="tab active">High Value Monitor</a>
-  <a href="all-segment-monitor.html" class="tab">All Segment Monitor</a>
+  <a href="high-value-monitor.html" class="tab">High Value Monitor</a>
+  <a href="all-segment-monitor.html" class="tab active">All Segment Monitor</a>
 </nav>
 
 <div class="topbar">
@@ -101,7 +101,7 @@
 
 <div class="wrap">
   <div class="report">
-    <div class="rtitle">FUTURETECH <span class="hl">HIGH VALUE</span> MONITOR DASHBOARD</div>
+    <div class="rtitle">FUTURETECH MONITOR DASHBOARD</div>
 
     <details class="cfg" id="cfgPanel">
       <summary>การตั้งค่าการเชื่อมต่อ &amp; การจับคู่คอลัมน์ (mapping)</summary>
@@ -128,7 +128,7 @@
     </details>
 
     <div class="filterbar">
-      <div class="flabel">การค้นหาข้อมูล</div>
+      <div class="flabel">การกรองข้อมูล</div>
       <div class="fsel"><small>ประเภทกลุ่มลูกค้า</small><select id="fSegment"></select></div>
       <div class="fsel"><small>รหัสลูกค้า</small><select id="fCustCode"></select></div>
       <div class="fsel"><small>ชื่อลูกค้า</small><select id="fCustName"></select></div>
@@ -141,7 +141,7 @@
       <!-- LEFT -->
       <div class="s5" style="display:flex;flex-direction:column;gap:14px">
         <div class="panel">
-          <div class="ptitle">ประเภทลูกค้า High Value <small id="segSub"></small></div>
+          <div class="ptitle">ประเภทลูกค้า (ทุกกลุ่ม) <small id="segSub"></small></div>
           <div id="segBars"></div>
         </div>
         <div class="panel">
@@ -281,8 +281,8 @@ function buildDemo(){
     prodGroup:"product_group",prodCode:"product_code",prodName:"product_name"};
   S.schema=Object.values(S.map).map(n=>({name:n,type:/amount|quantity/.test(n)?"FLOAT64":(n==="transaction_date"?"DATE":"STRING")}));
   fillMapSelects();
-  const segs=["4.HighValue รอติดตาม","1.High Value ประจำ","2.High Potential","3.Growth ต่อเนื่อง"];
-  const segW=[0.42,0.26,0.20,0.12];
+  const segs=["1.High Value","2.High Potential","3.Potential","4.At Risk","5.New Customer","6.Non Focus","7.Lost"];
+  const segW=[0.02,0.03,0.15,0.36,0.03,0.40,0.01];
   const sales=["ศุภชัย (คุณชุบ)","สุวรรณี (นก)","ชนิสา (มุก)","อิษฎา (จี๋)","เจนทร (แอน)","พิชัย (กุ้ง)"];
   const pgroups=["เฟรมอลูมิเนียม","บานพับ-ปิดตึ๋ง","อุปกรณ์ฉีกกาว","สกรู-น็อต","มือจับ-ลูกล้อ","unknown"];
   const pnames={"เฟรมอลูมิเนียม":["เฟรมด่า ยูโรมอนด์ 504x1740","มือจับอลูเจล สีน้ำเงิน","โปรไฟล์อลูสูง 30mm"],
@@ -338,6 +338,15 @@ function txnScope(withDate){const a=S.amap,m=S.map;const c=[];
   if(withDate&&S.filt.to&&m.date)c.push(`DATE(${qq(m.date)})<='${esc(S.filt.to)}'`);
   return c.length?("WHERE "+c.join(" AND ")):"";}
 
+// find the column holding the 7-level RFM segments (High Value..Lost) in the aggregate table
+async function detectSegCol(){
+  const strs=S.aggSchema.filter(c=>c.type==="STRING"); if(!strs.length)return;
+  const sel=strs.map((c,i)=>`COUNTIF(REGEXP_CONTAINS(CAST(${qq(c.name)} AS STRING),r'At Risk|Lost|Non ?Focus|non focus|New Customer')) v${i}`).join(",");
+  try{ const{rows}=await bq(`SELECT ${sel} FROM ${aggT()}`);
+    const r=rows[0]||{}; let best="",bn=0; strs.forEach((c,i)=>{const n=Number(r["v"+i])||0;if(n>bn){bn=n;best=c.name;}});
+    if(best&&bn>0){S.amap.seg=best; status(`ใช้คอลัมน์ segment: ${best}`);}
+  }catch(e){console.warn("seg detect",e);}
+}
 async function bootLive(){
   try{ status("กำลังอ่าน schema…",true); const c=readCfg();
     S.schema=await fetchSchema(c.table);
@@ -345,6 +354,7 @@ async function bootLive(){
     if(!S.schema.length)throw new Error("ไม่พบคอลัมน์ในตารางธุรกรรม");
     S.map=guessMap(S.schema); fillMapSelects();
     S.amap=S.aggSchema.length? guessAgg(S.aggSchema) : {};
+    await detectSegCol();
     await initRangeLive();
     await loadLive();
   }catch(e){status("");toast("โหลดไม่สำเร็จ: "+e.message,1);console.error(e);}
@@ -460,7 +470,7 @@ function fillSel(sel,vals,cur,allLabel){const el=$(sel);const keep=cur;el.innerH
 
 function renderSeg(){
   const segs=S.live.seg||[]; const total=segs.reduce((s,x)=>s+x.n,0); const max=Math.max(1,...segs.map(s=>s.n));
-  $("#segSub").textContent=`${total} คน (เฉพาะกลุ่ม High Value และ High Potential)`;
+  $("#segSub").textContent=`${total} คน (ในระบบ)`;
   $("#segBars").innerHTML=segs.map((s,i)=>`<div class="segrow">
     <div class="lbl">${s.k}</div>
     <div class="bar"><i style="width:${(s.n/max*100).toFixed(1)}%;background:${["#3c4043","#1a73e8","#12b5cb","#e8710a","#9334e6"][i%5]}"></i></div>
