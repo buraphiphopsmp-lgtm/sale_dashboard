@@ -396,8 +396,8 @@ async function loadLiveRows(){
   const from=$("#dateFrom").value, to=$("#dateTo").value;
   if(date && (from||to)){
     const conds=[];
-    if(from) conds.push(`${q(date)} >= '${from}'`);
-    if(to)   conds.push(`${q(date)} <= '${to} 23:59:59'`);
+    if(from) conds.push(`DATE(\`${date}\`) >= '${from}'`);
+    if(to)   conds.push(`DATE(\`${date}\`) <= '${to}'`);
     where="WHERE "+conds.join(" AND ");
   }
   const sql=`SELECT * FROM \`${cfg.project}.${cfg.dataset}.${cfg.table}\` ${where} LIMIT 5000`;
