@@ -340,11 +340,11 @@ function txnScope(withDate){const a=S.amap,m=S.map;const c=[];
 
 // find the column holding the 7-level RFM segments (High Value..Lost) in the aggregate table
 async function detectSegCol(){
-  const strs=S.aggSchema.filter(c=>c.type==="STRING"); if(!strs.length)return;
+  const strs=S.schema.filter(c=>c.type==="STRING"); if(!strs.length)return;
   const sel=strs.map((c,i)=>`COUNTIF(REGEXP_CONTAINS(CAST(${qq(c.name)} AS STRING),r'At Risk|Lost|Non ?Focus|non focus|New Customer')) v${i}`).join(",");
-  try{ const{rows}=await bq(`SELECT ${sel} FROM ${aggT()}`);
+  try{ const{rows}=await bq(`SELECT ${sel} FROM ${txnT()}`);
     const r=rows[0]||{}; let best="",bn=0; strs.forEach((c,i)=>{const n=Number(r["v"+i])||0;if(n>bn){bn=n;best=c.name;}});
-    if(best&&bn>0){S.amap.seg=best; status(`ใช้คอลัมน์ segment: ${best}`);}
+    if(best&&bn>0){S.map.segment=best; const el=$("#mSegment"); if(el)el.value=best; status(`ใช้คอลัมน์ segment: ${best}`);}
   }catch(e){console.warn("seg detect",e);}
 }
 async function bootLive(){
@@ -359,47 +359,51 @@ async function bootLive(){
     await loadLive();
   }catch(e){status("");toast("โหลดไม่สำเร็จ: "+e.message,1);console.error(e);}
 }
+// All Segment is powered entirely by the transaction table (segment = the 7-level RFM column there)
 async function loadLive(){
-  readMapSelects(); const a=S.amap,m=S.map;
-  if(!a.seg||!a.cust){toast("ไม่พบคอลัมน์ segment/customer ในตารางสรุปลูกค้า — ตรวจชื่อตารางใน ⚙",1);$("#cfgPanel").open=true;return;}
+  readMapSelects(); const m=S.map;
+  if(!m.segment){toast("ไม่พบคอลัมน์ segment 7 ระดับในตารางธุรกรรม — เลือกใน ⚙",1);$("#cfgPanel").open=true;return;}
+  if(!m.date||!m.amount){toast("ต้องมีคอลัมน์ วันที่ และ ยอดเงิน",1);$("#cfgPanel").open=true;return;}
   status("กำลังคำนวณ…",true);
-  const AGG=aggT(), aw=aggWhere();
-  const s25=a.sales25?qq(a.sales25):"0", s24=a.sales24?qq(a.sales24):"0";
+  const T=txnT(), A=qq(m.amount), CU=m.custCode?qq(m.custCode):"NULL";
+  const base=[`${qq(m.segment)} IS NOT NULL AND TRIM(CAST(${qq(m.segment)} AS STRING))<>''`];
+  if(S.filt.segment)base.push(`${qq(m.segment)}='${esc(S.filt.segment)}'`);
+  if(S.filt.custCode&&m.custCode)base.push(`${qq(m.custCode)}='${esc(S.filt.custCode)}'`);
+  if(S.selCust&&m.custCode)base.push(`${qq(m.custCode)}='${esc(S.selCust)}'`);
+  if(S._codes&&S._codes.length&&m.custCode)base.push(`${qq(m.custCode)} IN (${S._codes.map(x=>`'${esc(x)}'`).join(",")})`);
+  const baseW="WHERE "+base.join(" AND ");
+  const dc=[...base];
+  if(S.filt.from)dc.push(`DATE(${qq(m.date)})>='${esc(S.filt.from)}'`);
+  if(S.filt.to)dc.push(`DATE(${qq(m.date)})<='${esc(S.filt.to)}'`);
+  const dateW="WHERE "+dc.join(" AND ");
   try{
     const Q=[];
-    // 0 segment breakdown — distinct customers per segment (table has duplicate rows)
-    Q.push(bq(`SELECT CAST(${qq(a.seg)} AS STRING) k, COUNT(DISTINCT ${qq(a.cust)}) n FROM ${AGG} ${aw} GROUP BY k ORDER BY n DESC`));
-    // 1 scorecards — dedupe to one row per customer first, then aggregate
-    Q.push(bq(`SELECT SUM(s25) cur, SUM(s24) prev, COUNT(*) custn${a.last?`, MAX(lastd) last`:""} FROM (SELECT ${qq(a.cust)} c, ANY_VALUE(${s25}) s25, ANY_VALUE(${s24}) s24${a.last?`, MAX(${qq(a.last)}) lastd`:""} FROM ${AGG} ${aw} GROUP BY c)`));
-    // 2 customer list — one row per customer (names from agg if present, else join the txn table)
-    if(a.name||a.seller){
-      Q.push(bq(`SELECT CAST(${qq(a.cust)} AS STRING) code, ${a.name?`ANY_VALUE(${qq(a.name)})`:"CAST(NULL AS STRING)"} name, ${a.seller?`ANY_VALUE(${qq(a.seller)})`:"CAST(NULL AS STRING)"} seller, ANY_VALUE(${s25}) v, CAST(ANY_VALUE(${qq(a.seg)}) AS STRING) seg FROM ${AGG} ${aw} GROUP BY code ORDER BY v DESC LIMIT 500`));
-    }else{
-      const tn=m.custName?`ANY_VALUE(t.${qq(m.custName)})`:"CAST(NULL AS STRING)";
-      const ts=m.sales?`ANY_VALUE(t.${qq(m.sales)})`:"CAST(NULL AS STRING)";
-      Q.push(bq(`SELECT CAST(g.${qq(a.cust)} AS STRING) code, ${tn} name, ${ts} seller, ANY_VALUE(g.${s25}) v, CAST(ANY_VALUE(g.${qq(a.seg)}) AS STRING) seg FROM ${AGG} g LEFT JOIN ${txnT()} t ON CAST(g.${qq(a.cust)} AS STRING)=CAST(t.${qq(m.custCode)} AS STRING) ${aggWhere("g")} GROUP BY code ORDER BY v DESC LIMIT 500`));
-    }
-    // 3 monthly trend (txn, scoped to HV customers + date range)
-    Q.push((m.date&&m.amount)?bq(`SELECT FORMAT_DATE('%Y-%m',DATE(${qq(m.date)})) m, SUM(${qq(m.amount)}) v FROM ${txnT()} ${txnScope(true)} GROUP BY m ORDER BY m`):Promise.resolve({rows:[]}));
-    // 4 bills by year (txn, no date filter)
-    Q.push((m.date&&m.bill)?bq(`SELECT EXTRACT(YEAR FROM DATE(${qq(m.date)})) y, COUNT(DISTINCT ${qq(m.bill)}) b FROM ${txnT()} ${txnScope(false)} GROUP BY y`):Promise.resolve({rows:[]}));
-    // 5 products (txn, scoped + date range)
-    Q.push((m.date&&m.amount)?bq(`SELECT DATE(${qq(m.date)}) d${m.prodGroup?`, ANY_VALUE(${qq(m.prodGroup)}) pg`:", '' pg"}${m.prodCode?`, CAST(${qq(m.prodCode)} AS STRING) pc`:", '' pc"}${m.prodName?`, ANY_VALUE(${qq(m.prodName)}) pn`:", '' pn"}${m.qty?`, SUM(${qq(m.qty)}) qty`:", COUNT(*) qty"}, SUM(${qq(m.amount)}) v FROM ${txnT()} ${txnScope(true)} GROUP BY d${m.prodCode?",pc":""} ORDER BY v DESC LIMIT 500`):Promise.resolve({rows:[]}));
+    // 0 segment breakdown — distinct customers per segment
+    Q.push(bq(`SELECT CAST(${qq(m.segment)} AS STRING) k, COUNT(DISTINCT ${CU}) n FROM ${T} ${baseW} GROUP BY k ORDER BY n DESC`));
+    // 1 sales + bills by year (full year, ignores the date slider)
+    Q.push(bq(`SELECT EXTRACT(YEAR FROM DATE(${qq(m.date)})) y, SUM(${A}) v${m.bill?`, COUNT(DISTINCT ${qq(m.bill)}) b`:""} FROM ${T} ${baseW} GROUP BY y`));
+    // 2 distinct customers + last purchase
+    Q.push(bq(`SELECT COUNT(DISTINCT ${CU}) custn, MAX(DATE(${qq(m.date)})) last FROM ${T} ${baseW}`));
+    // 3 customer list — one row per customer
+    Q.push(m.custCode?bq(`SELECT CAST(${CU} AS STRING) code, ${m.custName?`ANY_VALUE(${qq(m.custName)})`:"CAST(NULL AS STRING)"} name, ${m.sales?`ANY_VALUE(${qq(m.sales)})`:"CAST(NULL AS STRING)"} seller, SUM(${A}) v, CAST(ANY_VALUE(${qq(m.segment)}) AS STRING) seg FROM ${T} ${baseW} GROUP BY code ORDER BY v DESC LIMIT 500`):Promise.resolve({rows:[]}));
+    // 4 monthly trend (date slider applies)
+    Q.push(bq(`SELECT FORMAT_DATE('%Y-%m',DATE(${qq(m.date)})) m, SUM(${A}) v FROM ${T} ${dateW} GROUP BY m ORDER BY m`));
+    // 5 products (date slider applies)
+    Q.push(bq(`SELECT DATE(${qq(m.date)}) d${m.prodGroup?`, ANY_VALUE(${qq(m.prodGroup)}) pg`:", '' pg"}${m.prodCode?`, CAST(${qq(m.prodCode)} AS STRING) pc`:", '' pc"}${m.prodName?`, ANY_VALUE(${qq(m.prodName)}) pn`:", '' pn"}${m.qty?`, SUM(${qq(m.qty)}) qty`:", COUNT(*) qty"}, SUM(${A}) v FROM ${T} ${dateW} GROUP BY d${m.prodCode?",pc":""} ORDER BY v DESC LIMIT 500`));
 
-    const[seg,kpi,cu,mon,billsY,pr]=await Promise.all(Q);
+    const[seg,yr,kpi,cu,mon,pr]=await Promise.all(Q);
+    const byY={},billY={}; yr.rows.forEach(r=>{byY[Number(r.y)]=Number(r.v)||0;billY[Number(r.y)]=Number(r.b)||0;});
+    const yrs=Object.keys(byY).map(Number); const cy=yrs.length?Math.max(...yrs):new Date().getFullYear(),py=cy-1;
     const k=kpi.rows[0]||{};
-    const cy=yearOf(a.sales25)||(mon.rows.length?Math.max(...mon.rows.map(r=>+r.m.slice(0,4))):new Date().getFullYear());
-    const py=yearOf(a.sales24)||cy-1;
-    const byY={}; billsY.rows.forEach(r=>byY[Number(r.y)]=Number(r.b)||0);
     S.live={
       seg:seg.rows.map(r=>({k:r.k??"(ว่าง)",n:Number(r.n)||0})),
-      custn:Number(k.custn)||0, cur:Number(k.cur)||0, prev:Number(k.prev)||0,
-      curYear:cy, prevYear:py, bills:byY[cy]||0, billsPrev:byY[py]||0, last:k.last||null,
+      custn:Number(k.custn)||0, cur:byY[cy]||0, prev:byY[py]||0, curYear:cy, prevYear:py,
+      bills:billY[cy]||0, billsPrev:billY[py]||0, last:k.last||null,
       mon:mon.rows.map(r=>({m:r.m,v:Number(r.v)||0})),
       cust:cu.rows.map(r=>({code:r.code,name:r.name||r.code,sales:r.seller||"",v:Number(r.v)||0})),
       prod:pr.rows.map(r=>({d:String(r.d).slice(0,10),pg:r.pg||"",pc:r.pc||"",pn:r.pn||"",qty:Number(r.qty)||0,v:Number(r.v)||0})),
     };
-    status(`กลุ่ม High Value ${S.live.custn.toLocaleString()} ลูกค้า`);
+    status(`ทุกกลุ่ม ${S.live.custn.toLocaleString()} ลูกค้า`);
     renderLive();
   }catch(e){status("");toast("คำนวณไม่สำเร็จ: "+e.message,1);console.error(e);}
 }
@@ -469,7 +473,9 @@ function fillSel(sel,vals,cur,allLabel){const el=$(sel);const keep=cur;el.innerH
   vals.forEach(v=>{const o=document.createElement("option");o.value=v;o.textContent=v;if(v===keep)o.selected=true;el.appendChild(o);});}
 
 function renderSeg(){
-  const segs=S.live.seg||[]; const total=segs.reduce((s,x)=>s+x.n,0); const max=Math.max(1,...segs.map(s=>s.n));
+  const segNo=k=>{const m=(k||"").match(/(\d+)/);return m?+m[1]:999;};
+  const segs=(S.live.seg||[]).slice().sort((a,b)=>segNo(a.k)-segNo(b.k));
+  const total=segs.reduce((s,x)=>s+x.n,0); const max=Math.max(1,...segs.map(s=>s.n));
   $("#segSub").textContent=`${total} คน (ในระบบ)`;
   $("#segBars").innerHTML=segs.map((s,i)=>`<div class="segrow">
     <div class="lbl">${s.k}</div>

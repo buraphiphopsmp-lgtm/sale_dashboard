@@ -459,7 +459,9 @@ function fillSel(sel,vals,cur,allLabel){const el=$(sel);const keep=cur;el.innerH
   vals.forEach(v=>{const o=document.createElement("option");o.value=v;o.textContent=v;if(v===keep)o.selected=true;el.appendChild(o);});}
 
 function renderSeg(){
-  const segs=S.live.seg||[]; const total=segs.reduce((s,x)=>s+x.n,0); const max=Math.max(1,...segs.map(s=>s.n));
+  const segNo=k=>{const m=(k||"").match(/(\d+)/);return m?+m[1]:999;};
+  const segs=(S.live.seg||[]).slice().sort((a,b)=>segNo(a.k)-segNo(b.k));
+  const total=segs.reduce((s,x)=>s+x.n,0); const max=Math.max(1,...segs.map(s=>s.n));
   $("#segSub").textContent=`${total} คน (เฉพาะกลุ่ม High Value และ High Potential)`;
   $("#segBars").innerHTML=segs.map((s,i)=>`<div class="segrow">
     <div class="lbl">${s.k}</div>
