@@ -118,12 +118,17 @@
     <div class="s4 card"><h3>สัดส่วนตามกลุ่มสินค้า</h3><div class="chart-box"><canvas id="chartCat"></canvas></div></div>
 
     <div class="s12 card">
-      <h3>สินค้าขายดี (Top Products) <span class="sub">คลิกหัวคอลัมน์เพื่อจัดเรียง</span></h3>
+      <h3><span>สินค้าขายดี (Top Products)</span>
+        <span style="display:flex;gap:8px;align-items:center;font-weight:400">
+          <input id="prodSearch" placeholder="ค้นหาสินค้า…" style="font:inherit;padding:5px 9px;border:1px solid var(--line);border-radius:6px;min-width:170px">
+          <select id="prodMetric" style="font:inherit;padding:5px 9px;border:1px solid var(--line);border-radius:6px"><option value="v">เรียงตามยอดขาย</option><option value="qty">เรียงตามจำนวนหน่วย</option><option value="ords">เรียงตามออเดอร์</option></select>
+        </span></h3>
       <div class="tbl-scroll"><table id="prodTable"><thead></thead><tbody></tbody></table></div>
     </div>
 
     <div class="s5 card">
-      <h3>ลูกค้า (ตามยอดซื้อ) <span class="sub">คลิกเพื่อดูสินค้าที่ซื้อ</span></h3>
+      <h3><span>ลูกค้า <span class="sub">คลิกเพื่อดูสินค้าที่ซื้อ</span></span>
+        <input id="custSearch" placeholder="ค้นหาลูกค้า…" style="font:inherit;padding:5px 9px;border:1px solid var(--line);border-radius:6px;min-width:140px;font-weight:400"></h3>
       <div class="tbl-scroll" style="max-height:400px"><table id="custTable"><thead></thead><tbody></tbody></table></div>
       <div class="pager" id="custPager"></div>
     </div>
@@ -131,6 +136,11 @@
       <h3 id="buyTitle">สินค้าที่ลูกค้าซื้อ <span class="sub" id="buySub"></span></h3>
       <div class="tbl-scroll" style="max-height:400px"><table id="buyTable"><thead></thead><tbody></tbody></table></div>
       <div class="pager" id="buyPager"></div>
+    </div>
+
+    <div class="s12 card">
+      <h3>💡 โอกาสขายเพิ่ม (Cross-sell) <span class="sub" id="crossSub">สินค้าขายดีที่ลูกค้ายังไม่เคยซื้อ</span></h3>
+      <div class="tbl-scroll" style="max-height:320px"><table id="crossTable"><thead></thead><tbody></tbody></table></div>
     </div>
   </div>
 
@@ -194,14 +204,15 @@ function buildDemo(){
   const prods={}; cats.forEach((c,ci)=>{prods[c]=[];const n=4+((Math.random()*5)|0);for(let i=0;i<n;i++)prods[c].push({sku:(c==="unknown"?"H":"APH")+(100000+ci*1000+i*7),name:c+" รุ่น "+String.fromCharCode(65+i)+(100+((Math.random()*900)|0)),unit:200+Math.random()*2400});});
   const names=["วุ่นเทคเฟอร์นิช","พี.เอส.พีเฟอร์นิเจอร์","ชัคริชบุญมีลีค","วอร์มเบอร์บิวด์","ทองไทยเฟอร์นิเชอร์","สยามดีไซน์","ลัคกี้สโตนกรุ๊ป","เอเชียโปรดักส์","บ้านสวยวัสดุ","กรีนโฮมดีไซน์","เอ็มเจครีเอชั่น","ไอพลัสดีไซน์","เดอะวู้ดเวิร์ค","ครัวสวยสตูดิโอ"];
   const cust=[],rows=[]; let order=900000;
-  for(let i=0;i<60;i++)cust.push({code:("กพชวอตศมบ"[i%9]||"ก")+String(100+i).slice(-3),name:names[i%names.length]+(i>13?" "+i:""),scale:0.3+Math.random()*3.2});
+  for(let i=0;i<60;i++){ const nc=2+((Math.random()*3)|0); const pc=[...cats].sort(()=>Math.random()-.5).slice(0,nc);
+    cust.push({code:("กพชวอตศมบ"[i%9]||"ก")+String(100+i).slice(-3),name:names[i%names.length]+(i>13?" "+i:""),scale:0.3+Math.random()*3.2,cats:pc}); }
   const today=new Date(); const start=new Date(today); start.setFullYear(start.getFullYear()-2); start.setDate(1);
   for(let m=0;;m++){ const day=new Date(start); day.setMonth(start.getMonth()+m); if(day>today)break;
     const yF=day.getFullYear()===today.getFullYear()?1.15:1; const peak=(day.getMonth()===6||day.getMonth()===7)?1.8:1;
     cust.forEach(c=>{ const norders=Math.max(0,Math.round((Math.random()*3)*c.scale*peak));
       for(let o=0;o<norders;o++){ const ordn="ORD"+(order++); const d=new Date(day); d.setDate(1+((Math.random()*27)|0)); const iso=d.toISOString().slice(0,10);
         const lines=1+((Math.random()*4)|0);
-        for(let l=0;l<lines;l++){ const cat=cats[(Math.random()*cats.length)|0]; const p=prods[cat][(Math.random()*prods[cat].length)|0]; const qty=1+((Math.random()*40)|0);
+        for(let l=0;l<lines;l++){ const cat=c.cats[(Math.random()*c.cats.length)|0]; const p=prods[cat][(Math.random()*prods[cat].length)|0]; const qty=1+((Math.random()*40)|0);
           rows.push({date:iso,product_price_amount:Math.round(qty*p.unit*yF*c.scale*0.5),qty,order_number:ordn,customer_id:c.code,customer_name:c.name,product_name:p.name,product_sku:p.sku,category:cat}); } } }); }
   S.demoRows=rows; S.demoCust=cust; S.mode="demo"; badge();
   $("#dTo").value="2025-12-31"; $("#dFrom").value="2023-12-01";
@@ -310,7 +321,10 @@ function renderCat(){ const d=S.L.cat.slice(0,8); const rest=S.L.cat.slice(8).re
 function thM(ym){const[y,m]=ym.split("-");return MONTHS[(+m)-1]+" "+be(+y).toString().slice(2);}
 
 function renderProds(){
-  let r=S.L.prods.slice(); const sc=S.prodSort.c,sd=S.prodSort.d;
+  const q=($("#prodSearch")?.value||"").trim().toLowerCase();
+  let r=S.L.prods.slice();
+  if(q)r=r.filter(p=>(p.pn||"").toLowerCase().includes(q)||(p.sku||"").toLowerCase().includes(q)||(p.cat||"").toLowerCase().includes(q));
+  const sc=S.prodSort.c,sd=S.prodSort.d;
   r.sort((a,b)=>sc==="pn"?(a.pn<b.pn?-1:1)*sd:((a[sc]||0)-(b[sc]||0))*sd);
   r=r.slice(0,100); const mx=Math.max(1,...r.map(x=>x.v));
   const cols=[{c:"rank",t:"#"},{c:"pn",t:"สินค้า"},{c:"cat",t:"กลุ่ม"},{c:"qty",t:"จำนวน",num:1},{c:"v",t:"ยอดขาย",num:1},{c:"ords",t:"ออเดอร์",num:1}];
@@ -325,7 +339,9 @@ function renderProds(){
 }
 let CUST_PP=10;
 function renderCusts(){
-  const cs=S.L.custs2; const pages=Math.max(1,Math.ceil(cs.length/CUST_PP)); S.custPage=Math.min(S.custPage,pages-1);
+  const q=($("#custSearch")?.value||"").trim().toLowerCase();
+  let cs=S.L.custs2; if(q)cs=cs.filter(c=>(c.name||"").toLowerCase().includes(q)||(c.code||"").toLowerCase().includes(q));
+  const pages=Math.max(1,Math.ceil(cs.length/CUST_PP)); S.custPage=Math.min(S.custPage,pages-1);
   const sl=cs.slice(S.custPage*CUST_PP,S.custPage*CUST_PP+CUST_PP);
   $("#custTable thead").innerHTML="<tr><th>รหัส</th><th>ชื่อลูกค้า</th><th class='num'>ยอดซื้อ</th><th class='num'>ออเดอร์</th></tr>";
   $("#custTable tbody").innerHTML=sl.map(c=>`<tr class="click ${S.sel===c.code?'sel':''}" data-code="${c.code}">
@@ -339,11 +355,23 @@ function selectCust(code){ S.sel=(S.sel===code)?"":code; S.buyPage=0; renderCust
   if(!S.sel){ renderBuysEmpty(); return; }
   if(S.mode==="live") loadBuysLive(S.sel); else renderBuys(S.L.buys(S.sel));
 }
-function renderBuysEmpty(){ $("#buySub").textContent=""; $("#buyTable thead").innerHTML=""; $("#buyTable tbody").innerHTML=`<tr><td class="drill-hint">เลือกลูกค้าทางซ้ายเพื่อดูสินค้าที่ซื้อ</td></tr>`; $("#buyPager").innerHTML=""; }
+function renderBuysEmpty(){ $("#buySub").textContent=""; $("#buyTable thead").innerHTML=""; $("#buyTable tbody").innerHTML=`<tr><td class="drill-hint">เลือกลูกค้าทางซ้ายเพื่อดูสินค้าที่ซื้อ</td></tr>`; $("#buyPager").innerHTML="";
+  $("#crossSub").textContent="สินค้าขายดีที่ลูกค้ายังไม่เคยซื้อ"; $("#crossTable thead").innerHTML=""; $("#crossTable tbody").innerHTML=`<tr><td class="drill-hint">เลือกลูกค้าเพื่อดูโอกาสขายเพิ่ม</td></tr>`; }
 let _buys=[];
 function renderBuys(arr){
   const cust=S.L.custs2.find(c=>c.code===S.sel); $("#buySub").textContent=cust?`${cust.name} (${cust.code}) · ${arr.length} รายการ`:"";
-  _buys=arr; S.buyPage=0; renderBuyTable();
+  _buys=arr; S.buyPage=0; renderBuyTable(); renderCrossSell();
+}
+function renderCrossSell(){
+  if(!S.sel){ renderBuysEmpty(); return; }
+  const bought=new Set(_buys.map(b=>b.sku));
+  const opp=S.L.prods.filter(p=>!bought.has(p.sku)).slice(0,20); // best sellers this customer hasn't bought
+  const cust=S.L.custs2.find(c=>c.code===S.sel);
+  $("#crossSub").textContent=cust?`${cust.name} · แนะนำ ${opp.length} รายการ (สินค้าขายดีที่ยังไม่เคยซื้อ)`:"";
+  $("#crossTable thead").innerHTML="<tr><th style='width:34px'>#</th><th>สินค้าแนะนำ</th><th>กลุ่ม</th><th class='num'>ยอดขายรวม (ตลาด)</th><th class='num'>ออเดอร์รวม</th></tr>";
+  $("#crossTable tbody").innerHTML=opp.map((p,i)=>`<tr><td><span class="rank ${i<3?'r'+(i+1):''}">${i+1}</span></td>
+    <td class="prod" title="${p.pn}">${p.pn}</td><td>${p.cat}</td><td class="num">${baht(p.v)}</td><td class="num">${num(p.ords)}</td></tr>`).join("")
+    ||`<tr><td colspan="5" class="drill-hint">ลูกค้าซื้อครบสินค้าขายดีแล้ว 🎉</td></tr>`;
 }
 let BUY_PP=10;
 function renderBuyTable(){
@@ -363,6 +391,9 @@ $("#refreshBtn").onclick=()=>{if(S.mode==="live")loadLive();else{buildDemo();dem
 $("#applyBtn").onclick=()=>applyData();
 $("#clearBtn").onclick=()=>{$("#dFrom").value="2023-12-01";$("#dTo").value="2025-12-31";$("#fCat").value="";S.sel="";applyData();};
 $("#fCat").addEventListener("change",()=>applyData());
+$("#prodSearch").addEventListener("input",()=>renderProds());
+$("#prodMetric").addEventListener("change",()=>{S.prodSort.c=$("#prodMetric").value;S.prodSort.d=-1;renderProds();});
+$("#custSearch").addEventListener("input",()=>{S.custPage=0;renderCusts();});
 
 loadCfg(); buildDemo(); demoCompute();
 (function(){let tok=null;try{tok=sessionStorage.getItem("bqToken");}catch(e){}if(tok){S.token=tok;S.mode="live";badge();bootLive();}})();
