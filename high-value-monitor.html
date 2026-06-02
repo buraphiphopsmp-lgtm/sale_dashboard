@@ -361,8 +361,8 @@ async function loadLive(){
     // 0 segment breakdown — one segment per customer (MAX) then count, so a customer
     //   whose duplicate rows disagree (e.g. "2." and "4.") lands in just one group
     Q.push(bq(`SELECT seg k, COUNT(*) n FROM (SELECT ${qq(a.cust)} cid, MAX(CAST(${qq(a.seg)} AS STRING)) seg FROM ${AGG} ${aw} GROUP BY cid) GROUP BY seg ORDER BY seg`));
-    // 1 scorecards — dedupe to one row per customer first, then aggregate
-    Q.push(bq(`SELECT SUM(s25) cur, SUM(s24) prev, COUNT(*) custn${a.last?`, MAX(lastd) last`:""} FROM (SELECT ${qq(a.cust)} c, ANY_VALUE(${s25}) s25, ANY_VALUE(${s24}) s24${a.last?`, MAX(${qq(a.last)}) lastd`:""} FROM ${AGG} ${aw} GROUP BY c)`));
+    // 1 distinct High Value customers
+    Q.push(bq(`SELECT COUNT(DISTINCT ${qq(a.cust)}) custn FROM ${AGG} ${aw}`));
     // 2 customer list — one row per customer (names from agg if present, else join the txn table)
     if(a.name||a.seller){
       Q.push(bq(`SELECT CAST(${qq(a.cust)} AS STRING) code, ${a.name?`ANY_VALUE(${qq(a.name)})`:"CAST(NULL AS STRING)"} name, ${a.seller?`ANY_VALUE(${qq(a.seller)})`:"CAST(NULL AS STRING)"} seller, ANY_VALUE(${s25}) v, CAST(ANY_VALUE(${qq(a.seg)}) AS STRING) seg FROM ${AGG} ${aw} GROUP BY code ORDER BY v DESC LIMIT 500`));
@@ -373,20 +373,21 @@ async function loadLive(){
     }
     // 3 monthly trend (txn, scoped to HV customers + date range)
     Q.push((m.date&&m.amount)?bq(`SELECT FORMAT_DATE('%Y-%m',DATE(${qq(m.date)})) m, SUM(${qq(m.amount)}) v FROM ${txnT()} ${txnScope(true)} GROUP BY m ORDER BY m`):Promise.resolve({rows:[]}));
-    // 4 bills by year (txn, no date filter)
-    Q.push((m.date&&m.bill)?bq(`SELECT EXTRACT(YEAR FROM DATE(${qq(m.date)})) y, COUNT(DISTINCT ${qq(m.bill)}) b FROM ${txnT()} ${txnScope(false)} GROUP BY y`):Promise.resolve({rows:[]}));
-    // 5 products (txn, scoped + date range)
+    // 4 sales + bills by year (txn, scoped, full year) — the scorecards source
+    Q.push((m.date&&m.amount)?bq(`SELECT EXTRACT(YEAR FROM DATE(${qq(m.date)})) y, SUM(${qq(m.amount)}) v${m.bill?`, COUNT(DISTINCT ${qq(m.bill)}) b`:", 0 b"} FROM ${txnT()} ${txnScope(false)} GROUP BY y`):Promise.resolve({rows:[]}));
+    // 5 last purchase date (txn, scoped)
+    Q.push(m.date?bq(`SELECT MAX(DATE(${qq(m.date)})) last FROM ${txnT()} ${txnScope(false)}`):Promise.resolve({rows:[]}));
+    // 6 products (txn, scoped + date range)
     Q.push((m.date&&m.amount)?bq(`SELECT DATE(${qq(m.date)}) d${m.prodGroup?`, ANY_VALUE(${qq(m.prodGroup)}) pg`:", '' pg"}${m.prodCode?`, CAST(${qq(m.prodCode)} AS STRING) pc`:", '' pc"}${m.prodName?`, ANY_VALUE(${qq(m.prodName)}) pn`:", '' pn"}${m.qty?`, SUM(${qq(m.qty)}) qty`:", COUNT(*) qty"}, SUM(${qq(m.amount)}) v FROM ${txnT()} ${txnScope(true)} GROUP BY d${m.prodCode?",pc":""} ORDER BY v DESC LIMIT 500`):Promise.resolve({rows:[]}));
 
-    const[seg,kpi,cu,mon,billsY,pr]=await Promise.all(Q);
-    const k=kpi.rows[0]||{};
-    const cy=yearOf(a.sales25)||(mon.rows.length?Math.max(...mon.rows.map(r=>+r.m.slice(0,4))):new Date().getFullYear());
-    const py=yearOf(a.sales24)||cy-1;
-    const byY={}; billsY.rows.forEach(r=>byY[Number(r.y)]=Number(r.b)||0);
+    const[seg,custq,cu,mon,yrq,lastq,pr]=await Promise.all(Q);
+    const byY={},billY={}; yrq.rows.forEach(r=>{byY[Number(r.y)]=Number(r.v)||0;billY[Number(r.y)]=Number(r.b)||0;});
+    const yrs=Object.keys(byY).map(Number); const cy=yrs.length?Math.max(...yrs):new Date().getFullYear(),py=cy-1;
     S.live={
       seg:seg.rows.map(r=>({k:r.k??"(ว่าง)",n:Number(r.n)||0})),
-      custn:Number(k.custn)||0, cur:Number(k.cur)||0, prev:Number(k.prev)||0,
-      curYear:cy, prevYear:py, bills:byY[cy]||0, billsPrev:byY[py]||0, last:k.last||null,
+      custn:Number(custq.rows[0]?.custn)||0,
+      cur:byY[cy]||0, prev:byY[py]||0,
+      curYear:cy, prevYear:py, bills:billY[cy]||0, billsPrev:billY[py]||0, last:lastq.rows[0]?.last||null,
       mon:mon.rows.map(r=>({m:r.m,v:Number(r.v)||0})),
       cust:cu.rows.map(r=>({code:r.code,name:r.name||r.code,sales:r.seller||"",v:Number(r.v)||0})),
       prod:pr.rows.map(r=>({d:String(r.d).slice(0,10),pg:r.pg||"",pc:r.pc||"",pn:r.pn||"",qty:Number(r.qty)||0,v:Number(r.v)||0})),
