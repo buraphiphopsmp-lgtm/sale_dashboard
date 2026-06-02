@@ -388,7 +388,7 @@ async function loadLive(){
       const nm=a.name?`ANY_VALUE(g.${qq(a.name)})`:"CAST(NULL AS STRING)";
       const sl=a.seller?`ANY_VALUE(g.${qq(a.seller)})`:"CAST(NULL AS STRING)";
       Q.push((m.amount&&m.custCode)
-        ? bq(`SELECT CAST(g.${qq(a.cust)} AS STRING) code, ${nm} name, ${sl} seller FROM ${AGG} g LEFT JOIN ${txnT()} t ON CAST(g.${qq(a.cust)} AS STRING)=CAST(t.${qq(m.custCode)} AS STRING) ${aggWhere("g")} GROUP BY code ORDER BY SUM(t.${qq(m.amount)}) DESC LIMIT 500`)
+        ? bq(`SELECT CAST(g.${qq(a.cust)} AS STRING) code, ${nm} name, ${sl} seller FROM ${AGG} g LEFT JOIN (SELECT ${qq(m.custCode)} cid, SUM(${qq(m.amount)}) v FROM ${txnT()} GROUP BY cid) s ON CAST(g.${qq(a.cust)} AS STRING)=CAST(s.cid AS STRING) ${aggWhere("g")} GROUP BY code ORDER BY MAX(s.v) DESC LIMIT 500`)
         : bq(`SELECT CAST(${qq(a.cust)} AS STRING) code, ${a.name?`ANY_VALUE(${qq(a.name)})`:"CAST(NULL AS STRING)"} name, ${a.seller?`ANY_VALUE(${qq(a.seller)})`:"CAST(NULL AS STRING)"} seller FROM ${AGG} ${aw} GROUP BY code ORDER BY code LIMIT 500`));
     }
     // 3 sales + bills by year & month (for YTD same-period YoY)

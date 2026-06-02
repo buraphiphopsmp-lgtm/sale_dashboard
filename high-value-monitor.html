@@ -357,7 +357,6 @@ async function loadLive(){
   status("กำลังคำนวณ…",true);
   const AGG=aggT(), aw=aggWhere();
   const ordCol=S.schema.some(c=>c.name==="order_number")?"order_number":(m.bill||""); // bills = distinct order_number
-  const aAmt=S.aggSchema.some(c=>c.name==="product_price_amount")?"product_price_amount":(a.sales25||""); // sort key (in summary table)
   try{
     const Q=[];
     // 0 segment breakdown — one segment per customer (MAX) then count, so a customer
@@ -365,8 +364,10 @@ async function loadLive(){
     Q.push(bq(`SELECT seg k, COUNT(*) n FROM (SELECT ${qq(a.cust)} cid, MAX(CAST(${qq(a.seg)} AS STRING)) seg FROM ${AGG} ${aw} GROUP BY cid) GROUP BY seg ORDER BY seg`));
     // 1 distinct High Value customers
     Q.push(bq(`SELECT COUNT(DISTINCT ${qq(a.cust)}) custn FROM ${AGG} ${aw}`));
-    // 2 customer list — from the summary table, sorted by SUM(product_price_amount) DESC (not shown)
-    Q.push(bq(`SELECT CAST(${qq(a.cust)} AS STRING) code, ${a.name?`ANY_VALUE(${qq(a.name)})`:"CAST(NULL AS STRING)"} name, ${a.seller?`ANY_VALUE(${qq(a.seller)})`:"CAST(NULL AS STRING)"} seller FROM ${AGG} ${aw} GROUP BY code ORDER BY ${aAmt?`SUM(${qq(aAmt)}) DESC`:"code"} LIMIT 500`));
+    // 2 customer list — sorted by per-customer SUM(product_price_amount) from transactions (dedup-safe)
+    Q.push((m.amount&&m.custCode)
+      ? bq(`SELECT CAST(g.${qq(a.cust)} AS STRING) code, ${a.name?`ANY_VALUE(g.${qq(a.name)})`:"CAST(NULL AS STRING)"} name, ${a.seller?`ANY_VALUE(g.${qq(a.seller)})`:"CAST(NULL AS STRING)"} seller FROM ${AGG} g LEFT JOIN (SELECT ${qq(m.custCode)} cid, SUM(${qq(m.amount)}) v FROM ${txnT()} GROUP BY cid) s ON CAST(g.${qq(a.cust)} AS STRING)=CAST(s.cid AS STRING) ${aggWhere("g")} GROUP BY code ORDER BY MAX(s.v) DESC LIMIT 500`)
+      : bq(`SELECT CAST(${qq(a.cust)} AS STRING) code, ${a.name?`ANY_VALUE(${qq(a.name)})`:"CAST(NULL AS STRING)"} name, ${a.seller?`ANY_VALUE(${qq(a.seller)})`:"CAST(NULL AS STRING)"} seller FROM ${AGG} ${aw} GROUP BY code ORDER BY code LIMIT 500`));
     // 3 monthly trend (txn, scoped to HV customers + date range)
     Q.push((m.date&&m.amount)?bq(`SELECT FORMAT_DATE('%Y-%m',DATE(${qq(m.date)})) m, SUM(${qq(m.amount)}) v FROM ${txnT()} ${txnScope(true)} GROUP BY m ORDER BY m`):Promise.resolve({rows:[]}));
     // 4 sales + bills by year (txn, scoped, full year) — the scorecards source
