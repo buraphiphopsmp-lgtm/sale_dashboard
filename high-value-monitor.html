@@ -109,7 +109,7 @@
         <div class="field"><label>Project ID</label><input id="cfgProject" value="futuretech-468203" /></div>
         <div class="field"><label>Dataset</label><input id="cfgDataset" value="sales_data" /></div>
         <div class="field"><label>Table (ธุรกรรม/สินค้า)</label><input id="cfgTable" value="sale_transaction" /></div>
-        <div class="field"><label>Table (สรุปลูกค้า/segment)</label><input id="cfgAgg" value="customer_agg_dasboard_final" /></div>
+        <div class="field"><label>Table (สรุปลูกค้า/segment)</label><input id="cfgAgg" value="customer_dashboard_final_table" /></div>
         <div class="field full"><label>OAuth Client ID</label>
           <input id="cfgClientId" value="860556755032-m7itkb5ljeiddlb1iii02kdv9l3f6j7g.apps.googleusercontent.com" /></div>
         <div class="field"><label>วันที่</label><select id="mDate"></select></div>
@@ -190,7 +190,7 @@ const num=n=>Math.round(n||0).toLocaleString("en-US");
 const NUMERIC=["INTEGER","INT64","FLOAT","FLOAT64","NUMERIC","BIGNUMERIC"];
 const DATES=["DATE","DATETIME","TIMESTAMP"];
 const MONTHS=["ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."];
-const LS="vipMon.cfg";
+const LS="vipMon.cfg.v2";
 
 const S={mode:"demo",token:null,schema:[],map:{},rows:[],
   filt:{segment:"",custCode:"",custName:"",sales:"",from:"",to:""},
