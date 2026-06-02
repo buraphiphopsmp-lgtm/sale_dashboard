@@ -192,7 +192,7 @@ function M(){const s=S.schema;return{
   qty:hasCol(s,"qty")||"qty", order:hasCol(s,"order_number")||hasCol(s,"invoice_number")||"order_number",
   cust:hasCol(s,"customer_id")||"customer_id", custName:hasCol(s,"best_customer_name")||hasCol(s,"customer_name")||"customer_name",
   prodName:hasCol(s,"product_name")||"product_name", sku:hasCol(s,"product_sku")||"product_sku",
-  cat:hasCol(s,"category")||hasCol(s,"final_category")||"category", dflag:hasCol(s,"date_flag")};}
+  cat:hasCol(s,"final_category")||hasCol(s,"category")||"final_category", dflag:hasCol(s,"date_flag")};}
 function tbl(){const c=readCfg();return `\`${c.project}.${c.dataset}.${c.table}\``;}
 function dWhere(col){const f=$("#dFrom").value,t=$("#dTo").value;const c=[];if(f)c.push(`DATE(${qq(col)})>='${f}'`);if(t)c.push(`DATE(${qq(col)})<='${t}'`);return c;}
 
