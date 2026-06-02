@@ -136,6 +136,8 @@
       <div class="fsel"><small>เซลล์ผู้ดูแล</small><select id="fSales"></select></div>
       <div class="fsel"><small>ตั้งแต่วันที่</small><input type="date" id="fFrom"></div>
       <div class="fsel"><small>ถึงวันที่</small><input type="date" id="fTo"></div>
+      <div class="fsel" style="justify-content:flex-end"><small>&nbsp;</small>
+        <span style="display:flex;gap:6px"><button id="applyBtn" class="primary">ใช้ตัวกรอง</button><button id="clearBtn">ล้างตัวกรอง</button></span></div>
     </div>
 
     <div class="grid">
@@ -587,8 +589,16 @@ function setDemoRange(){const m=S.map;let lo=null,hi=null;
   setRange(lo,hi);}
 async function initRangeLive(){ if(S.filt._init)return; setRange("2023-12-01","2025-12-31"); S.filt._init=true; }
 
+function clearFilters(){
+  ["#fSegment","#fCustCode","#fCustName","#fSales"].forEach(s=>$(s).value="");
+  $("#fFrom").value="2023-12-01"; $("#fTo").value="2025-12-31";
+  S.filt.segment="";S.filt.custCode="";S.filt.custName="";S.filt.sales="";S.filt.from="2023-12-01";S.filt.to="2025-12-31";
+  S.selCust=null;S._codes=null;S.custPage=0;S.prodPage=0; reCompute();
+}
 /* ---- events ---- */
 ["#fSegment","#fCustCode","#fCustName","#fSales","#fFrom","#fTo"].forEach(s=>$(s).addEventListener("change",readFilters));
+$("#applyBtn").onclick=()=>readFilters();
+$("#clearBtn").onclick=()=>clearFilters();
 $("#signinBtn").onclick=signIn;
 $("#connectBtn").onclick=()=>{saveCfg();readMapSelects();$("#cfgPanel").open=false;if(S.token){S.mode="live";loadLive();}else signIn();};
 $("#refreshBtn").onclick=()=>{if(S.mode==="live")loadLive();else{buildDemo();computeDemo();}};

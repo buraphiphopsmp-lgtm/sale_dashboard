@@ -120,6 +120,7 @@
     <label>ถึงวันที่<input type="date" id="dTo"></label>
     <label>เลือกเซลล์<select id="fSeller"><option value="">— ทุกคน —</option></select></label>
     <button id="applyBtn" class="primary">ใช้ตัวกรอง</button>
+    <button id="clearBtn">ล้างตัวกรอง</button>
     <span class="spacer" style="flex:1"></span>
   </div>
 
@@ -436,6 +437,7 @@ $("#signinBtn").onclick=signIn;
 $("#connectBtn").onclick=()=>{saveCfg();$("#cfgPanel").open=false;if(S.token){S.mode="live";loadLive();}else signIn();};
 $("#refreshBtn").onclick=()=>{if(S.mode==="live")loadLive();else{buildDemo();demoCompute();}};
 $("#applyBtn").onclick=()=>{S.sel=$("#fSeller").value||S.sel;applyData();};
+$("#clearBtn").onclick=()=>{$("#dFrom").value="2023-12-01";$("#dTo").value="2025-12-31";$("#fSeller").value="";S.sel="";S.segFilter="";S.cuPage=0;applyData();};
 $("#fSeller").addEventListener("change",()=>{S.sel=$("#fSeller").value;applyData();});
 
 loadCfg(); buildDemo(); demoCompute();

@@ -152,6 +152,7 @@
     <label>คอลัมน์ยอดเงิน (metric)<select id="mapMetric"></select></label>
     <label>คอลัมน์หมวดหมู่ (dimension)<select id="mapDim"></select></label>
     <button id="applyBtn" class="primary">ใช้ตัวกรอง</button>
+    <button id="clearBtn">ล้างตัวกรอง</button>
     <span class="spacer" style="flex:1"></span>
     <span id="status"></span>
   </div>
@@ -558,6 +559,10 @@ $("#signinBtn").onclick=signIn;
 $("#connectBtn").onclick=()=>{ saveCfg(); $("#cfgPanel").open=false; signIn(); };
 $("#refreshBtn").onclick=()=>{ if(state.mode==="live") loadLive(); else { buildDemo(); computeDemoAgg(); drawAll(); } };
 $("#applyBtn").onclick=()=>{ readMapSelections(); applyData(); };
+$("#clearBtn").onclick=async()=>{
+  if(state.mode==="live"){ state.map=guessMapping(state.schema); fillMapSelects(); state.rangeInit=false; await initLatestRange(); state.rangeInit=true; loadLive(); }
+  else { buildDemo(); computeDemoAgg(); drawAll(); }
+};
 ["#mapDate","#mapMetric","#mapDim"].forEach(s=>$(s).onchange=()=>{ readMapSelections(); applyData(); });
 
 loadCfg();
