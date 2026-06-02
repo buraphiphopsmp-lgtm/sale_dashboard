@@ -326,6 +326,7 @@ function txnT(){const c=readCfg();return `\`${c.project}.${c.dataset}.${c.table}
 // WHERE on the customer-aggregate table: High Value scope + active filters
 function aggWhere(px){const a=S.amap;const p=px?px+".":"";const c=[];
   if(a.seg)c.push(`${p}${qq(a.seg)} IS NOT NULL AND TRIM(CAST(${p}${qq(a.seg)} AS STRING))<>''`);
+  if(a.seg)c.push(`CAST(${p}${qq(a.seg)} AS STRING) NOT LIKE '%5.%'`); // exclude the "5." group
   if(S.filt.segment&&a.seg)c.push(`${p}${qq(a.seg)}='${esc(S.filt.segment)}'`);
   if(S.filt.custCode&&a.cust)c.push(`${p}${qq(a.cust)}='${esc(S.filt.custCode)}'`);
   if(S.selCust&&a.cust)c.push(`${p}${qq(a.cust)}='${esc(S.selCust)}'`);
