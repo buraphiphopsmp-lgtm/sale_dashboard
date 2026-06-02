@@ -358,8 +358,9 @@ async function loadLive(){
   const s25=a.sales25?qq(a.sales25):"0", s24=a.sales24?qq(a.sales24):"0";
   try{
     const Q=[];
-    // 0 segment breakdown — distinct customers per segment (table has duplicate rows)
-    Q.push(bq(`SELECT CAST(${qq(a.seg)} AS STRING) k, COUNT(DISTINCT ${qq(a.cust)}) n FROM ${AGG} ${aw} GROUP BY k ORDER BY n DESC`));
+    // 0 segment breakdown — one segment per customer (MAX) then count, so a customer
+    //   whose duplicate rows disagree (e.g. "2." and "4.") lands in just one group
+    Q.push(bq(`SELECT seg k, COUNT(*) n FROM (SELECT ${qq(a.cust)} cid, MAX(CAST(${qq(a.seg)} AS STRING)) seg FROM ${AGG} ${aw} GROUP BY cid) GROUP BY seg ORDER BY seg`));
     // 1 scorecards — dedupe to one row per customer first, then aggregate
     Q.push(bq(`SELECT SUM(s25) cur, SUM(s24) prev, COUNT(*) custn${a.last?`, MAX(lastd) last`:""} FROM (SELECT ${qq(a.cust)} c, ANY_VALUE(${s25}) s25, ANY_VALUE(${s24}) s24${a.last?`, MAX(${qq(a.last)}) lastd`:""} FROM ${AGG} ${aw} GROUP BY c)`));
     // 2 customer list — one row per customer (names from agg if present, else join the txn table)
@@ -551,9 +552,7 @@ function setRange(lo,hi){ if(lo){$("#fFrom").value=lo;S.filt.from=lo;} if(hi){$(
 function setDemoRange(){const m=S.map;let lo=null,hi=null;
   S.rows.forEach(r=>{const d=(r[m.date]||"").slice(0,10);if(!d)return;if(!lo||d<lo)lo=d;if(!hi||d>hi)hi=d;});
   setRange(lo,hi);}
-async function initRangeLive(){ if(S.filt._init||!S.map.date)return; const c=readCfg();
-  try{const{rows}=await bq(`SELECT FORMAT_DATE('%Y-%m-%d',MIN(DATE(${qq(S.map.date)}))) lo, FORMAT_DATE('%Y-%m-%d',MAX(DATE(${qq(S.map.date)}))) hi FROM \`${c.project}.${c.dataset}.${c.table}\``);
-    const r=rows[0]; if(r){setRange(r.lo,r.hi);S.filt._init=true;}}catch(e){console.warn("range init",e);}}
+async function initRangeLive(){ if(S.filt._init)return; setRange("2023-12-01","2025-12-31"); S.filt._init=true; }
 
 /* ---- events ---- */
 ["#fSegment","#fCustCode","#fCustName","#fSales","#fFrom","#fTo"].forEach(s=>$(s).addEventListener("change",readFilters));
