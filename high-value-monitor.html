@@ -376,8 +376,8 @@ async function loadLive(){
     // 6 products (txn, scoped + date range)
     Q.push((m.date&&m.amount)?bq(`SELECT DATE(${qq(m.date)}) d${m.prodGroup?`, ANY_VALUE(${qq(m.prodGroup)}) pg`:", '' pg"}${m.prodCode?`, CAST(${qq(m.prodCode)} AS STRING) pc`:", '' pc"}${m.prodName?`, ANY_VALUE(${qq(m.prodName)}) pn`:", '' pn"}${m.qty?`, SUM(${qq(m.qty)}) qty`:", COUNT(*) qty"}, SUM(${qq(m.amount)}) v FROM ${txnT()} ${txnScope(true)} GROUP BY d${m.prodCode?",pc":""} ORDER BY d DESC, v DESC LIMIT 500`):Promise.resolve({rows:[]}));
 
-    // 7 average basket (AVG of avg_basket per HV customer)
-    Q.push(a.avgBasket?bq(`SELECT AVG(ab) aov FROM (SELECT ${qq(a.cust)} c, ANY_VALUE(${qq(a.avgBasket)}) ab FROM ${AGG} ${aw} GROUP BY c)`):Promise.resolve({rows:[]}));
+    // 7 average basket — AVG over all (filtered) rows, matching Looker's default aggregation
+    Q.push(a.avgBasket?bq(`SELECT AVG(${qq(a.avgBasket)}) aov FROM ${AGG} ${aw}`):Promise.resolve({rows:[]}));
 
     const[seg,custq,cu,mon,yrq,lastq,pr,aovq]=await Promise.all(Q);
     const byY={},billY={}; yrq.rows.forEach(r=>{byY[Number(r.y)]=Number(r.v)||0;billY[Number(r.y)]=Number(r.b)||0;});
