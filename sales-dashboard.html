@@ -313,10 +313,20 @@ function renderTrend(){ const d=S.L.mon; $("#trendSub").textContent=d.length?`${
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>" "+baht(c.raw)}}},
       scales:{x:{grid:{display:false},ticks:{maxRotation:0,autoSkip:true,maxTicksLimit:10,font:{size:9}}},y:{ticks:{callback:v=>v>=1e6?(v/1e6)+"M":v/1e3+"K"},grid:{color:"#f1f3f4"},beginAtZero:true}}}});
 }
+const pctPlugin={id:"pct",afterDatasetsDraw(chart){
+  const ctx=chart.ctx,meta=chart.getDatasetMeta(0),data=chart.data.datasets[0].data;
+  const total=data.reduce((s,v)=>s+(v||0),0); if(!total)return;
+  ctx.save(); ctx.font="bold 11px "+Chart.defaults.font.family; ctx.fillStyle="#fff"; ctx.textAlign="center"; ctx.textBaseline="middle";
+  ctx.shadowColor="rgba(0,0,0,.35)"; ctx.shadowBlur=3;
+  meta.data.forEach((arc,i)=>{ const pct=data[i]/total*100; if(pct<4)return; const p=arc.tooltipPosition();
+    ctx.fillText(pct.toFixed(0)+"%",p.x,p.y); });
+  ctx.restore();
+}};
 function renderCat(){ const d=S.L.cat.slice(0,8); const rest=S.L.cat.slice(8).reduce((s,x)=>s+x.v,0); const labels=d.map(x=>x.k),data=d.map(x=>x.v); if(rest>0){labels.push("อื่นๆ");data.push(rest);}
   if(S.charts.cat)S.charts.cat.destroy();
   S.charts.cat=new Chart($("#chartCat"),{type:"doughnut",data:{labels,datasets:[{data,backgroundColor:PAL,borderWidth:2,borderColor:"#fff"}]},
-    options:{responsive:true,maintainAspectRatio:false,cutout:"58%",plugins:{legend:{position:"right",labels:{boxWidth:11,padding:7,font:{size:10}}},tooltip:{callbacks:{label:c=>{const t=c.dataset.data.reduce((s,x)=>s+x,0);return ` ${c.label}: ${baht(c.raw)} (${t?(c.raw/t*100).toFixed(1):0}%)`;}}}}}});
+    options:{responsive:true,maintainAspectRatio:false,cutout:"58%",plugins:{legend:{position:"right",labels:{boxWidth:11,padding:7,font:{size:10}}},tooltip:{callbacks:{label:c=>{const t=c.dataset.data.reduce((s,x)=>s+x,0);return ` ${c.label}: ${baht(c.raw)} (${t?(c.raw/t*100).toFixed(1):0}%)`;}}}}},
+    plugins:[pctPlugin]});
 }
 function thM(ym){const[y,m]=ym.split("-");return MONTHS[(+m)-1]+" "+be(+y).toString().slice(2);}
 
