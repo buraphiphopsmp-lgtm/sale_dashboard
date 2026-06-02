@@ -3,100 +3,71 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Sales Dashboard · sale_transaction</title>
+<title>Sales Dashboard · Futuretech</title>
 <link rel="icon" href="data:," />
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
-  :root{
-    --bg:#f1f3f4; --panel:#ffffff; --ink:#202124; --muted:#5f6368;
-    --line:#e0e0e0; --brand:#1a73e8; --brand-weak:#e8f0fe;
-    --green:#188038; --red:#d93025; --amber:#f29900;
-    --shadow:0 1px 2px rgba(60,64,67,.1),0 1px 3px rgba(60,64,67,.08);
-    --radius:8px;
-  }
-  *{box-sizing:border-box}
-  html,body{margin:0;padding:0}
-  body{
-    font-family:"Google Sans","Segoe UI",Roboto,Arial,"Noto Sans Thai",sans-serif;
-    background:var(--bg);color:var(--ink);font-size:14px;line-height:1.4;
-  }
-  .topbar{
-    background:var(--panel);border-bottom:1px solid var(--line);
-    padding:10px 20px;display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:20;flex-wrap:wrap;
-  }
-  .topbar h1{font-size:18px;font-weight:500;margin:0;flex:0 0 auto}
-  .topbar .sub{color:var(--muted);font-size:12px;border-left:1px solid var(--line);padding-left:14px}
-  .topbar .spacer{flex:1}
-  .badge{font-size:11px;padding:3px 9px;border-radius:999px;font-weight:500;white-space:nowrap}
-  .badge.demo{background:var(--amber);color:#fff}
-  .badge.live{background:var(--green);color:#fff}
-  button,.btn{
-    font:inherit;cursor:pointer;border:1px solid var(--line);background:#fff;color:var(--ink);
-    padding:7px 14px;border-radius:6px;display:inline-flex;align-items:center;gap:7px;transition:.15s;
-  }
-  button:hover,.btn:hover{background:#f8f9fa}
-  button.primary{background:var(--brand);color:#fff;border-color:var(--brand)}
-  button.primary:hover{background:#1765cc}
-  button:disabled{opacity:.5;cursor:not-allowed}
+  :root{--bg:#eef1f4;--panel:#fff;--ink:#1f2933;--muted:#5f6368;--line:#e2e5e9;
+    --brand:#1a73e8;--gold:#f9ab00;--green:#188038;--red:#c5221f;--teal:#12b5cb;--purple:#9334e6;
+    --shadow:0 1px 2px rgba(60,64,67,.1),0 1px 3px rgba(60,64,67,.08);--radius:10px;}
+  *{box-sizing:border-box} html,body{margin:0;padding:0}
+  body{font-family:"Google Sans","Segoe UI",Roboto,Arial,"Noto Sans Thai",sans-serif;background:var(--bg);color:var(--ink);font-size:13px}
   .appnav{display:flex;align-items:center;gap:2px;background:#202124;padding:0 16px;height:46px;overflow-x:auto}
   .appnav .brand{color:#fff;font-weight:600;font-size:14px;margin-right:18px;display:flex;align-items:center;gap:8px;white-space:nowrap}
   .appnav a.tab{color:#bdc1c6;text-decoration:none;font-size:13px;padding:0 16px;height:46px;display:flex;align-items:center;border-bottom:3px solid transparent;white-space:nowrap}
   .appnav a.tab:hover{color:#fff;background:rgba(255,255,255,.06)}
   .appnav a.tab.active{color:#fff;border-bottom-color:var(--brand)}
-  .wrap{max-width:1400px;margin:0 auto;padding:18px 20px 60px}
+  button{font:inherit;cursor:pointer;border:1px solid var(--line);background:#fff;color:var(--ink);padding:6px 12px;border-radius:6px;display:inline-flex;align-items:center;gap:6px}
+  button:hover{background:#f5f6f7} button.primary{background:var(--brand);color:#fff;border-color:var(--brand)} button.primary:hover{background:#1765cc}
+  .topbar{display:flex;align-items:center;gap:12px;padding:12px 22px;flex-wrap:wrap}
+  .topbar h1{font-size:20px;font-weight:700;margin:0} .topbar h1 .lite{color:var(--brand)}
+  .topbar .tag{font-size:12px;color:var(--muted)} .topbar .spacer{flex:1}
+  .badge{font-size:11px;padding:3px 9px;border-radius:999px;font-weight:500;white-space:nowrap}
+  .badge.demo{background:var(--gold);color:#fff} .badge.live{background:var(--green);color:#fff}
+  .wrap{max-width:1380px;margin:0 auto;padding:4px 18px 60px}
+  details.cfg{background:#fff;border:1px solid var(--line);border-radius:8px;margin-bottom:14px}
+  details.cfg>summary{cursor:pointer;padding:10px 14px;font-weight:500;font-size:12px;color:var(--muted);list-style:none}
+  details.cfg>summary::-webkit-details-marker{display:none} details.cfg>summary::before{content:"⚙ "}
+  .cfg-body{padding:0 14px 14px;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+  .field{display:flex;flex-direction:column;gap:3px} .field label{font-size:11px;color:var(--muted);font-weight:500}
+  .field input{font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:6px} .full{grid-column:1/-1}
   .toolbar{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-bottom:16px}
   .toolbar label{font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:3px}
-  .toolbar input,.toolbar select{
-    font:inherit;padding:6px 9px;border:1px solid var(--line);border-radius:6px;background:#fff;min-width:140px;
-  }
-  details.cfg{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
-    margin-bottom:16px;box-shadow:var(--shadow)}
-  details.cfg>summary{cursor:pointer;padding:12px 16px;font-weight:500;list-style:none;display:flex;align-items:center;gap:8px}
-  details.cfg>summary::-webkit-details-marker{display:none}
-  details.cfg>summary::before{content:"⚙";color:var(--muted)}
-  .cfg-body{padding:0 16px 16px;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
-  .cfg-body .full{grid-column:1/-1}
-  .field{display:flex;flex-direction:column;gap:4px}
-  .field label{font-size:12px;color:var(--muted);font-weight:500}
-  .field input,.field select{font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:6px}
-  .hint{font-size:11px;color:var(--muted);margin-top:2px}
-  .hint code{background:#f1f3f4;padding:1px 5px;border-radius:4px;font-size:11px}
-  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:16px}
-  .kpi{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
-    padding:16px 18px;box-shadow:var(--shadow);position:relative;overflow:hidden}
-  .kpi .accent{position:absolute;left:0;top:0;bottom:0;width:4px}
-  .kpi .label{font-size:12px;color:var(--muted);font-weight:500;text-transform:uppercase;letter-spacing:.4px}
-  .kpi .value{font-size:27px;font-weight:500;margin:6px 0 2px;letter-spacing:-.5px}
-  .kpi .delta{font-size:12px;font-weight:500;display:inline-flex;align-items:center;gap:3px;min-height:17px}
-  .kpi .delta.up{color:var(--green)} .kpi .delta.down{color:var(--red)}
-  .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:14px}
-  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
-    box-shadow:var(--shadow);padding:16px;min-height:60px}
-  .card h3{margin:0 0 12px;font-size:14px;font-weight:500;display:flex;justify-content:space-between;align-items:center;gap:8px}
-  .card h3 .tag{font-size:11px;color:var(--muted);font-weight:400;white-space:nowrap}
-  .span12{grid-column:span 12}.span8{grid-column:span 8}.span4{grid-column:span 4}
-  .span5{grid-column:span 5}.span7{grid-column:span 7}
-  @media(max-width:1000px){.grid>div{grid-column:span 12 !important}}
-  .chart-box{position:relative;height:300px}
-  .chart-box.tall{height:340px}
-  .tbl-wrap{overflow:auto;max-height:440px;border:1px solid var(--line);border-radius:6px}
-  table{border-collapse:collapse;width:100%;font-size:13px}
-  th,td{padding:9px 12px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
-  th{background:#f8f9fa;position:sticky;top:0;font-weight:500;color:var(--muted);cursor:pointer;user-select:none}
-  th:hover{background:#f1f3f4}
-  td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
-  tbody tr:hover{background:var(--brand-weak)}
+  .toolbar input,.toolbar select{font:inherit;padding:7px 10px;border:1px solid var(--line);border-radius:6px;background:#fff;min-width:150px}
   #status{font-size:12px;color:var(--muted)}
-  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#202124;color:#fff;
-    padding:10px 18px;border-radius:8px;font-size:13px;box-shadow:0 4px 12px rgba(0,0,0,.3);z-index:50;
-    opacity:0;pointer-events:none;transition:.25s;max-width:90vw}
-  .toast.show{opacity:1}
-  .toast.err{background:var(--red)}
-  .spinner{width:16px;height:16px;border:2px solid currentColor;border-top-color:transparent;border-radius:50%;
-    animation:spin .7s linear infinite;display:inline-block;vertical-align:-3px}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:16px}
+  .kpi{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+  .kpi .accent{position:absolute;left:0;top:0;bottom:0;width:4px}
+  .kpi .label{font-size:12px;color:var(--muted);font-weight:500}
+  .kpi .value{font-size:25px;font-weight:700;margin:5px 0 2px;letter-spacing:-.4px}
+  .kpi .delta{font-size:12px;font-weight:600} .kpi .delta.up{color:var(--green)} .kpi .delta.down{color:var(--red)}
+  .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:14px}
+  .s8{grid-column:span 8}.s4{grid-column:span 4}.s12{grid-column:span 12}.s5{grid-column:span 5}.s7{grid-column:span 7}
+  @media(max-width:1000px){.grid>div{grid-column:span 12 !important}}
+  .card{background:#fff;border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px}
+  .card h3{margin:0 0 12px;font-size:14px;font-weight:600;display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .card h3 .sub{font-size:11px;color:var(--muted);font-weight:400}
+  .chart-box{position:relative;height:290px} .chart-box.sm{height:250px}
+  .tbl-scroll{overflow:auto;max-height:440px;border:1px solid var(--line);border-radius:8px}
+  table{border-collapse:collapse;width:100%;font-size:12.5px}
+  th,td{padding:9px 12px;border-bottom:1px solid #eef0f2;text-align:left;white-space:nowrap}
+  th{background:#f6f8fa;color:#5f6368;font-weight:600;position:sticky;top:0;cursor:pointer;user-select:none}
+  th:hover{background:#eef1f4}
+  td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+  td.prod{white-space:normal;max-width:280px}
+  tbody tr.click{cursor:pointer} tbody tr:nth-child(even){background:#fafbfc} tbody tr:hover{background:#fff4e0}
+  tbody tr.sel{background:#e8f0fe!important}
+  .rank{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;font-size:11px;font-weight:700;background:#eef1f4;color:#5f6368}
+  .rank.r1{background:#f9ab00;color:#fff}.rank.r2{background:#9aa0a6;color:#fff}.rank.r3{background:#cd7f32;color:#fff}
+  .drill-hint{color:var(--muted);text-align:center;padding:34px;font-size:13px}
+  .pager{display:flex;justify-content:flex-end;align-items:center;gap:6px;font-size:11px;color:var(--muted);margin-top:7px}
+  .pager button{padding:2px 8px}
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#202124;color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;box-shadow:0 4px 12px rgba(0,0,0,.3);z-index:50;opacity:0;pointer-events:none;transition:.25s;max-width:90vw}
+  .toast.show{opacity:1} .toast.err{background:var(--red)}
+  .spinner{width:14px;height:14px;border:2px solid currentColor;border-top-color:transparent;border-radius:50%;animation:spin .7s linear infinite;display:inline-block;vertical-align:-2px}
   @keyframes spin{to{transform:rotate(360deg)}}
-  .empty{color:var(--muted);text-align:center;padding:40px;font-size:13px}
+  .foot{font-size:10px;color:#9aa0a6;margin-top:16px}
 </style>
 </head>
 <body>
@@ -110,468 +81,291 @@
 </nav>
 
 <div class="topbar">
-  <h1>Sales Dashboard</h1>
-  <span class="sub" id="sourceLabel">futuretech-468203 · sales_data · sale_transaction</span>
+  <h1>FUTURETECH <span class="lite">SALES</span> DASHBOARD</h1>
+  <span class="tag">Smart Fitting, Smart Living · ภาพรวมการขาย สินค้า และลูกค้า</span>
   <span class="spacer"></span>
-  <span id="modeBadge" class="badge demo">DEMO MODE</span>
+  <span class="badge demo" id="modeBadge">DEMO MODE</span>
+  <span id="status"></span>
   <button id="signinBtn" class="primary">เข้าสู่ระบบ Google</button>
-  <button id="refreshBtn">↻ รีเฟรช</button>
+  <button id="refreshBtn">↻</button>
 </div>
 
 <div class="wrap">
-
   <details class="cfg" id="cfgPanel">
     <summary>การตั้งค่าการเชื่อมต่อ BigQuery</summary>
     <div class="cfg-body">
       <div class="field"><label>Project ID</label><input id="cfgProject" value="futuretech-468203" /></div>
       <div class="field"><label>Dataset</label><input id="cfgDataset" value="sales_data" /></div>
-      <div class="field"><label>Table</label><input id="cfgTable" value="sale_transaction" /></div>
-      <div class="field full">
-        <label>OAuth Client ID</label>
-        <input id="cfgClientId" value="860556755032-m7itkb5ljeiddlb1iii02kdv9l3f6j7g.apps.googleusercontent.com" />
-        <span class="hint">เพิ่ม origin <code id="originHint"></code> ใน <i>Authorized JavaScript origins</i> ของ OAuth client และเปิด <b>BigQuery API</b></span>
-      </div>
-      <div class="field">
-        <label>Billing / Query project</label>
-        <input id="cfgBilling" placeholder="(เว้นว่าง = ใช้ Project ID)" />
-      </div>
-      <div class="field" style="justify-content:flex-end">
-        <button id="connectBtn" class="primary">บันทึก &amp; เชื่อมต่อ</button>
-      </div>
+      <div class="field"><label>Table (ธุรกรรม)</label><input id="cfgTable" value="sale_transaction" /></div>
+      <div class="field full"><label>OAuth Client ID</label><input id="cfgClientId" value="860556755032-m7itkb5ljeiddlb1iii02kdv9l3f6j7g.apps.googleusercontent.com" /></div>
+      <div class="field" style="justify-content:flex-end"><button id="connectBtn" class="primary">บันทึก &amp; โหลด</button></div>
     </div>
   </details>
 
   <div class="toolbar">
-    <label>ช่วงวันที่
-      <span style="display:flex;gap:8px">
-        <input type="date" id="dateFrom" />
-        <input type="date" id="dateTo" />
-      </span>
-    </label>
-    <label>คอลัมน์วันที่<select id="mapDate"></select></label>
-    <label>คอลัมน์ยอดเงิน (metric)<select id="mapMetric"></select></label>
-    <label>คอลัมน์หมวดหมู่ (dimension)<select id="mapDim"></select></label>
+    <label>ตั้งแต่วันที่<input type="date" id="dFrom"></label>
+    <label>ถึงวันที่<input type="date" id="dTo"></label>
+    <label>กลุ่มสินค้า<select id="fCat"><option value="">— ทุกกลุ่ม —</option></select></label>
     <button id="applyBtn" class="primary">ใช้ตัวกรอง</button>
     <button id="clearBtn">ล้างตัวกรอง</button>
     <span class="spacer" style="flex:1"></span>
-    <span id="status"></span>
   </div>
 
   <div class="kpis" id="kpis"></div>
 
   <div class="grid">
-    <div class="card span8">
-      <h3>ยอดขายตามช่วงเวลา <span class="tag" id="tsTag"></span></h3>
-      <div class="chart-box tall"><canvas id="chartTime"></canvas></div>
+    <div class="s8 card"><h3>เทรนด์ยอดขายรายเดือน <span class="sub" id="trendSub"></span></h3><div class="chart-box"><canvas id="chartTrend"></canvas></div></div>
+    <div class="s4 card"><h3>สัดส่วนตามกลุ่มสินค้า</h3><div class="chart-box"><canvas id="chartCat"></canvas></div></div>
+
+    <div class="s12 card">
+      <h3>สินค้าขายดี (Top Products) <span class="sub">คลิกหัวคอลัมน์เพื่อจัดเรียง</span></h3>
+      <div class="tbl-scroll"><table id="prodTable"><thead></thead><tbody></tbody></table></div>
     </div>
-    <div class="card span4">
-      <h3>สัดส่วนตามหมวดหมู่ <span class="tag" id="pieTag"></span></h3>
-      <div class="chart-box tall"><canvas id="chartPie"></canvas></div>
+
+    <div class="s5 card">
+      <h3>ลูกค้า (ตามยอดซื้อ) <span class="sub">คลิกเพื่อดูสินค้าที่ซื้อ</span></h3>
+      <div class="tbl-scroll" style="max-height:400px"><table id="custTable"><thead></thead><tbody></tbody></table></div>
+      <div class="pager" id="custPager"></div>
     </div>
-    <div class="card span7">
-      <h3>Top 10 ตามยอดขาย <span class="tag" id="barTag"></span></h3>
-      <div class="chart-box"><canvas id="chartBar"></canvas></div>
-    </div>
-    <div class="card span5">
-      <h3>จำนวนรายการตามช่วงเวลา <span class="tag" id="cntTag"></span></h3>
-      <div class="chart-box"><canvas id="chartCount"></canvas></div>
-    </div>
-    <div class="card span12">
-      <h3>ข้อมูลธุรกรรม <span class="tag" id="tblTag"></span></h3>
-      <div class="tbl-wrap"><table id="dataTable"><thead></thead><tbody></tbody></table></div>
+    <div class="s7 card">
+      <h3 id="buyTitle">สินค้าที่ลูกค้าซื้อ <span class="sub" id="buySub"></span></h3>
+      <div class="tbl-scroll" style="max-height:400px"><table id="buyTable"><thead></thead><tbody></tbody></table></div>
+      <div class="pager" id="buyPager"></div>
     </div>
   </div>
+
+  <div class="foot" id="foot">Data source: futuretech-468203 · sales_data · sale_transaction</div>
 </div>
 
 <div class="toast" id="toast"></div>
 
 <script>
 "use strict";
-/* =========================================================================
-   Sales Dashboard — BigQuery (client-side OAuth) with server-side aggregation
-   ========================================================================= */
-const $ = s => document.querySelector(s);
-const fmtMoney = n => "฿" + Math.round(n||0).toLocaleString("en-US");
-const fmtNum   = n => Math.round(n||0).toLocaleString("en-US");
-const PALETTE = ["#1a73e8","#12b5cb","#e8710a","#9334e6","#188038","#d01884","#f9ab00","#5f6368","#1e8e3e","#a142f4"];
-Chart.defaults.font.family = getComputedStyle(document.body).fontFamily;
-Chart.defaults.font.size = 12;
-Chart.defaults.color = "#5f6368";
+const $=s=>document.querySelector(s);
+const baht=n=>"฿"+Math.round(n||0).toLocaleString("en-US");
+const num=n=>Math.round(n||0).toLocaleString("en-US");
+const NUMERIC=["INTEGER","INT64","FLOAT","FLOAT64","NUMERIC","BIGNUMERIC"];
+const MONTHS=["ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."];
+const PAL=["#1a73e8","#12b5cb","#e8710a","#9334e6","#188038","#d01884","#f9ab00","#5f6368","#1e8e3e","#a142f4","#0b8043","#c5221f"];
+const LS="salesDash2.cfg";
+Chart.defaults.font.family=getComputedStyle(document.body).fontFamily; Chart.defaults.color="#5f6368"; Chart.defaults.font.size=11;
 
-const NUMERIC_TYPES=["INTEGER","INT64","FLOAT","FLOAT64","NUMERIC","BIGNUMERIC"];
-const DATE_TYPES=["DATE","DATETIME","TIMESTAMP"];
-const LS_KEY="salesDash.cfg";
+const S={mode:"demo",token:null,schema:[],sel:"",prodSort:{c:"v",d:-1},
+  custPage:0,buyPage:0, L:null, charts:{}, demoRows:[], demoCust:[]};
 
-const state = {
-  mode:"demo", token:null,
-  schema:[], map:{date:null,metric:null,dim:null},
-  rows:[],                 // demo rows only
-  agg:null,                // {count,total,qty,byDay,byDim,sample}
-  tableFields:[],          // [{name,type}] for the data table
-  charts:{}, sort:{col:null,dir:1},
-};
+let tt; function toast(m,e){const t=$("#toast");t.textContent=m;t.className="toast show"+(e?" err":"");clearTimeout(tt);tt=setTimeout(()=>t.className="toast",4500);}
+function status(m,b){$("#status").innerHTML=(b?'<span class="spinner"></span> ':'')+(m||"");}
+function badge(){const b=$("#modeBadge");if(S.mode==="live"){b.className="badge live";b.textContent="LIVE · BigQuery";}else{b.className="badge demo";b.textContent="DEMO MODE";}}
+const be=y=>y+543;
 
-/* ---------------- toast / status ---------------- */
-let toastT;
-function toast(msg,isErr){
-  const t=$("#toast"); t.textContent=msg; t.className="toast show"+(isErr?" err":"");
-  clearTimeout(toastT); toastT=setTimeout(()=>t.className="toast",4500);
-}
-function setStatus(msg,busy){ $("#status").innerHTML=(busy?'<span class="spinner"></span> ':'')+(msg||""); }
-
-/* ---------------- config ---------------- */
-function loadCfg(){
-  try{ const c=JSON.parse(localStorage.getItem(LS_KEY)||"{}");
-    if(c.project)$("#cfgProject").value=c.project; if(c.dataset)$("#cfgDataset").value=c.dataset;
-    if(c.table)$("#cfgTable").value=c.table; if(c.clientId)$("#cfgClientId").value=c.clientId;
-    if(c.billing)$("#cfgBilling").value=c.billing;
-  }catch(e){}
-}
-function readCfg(){return{
-  project:$("#cfgProject").value.trim(), dataset:$("#cfgDataset").value.trim(),
-  table:$("#cfgTable").value.trim(), clientId:$("#cfgClientId").value.trim(),
-  billing:$("#cfgBilling").value.trim()||$("#cfgProject").value.trim(),
-};}
-function saveCfg(){ localStorage.setItem(LS_KEY,JSON.stringify(readCfg())); }
-
-/* ---------------- OAuth ---------------- */
-let tokenClient=null;
-function initAuth(clientId){
-  if(!window.google||!google.accounts){ toast("Google SDK ยังโหลดไม่เสร็จ ลองใหม่",1); return false; }
-  tokenClient=google.accounts.oauth2.initTokenClient({
-    client_id:clientId,
-    scope:"https://www.googleapis.com/auth/bigquery.readonly https://www.googleapis.com/auth/cloud-platform.read-only",
-    callback:(resp)=>{
-      if(resp.error){ toast("ล็อกอินไม่สำเร็จ: "+resp.error,1); return; }
-      state.token=resp.access_token; state.mode="live"; setModeBadge();
-      try{ sessionStorage.setItem("bqToken",resp.access_token); }catch(e){}
-      toast("เชื่อมต่อ BigQuery สำเร็จ"); bootLive();
-    },
-  });
-  return true;
-}
-function signIn(){
-  const cfg=readCfg();
-  if(!cfg.clientId){ $("#cfgPanel").open=true; toast("กรุณาใส่ OAuth Client ID ก่อน",1); return; }
-  if(!tokenClient&&!initAuth(cfg.clientId)) return;
-  tokenClient.requestAccessToken({prompt: state.token?"":"consent"});
-}
-
-/* ---------------- BigQuery REST ---------------- */
-async function bqQuery(sql){
-  const cfg=readCfg();
-  const res=await fetch(`https://bigquery.googleapis.com/bigquery/v2/projects/${cfg.billing}/queries`,{
-    method:"POST",
-    headers:{Authorization:"Bearer "+state.token,"Content-Type":"application/json"},
-    body:JSON.stringify({query:sql,useLegacySql:false,timeoutMs:60000,maxResults:2000}),
-  });
-  const data=await res.json();
-  if(!res.ok){ if(res.status===401){ try{sessionStorage.removeItem("bqToken");}catch(e){} state.token=null; }
-    throw new Error(data.error?.message||("HTTP "+res.status)); }
-  if(data.jobComplete===false) throw new Error("Query ใช้เวลานานเกินไป ลองแคบช่วงวันที่ลง");
-  const fields=(data.schema?.fields)||[];
-  const rows=(data.rows||[]).map(r=>{ const o={};
-    r.f.forEach((c,i)=>o[fields[i].name]=cast(c.v,fields[i].type)); return o; });
-  return {fields:fields.map(f=>({name:f.name,type:f.type})),rows};
-}
-function cast(v,type){ if(v==null)return null; return NUMERIC_TYPES.includes((type||"").toUpperCase())?Number(v):v; }
-function qq(c){ return "`"+String(c).replace(/`/g,"")+"`"; }
-
-async function fetchSchema(){
-  const cfg=readCfg();
-  const {rows}=await bqQuery(`SELECT column_name AS name, data_type AS type
-    FROM \`${cfg.project}.${cfg.dataset}.INFORMATION_SCHEMA.COLUMNS\`
-    WHERE table_name='${cfg.table}' ORDER BY ordinal_position`);
-  return rows.map(r=>({name:r.name,type:normType(r.type)}));
-}
-function normType(t){ t=(t||"").toUpperCase();
-  if(t.startsWith("INT"))return "INT64";
-  if(t.startsWith("FLOAT")||t.startsWith("NUMERIC")||t.startsWith("BIGNUMERIC"))return "FLOAT64";
-  if(t.startsWith("TIMESTAMP"))return "TIMESTAMP";
-  if(t.startsWith("DATETIME"))return "DATETIME";
-  if(t.startsWith("DATE"))return "DATE";
-  return "STRING"; }
-
-/* ---------------- mapping heuristics ---------------- */
-function guessMapping(schema){
-  const lc=n=>n.toLowerCase();
-  const num=c=>NUMERIC_TYPES.includes(c.type);
-  const str=c=>c.type==="STRING";
-  const has=n=>schema.find(c=>c.name===n)?n:null;
-  const date=(has("date")?{name:"date"}:null)
-          || schema.find(c=>DATE_TYPES.includes(c.type)&&/date|time|created|order|trans/.test(lc(c.name)))
-          || schema.find(c=>DATE_TYPES.includes(c.type));
-  const metric=(has("product_price_amount")?{name:"product_price_amount"}:null)
-            || schema.find(c=>num(c)&&/amount|revenue|net|gross|paid|grand|subtotal/.test(lc(c.name)))
-            || schema.find(c=>num(c)&&/sales|price|value|cost/.test(lc(c.name)))
-            || schema.find(num);
-  const dim=(has("final_category")?{name:"final_category"}:null)||(has("category")?{name:"category"}:null)
-         || schema.find(c=>str(c)&&/categor|prod.*group|channel|region|brand|department/.test(lc(c.name)))
-         || schema.find(c=>str(c)&&/segment|type|class|group|status|province|state/.test(lc(c.name)))
-         || schema.find(c=>str(c)&&/name/.test(lc(c.name)))
-         || schema.find(str);
-  return {date:date?.name||null, metric:metric?.name||null, dim:dim?.name||null};
-}
-function detectQtyCol(){
-  return state.schema.find(c=>NUMERIC_TYPES.includes(c.type)
-    && /(^|[_\s])(qty|quantity|units_sold|qnty)([_\s]|$)/.test(c.name.toLowerCase())
-    && !/price|amount|total|revenue|cost/.test(c.name.toLowerCase()))?.name || null;
-}
-function fillMapSelects(){
-  const fill=(sel,filter,selected)=>{ const el=$(sel); el.innerHTML="";
-    state.schema.filter(filter).forEach(c=>{ const o=document.createElement("option");
-      o.value=c.name; o.textContent=`${c.name} · ${c.type}`; if(c.name===selected)o.selected=true; el.appendChild(o); });
-  };
-  fill("#mapDate",c=>DATE_TYPES.includes(c.type),state.map.date);
-  fill("#mapMetric",c=>NUMERIC_TYPES.includes(c.type),state.map.metric);
-  fill("#mapDim",c=>c.type==="STRING",state.map.dim);
-}
-function readMapSelections(){
-  state.map.date=$("#mapDate").value||state.map.date;
-  state.map.metric=$("#mapMetric").value||state.map.metric;
-  state.map.dim=$("#mapDim").value||state.map.dim;
-}
-
-/* ---------------- WHERE ---------------- */
-function whereClause(){
-  const {date}=state.map; const from=$("#dateFrom").value,to=$("#dateTo").value;
-  if(!date||(!from&&!to)) return "";
-  const c=[]; if(from)c.push(`DATE(${qq(date)}) >= '${from}'`); if(to)c.push(`DATE(${qq(date)}) <= '${to}'`);
-  return "WHERE "+c.join(" AND ");
-}
+/* ---------- config / auth / bq ---------- */
+function readCfg(){return{project:$("#cfgProject").value.trim(),dataset:$("#cfgDataset").value.trim(),table:$("#cfgTable").value.trim(),clientId:$("#cfgClientId").value.trim(),billing:$("#cfgProject").value.trim()};}
+function saveCfg(){localStorage.setItem(LS,JSON.stringify(readCfg()));}
+function loadCfg(){try{const c=JSON.parse(localStorage.getItem(LS)||"{}");if(c.project)$("#cfgProject").value=c.project;if(c.dataset)$("#cfgDataset").value=c.dataset;if(c.table)$("#cfgTable").value=c.table;if(c.clientId)$("#cfgClientId").value=c.clientId;}catch(e){}}
+let tc=null;
+function initAuth(id){if(!window.google||!google.accounts){toast("Google SDK ยังไม่พร้อม",1);return false;}
+  tc=google.accounts.oauth2.initTokenClient({client_id:id,scope:"https://www.googleapis.com/auth/bigquery.readonly https://www.googleapis.com/auth/cloud-platform.read-only",
+    callback:r=>{if(r.error){toast("ล็อกอินไม่สำเร็จ: "+r.error,1);return;}S.token=r.access_token;try{sessionStorage.setItem("bqToken",r.access_token);}catch(e){}S.mode="live";badge();toast("เชื่อมต่อสำเร็จ");bootLive();}});return true;}
+function signIn(){const c=readCfg();if(!c.clientId){$("#cfgPanel").open=true;toast("ใส่ OAuth Client ID ก่อน",1);return;}if(!tc&&!initAuth(c.clientId))return;tc.requestAccessToken({prompt:S.token?"":"consent"});}
+async function bq(sql){const c=readCfg();
+  const res=await fetch(`https://bigquery.googleapis.com/bigquery/v2/projects/${c.billing}/queries`,{method:"POST",headers:{Authorization:"Bearer "+S.token,"Content-Type":"application/json"},body:JSON.stringify({query:sql,useLegacySql:false,timeoutMs:60000,maxResults:2000})});
+  const d=await res.json();
+  if(!res.ok){if(res.status===401){try{sessionStorage.removeItem("bqToken");}catch(e){}S.token=null;}throw new Error(d.error?.message||("HTTP "+res.status));}
+  if(d.jobComplete===false)throw new Error("Query นานเกินไป");
+  const f=(d.schema?.fields)||[];
+  return{fields:f.map(x=>({name:x.name,type:x.type})),rows:(d.rows||[]).map(r=>{const o={};r.f.forEach((c,i)=>o[f[i].name]=NUMERIC.includes((f[i].type||"").toUpperCase())?Number(c.v):c.v);return o;})};}
+function qq(c){return "`"+String(c).replace(/`/g,"")+"`";}
+async function fetchSchema(t){const c=readCfg();const{rows}=await bq(`SELECT column_name name FROM \`${c.project}.${c.dataset}.INFORMATION_SCHEMA.COLUMNS\` WHERE table_name='${t}' ORDER BY ordinal_position`);return rows.map(r=>r.name);}
+const hasCol=(a,n)=>a.includes(n)?n:"";
+function M(){const s=S.schema;return{
+  date:hasCol(s,"date")||"date", amount:hasCol(s,"product_price_amount")||"product_price_amount",
+  qty:hasCol(s,"qty")||"qty", order:hasCol(s,"order_number")||hasCol(s,"invoice_number")||"order_number",
+  cust:hasCol(s,"customer_id")||"customer_id", custName:hasCol(s,"best_customer_name")||hasCol(s,"customer_name")||"customer_name",
+  prodName:hasCol(s,"product_name")||"product_name", sku:hasCol(s,"product_sku")||"product_sku",
+  cat:hasCol(s,"category")||hasCol(s,"final_category")||"category", dflag:hasCol(s,"date_flag")};}
+function tbl(){const c=readCfg();return `\`${c.project}.${c.dataset}.${c.table}\``;}
+function dWhere(col){const f=$("#dFrom").value,t=$("#dTo").value;const c=[];if(f)c.push(`DATE(${qq(col)})>='${f}'`);if(t)c.push(`DATE(${qq(col)})<='${t}'`);return c;}
 
 /* =========================================================================
-   LIVE — aggregate in BigQuery (no row cap)
-   ========================================================================= */
-async function bootLive(){
-  try{
-    setStatus("กำลังอ่าน schema…",true);
-    state.schema=await fetchSchema();
-    if(!state.schema.length) throw new Error("ไม่พบคอลัมน์ — ตรวจชื่อ dataset/table");
-    state.map=guessMapping(state.schema); fillMapSelects();
-    if(!state.rangeInit){ await initLatestRange(); state.rangeInit=true; }
-    await loadLive();
-  }catch(e){ setStatus(""); toast("โหลดไม่สำเร็จ: "+e.message,1); console.error(e); }
-}
-// default the date range to the latest month that actually has data
-async function initLatestRange(){
-  if(!state.map.date) return;
-  const cfg=readCfg();
-  try{
-    const {rows}=await bqQuery(`SELECT FORMAT_DATE('%Y-%m-%d',MAX(DATE(${qq(state.map.date)}))) hi FROM \`${cfg.project}.${cfg.dataset}.${cfg.table}\``);
-    const hi=rows[0]?.hi;
-    if(hi){ $("#dateTo").value=hi; $("#dateFrom").value=hi.slice(0,8)+"01"; }
-  }catch(e){ console.warn("range init failed",e); }
-}
-async function loadLive(){
-  readMapSelections();
-  const cfg=readCfg(); const {date,metric,dim}=state.map;
-  const t=`\`${cfg.project}.${cfg.dataset}.${cfg.table}\``;
-  const wh=whereClause(); const qty=detectQtyCol();
-  const mSum=metric?`SUM(${qq(metric)})`:"0";
-  const kpiSql=`SELECT COUNT(*) cnt, ${mSum} total${qty?`, SUM(${qq(qty)}) qty`:""} FROM ${t} ${wh}`;
-  const daySql=date?`SELECT DATE(${qq(date)}) d, ${mSum} total, COUNT(*) cnt FROM ${t} ${wh} GROUP BY d ORDER BY d`:null;
-  const dimSql=(dim&&metric)?`SELECT CAST(${qq(dim)} AS STRING) k, SUM(${qq(metric)}) v, COUNT(*) c FROM ${t} ${wh} GROUP BY k ORDER BY v DESC LIMIT 50`:null;
-  const sampSql=`SELECT * FROM ${t} ${wh} ${date?`ORDER BY ${qq(date)} DESC`:""} LIMIT 200`;
-  try{
-    setStatus("กำลังคำนวณข้อมูล…",true);
-    const [kpi,day,dimr,samp]=await Promise.all([
-      bqQuery(kpiSql),
-      daySql?bqQuery(daySql):Promise.resolve({rows:[]}),
-      dimSql?bqQuery(dimSql):Promise.resolve({rows:[]}),
-      bqQuery(sampSql),
-    ]);
-    const k=kpi.rows[0]||{};
-    state.agg={
-      count:Number(k.cnt)||0, total:Number(k.total)||0, qty:qty?(Number(k.qty)||0):null,
-      byDay:day.rows.map(r=>({d:String(r.d).slice(0,10),total:Number(r.total)||0,count:Number(r.cnt)||0})),
-      byDim:dimr.rows.map(r=>({k:r.k??"(ว่าง)",v:Number(r.v)||0,c:Number(r.c)||0})),
-      sample:samp.rows,
-    };
-    state.tableFields=samp.fields.length?samp.fields:state.schema;
-    setStatus(`รวมทั้งหมด ${state.agg.count.toLocaleString()} ธุรกรรม`);
-    drawAll();
-  }catch(e){ setStatus(""); toast("คำนวณไม่สำเร็จ: "+e.message,1); console.error(e); }
-}
-
-/* =========================================================================
-   DEMO — compute the same aggregate shape locally
+   DEMO
    ========================================================================= */
 function buildDemo(){
-  state.schema=[
-    {name:"transaction_id",type:"STRING"},{name:"transaction_date",type:"DATE"},
-    {name:"product_category",type:"STRING"},{name:"channel",type:"STRING"},
-    {name:"region",type:"STRING"},{name:"quantity",type:"INT64"},{name:"sales_amount",type:"FLOAT64"},
-  ];
-  state.map={date:"transaction_date",metric:"sales_amount",dim:"product_category"};
-  fillMapSelects();
-  const cats=["อิเล็กทรอนิกส์","เครื่องแต่งกาย","ของใช้ในบ้าน","อาหาร & เครื่องดื่ม","ความงาม","กีฬา"];
-  const chans=["หน้าร้าน","ออนไลน์","ตัวแทนจำหน่าย"];
-  const regions=["กรุงเทพฯ","ภาคกลาง","ภาคเหนือ","ภาคอีสาน","ภาคใต้"];
-  const rows=[]; const today=new Date(); const start=new Date(today); start.setDate(start.getDate()-89); let id=1000;
-  for(let d=0;d<90;d++){ const day=new Date(start); day.setDate(start.getDate()+d);
-    const iso=day.toISOString().slice(0,10); const wk=day.getDay(); const boost=(wk===0||wk===6)?1.4:1; const trend=1+d*0.004;
-    const n=Math.round((6+Math.random()*8)*boost);
-    for(let i=0;i<n;i++){ const cat=cats[(Math.random()*cats.length)|0];
-      const base={"อิเล็กทรอนิกส์":4500,"เครื่องแต่งกาย":1200,"ของใช้ในบ้าน":900,"อาหาร & เครื่องดื่ม":350,"ความงาม":800,"กีฬา":1500}[cat];
-      const qty=1+((Math.random()*4)|0);
-      rows.push({transaction_id:"TXN"+(id++),transaction_date:iso,product_category:cat,
-        channel:chans[(Math.random()*chans.length)|0],region:regions[(Math.random()*regions.length)|0],
-        quantity:qty,sales_amount:Math.round(base*qty*(0.7+Math.random()*0.7)*trend)});
-    }
-  }
-  state.rows=rows;
-  $("#dateTo").value=today.toISOString().slice(0,10);
-  const d30=new Date(today); d30.setDate(d30.getDate()-29); $("#dateFrom").value=d30.toISOString().slice(0,10);
+  const cats=["เฟรมอลูมิเนียม","บานพับถ้วย","รางลิ้นชัก","มือจับเฟอร์นิเจอร์","ปุ่มจับลิ้นชัก","อุปกรณ์จัดเก็บตู้เสื้อผ้า","อุปกรณ์จัดเก็บชุดครัว","unknown"];
+  const prods={}; cats.forEach((c,ci)=>{prods[c]=[];const n=4+((Math.random()*5)|0);for(let i=0;i<n;i++)prods[c].push({sku:(c==="unknown"?"H":"APH")+(100000+ci*1000+i*7),name:c+" รุ่น "+String.fromCharCode(65+i)+(100+((Math.random()*900)|0)),unit:200+Math.random()*2400});});
+  const names=["วุ่นเทคเฟอร์นิช","พี.เอส.พีเฟอร์นิเจอร์","ชัคริชบุญมีลีค","วอร์มเบอร์บิวด์","ทองไทยเฟอร์นิเชอร์","สยามดีไซน์","ลัคกี้สโตนกรุ๊ป","เอเชียโปรดักส์","บ้านสวยวัสดุ","กรีนโฮมดีไซน์","เอ็มเจครีเอชั่น","ไอพลัสดีไซน์","เดอะวู้ดเวิร์ค","ครัวสวยสตูดิโอ"];
+  const cust=[],rows=[]; let order=900000;
+  for(let i=0;i<60;i++)cust.push({code:("กพชวอตศมบ"[i%9]||"ก")+String(100+i).slice(-3),name:names[i%names.length]+(i>13?" "+i:""),scale:0.3+Math.random()*3.2});
+  const today=new Date(); const start=new Date(today); start.setFullYear(start.getFullYear()-2); start.setDate(1);
+  for(let m=0;;m++){ const day=new Date(start); day.setMonth(start.getMonth()+m); if(day>today)break;
+    const yF=day.getFullYear()===today.getFullYear()?1.15:1; const peak=(day.getMonth()===6||day.getMonth()===7)?1.8:1;
+    cust.forEach(c=>{ const norders=Math.max(0,Math.round((Math.random()*3)*c.scale*peak));
+      for(let o=0;o<norders;o++){ const ordn="ORD"+(order++); const d=new Date(day); d.setDate(1+((Math.random()*27)|0)); const iso=d.toISOString().slice(0,10);
+        const lines=1+((Math.random()*4)|0);
+        for(let l=0;l<lines;l++){ const cat=cats[(Math.random()*cats.length)|0]; const p=prods[cat][(Math.random()*prods[cat].length)|0]; const qty=1+((Math.random()*40)|0);
+          rows.push({date:iso,product_price_amount:Math.round(qty*p.unit*yF*c.scale*0.5),qty,order_number:ordn,customer_id:c.code,customer_name:c.name,product_name:p.name,product_sku:p.sku,category:cat}); } } }); }
+  S.demoRows=rows; S.demoCust=cust; S.mode="demo"; badge();
+  $("#dTo").value="2025-12-31"; $("#dFrom").value="2023-12-01";
+  // category dropdown
+  const sel=$("#fCat"); sel.querySelectorAll("option:not([value=''])").forEach(o=>o.remove());
+  cats.forEach(c=>{const o=document.createElement("option");o.value=c;o.textContent=c;sel.appendChild(o);});
+  $("#foot").textContent="DEMO data — ข้อมูลจำลอง · "+cust.length+" ลูกค้า · "+rows.length.toLocaleString()+" รายการ";
 }
-function filteredRows(){
-  const {date}=state.map; const from=$("#dateFrom").value,to=$("#dateTo").value;
-  if(!date||(!from&&!to)) return state.rows;
-  return state.rows.filter(r=>{ const v=(r[date]||"").toString().slice(0,10);
-    if(!v)return false; if(from&&v<from)return false; if(to&&v>to)return false; return true; });
-}
-function computeDemoAgg(){
-  readMapSelections();
-  const rows=filteredRows(); const {date,metric,dim}=state.map; const qty=detectQtyCol();
-  const dayMap=new Map();
-  rows.forEach(r=>{ const d=(r[date]||"").toString().slice(0,10); if(!d)return;
-    const o=dayMap.get(d)||{total:0,count:0}; o.total+=Number(r[metric])||0; o.count++; dayMap.set(d,o); });
-  const dimMap=new Map();
-  rows.forEach(r=>{ const kk=r[dim]??"(ว่าง)"; const o=dimMap.get(kk)||{v:0,c:0}; o.v+=Number(r[metric])||0; o.c++; dimMap.set(kk,o); });
-  state.agg={
-    count:rows.length,
-    total:rows.reduce((s,r)=>s+(Number(r[metric])||0),0),
-    qty:qty?rows.reduce((s,r)=>s+(Number(r[qty])||0),0):null,
-    byDay:[...dayMap.entries()].sort((a,b)=>a[0]<b[0]?-1:1).map(([d,o])=>({d,total:o.total,count:o.count})),
-    byDim:[...dimMap.entries()].sort((a,b)=>b[1].v-a[1].v).map(([k,o])=>({k,v:o.v,c:o.c})),
-    sample:rows.slice(0,200),
-  };
-  state.tableFields=state.schema;
+function demoCompute(){
+  const f=$("#dFrom").value,t=$("#dTo").value,cat=$("#fCat").value;
+  const rows=S.demoRows.filter(r=>(!f||r.date>=f)&&(!t||r.date<=t)&&(!cat||r.category===cat));
+  const years=new Set(); rows.forEach(r=>years.add(+r.date.slice(0,4)));
+  const cy=years.size?Math.max(...years):new Date().getFullYear(),py=cy-1;
+  let total=0,qtyTot=0; const ords=new Set(),custs=new Set(),mon=new Map(),catM=new Map(),prodM=new Map(),custM=new Map();
+  let curM=0,prevM=0; let maxMo=0; rows.forEach(r=>{if(+r.date.slice(0,4)===cy)maxMo=Math.max(maxMo,+r.date.slice(5,7));});
+  rows.forEach(r=>{ const y=+r.date.slice(0,4),mo=+r.date.slice(5,7);
+    total+=r.product_price_amount; qtyTot+=r.qty; ords.add(r.order_number); custs.add(r.customer_id);
+    mon.set(r.date.slice(0,7),(mon.get(r.date.slice(0,7))||0)+r.product_price_amount);
+    catM.set(r.category,(catM.get(r.category)||0)+r.product_price_amount);
+    if(!prodM.has(r.product_sku))prodM.set(r.product_sku,{sku:r.product_sku,pn:r.product_name,cat:r.category,qty:0,v:0,ords:new Set()});
+    const p=prodM.get(r.product_sku); p.qty+=r.qty;p.v+=r.product_price_amount;p.ords.add(r.order_number);
+    if(!custM.has(r.customer_id))custM.set(r.customer_id,{code:r.customer_id,name:r.customer_name,v:0,ords:new Set()});
+    const cu=custM.get(r.customer_id); cu.v+=r.product_price_amount;cu.ords.add(r.order_number);
+    if(y===cy&&mo===maxMo)curM+=r.product_price_amount; if(y===py&&mo===maxMo)prevM+=r.product_price_amount;
+  });
+  S.L={cy,py,total,orders:ords.size,custs:custs.size,qty:qtyTot,yoy:prevM?((curM-prevM)/prevM*100):null,
+    mon:[...mon.entries()].sort((a,b)=>a[0]<b[0]?-1:1).map(([m,v])=>({m,v})),
+    cat:[...catM.entries()].sort((a,b)=>b[1]-a[1]).map(([k,v])=>({k,v})),
+    prods:[...prodM.values()].map(p=>({sku:p.sku,pn:p.pn,cat:p.cat,qty:p.qty,v:p.v,ords:p.ords.size})),
+    custs2:[...custM.values()].map(c=>({code:c.code,name:c.name,v:c.v,ords:c.ords.size})).sort((a,b)=>b.v-a.v),
+    buys:(code)=>{const m=new Map();S.demoRows.filter(r=>r.customer_id===code&&(!f||r.date>=f)&&(!t||r.date<=t)&&(!cat||r.category===cat)).forEach(r=>{const k=r.date+"|"+r.product_sku;if(!m.has(k))m.set(k,{d:r.date,cat:r.category,sku:r.product_sku,pn:r.product_name,qty:0,v:0});const o=m.get(k);o.qty+=r.qty;o.v+=r.product_price_amount;});return [...m.values()].sort((a,b)=>a.d<b.d?1:a.d>b.d?-1:b.v-a.v);}};
+  render();
 }
 
 /* =========================================================================
-   Draw
+   LIVE
    ========================================================================= */
-function applyData(){ if(state.mode==="live") loadLive(); else { computeDemoAgg(); drawAll(); } }
-function destroyCharts(){ Object.values(state.charts).forEach(c=>c&&c.destroy()); state.charts={}; }
-
-function drawAll(){
-  if(!state.agg) return;
-  const {date,metric,dim}=state.map; const a=state.agg;
-  renderKPIs(a); destroyCharts();
-  if(a.byDay.length){ renderTime(a.byDay); renderCount(a.byDay); }
-  if(a.byDim.length){ renderPie(a.byDim); renderBar(a.byDim); }
-  renderTable(a.sample,state.tableFields);
-  $("#tsTag").textContent=date?`ตาม ${date}`:"";
-  $("#cntTag").textContent=date?`ตาม ${date}`:"";
-  $("#pieTag").textContent=dim?`ตาม ${dim}`:"";
-  $("#barTag").textContent=(dim&&metric)?`${dim} × ${metric}`:"";
-  $("#tblTag").textContent=`ตัวอย่าง ${a.sample.length.toLocaleString()} แถวล่าสุด`;
+async function bootLive(){ try{ status("กำลังอ่าน schema…",true); S.schema=await fetchSchema(readCfg().table);
+    if(!S.schema.length)throw new Error("ไม่พบคอลัมน์"); await loadLive(); }
+  catch(e){status("");toast("โหลดไม่สำเร็จ: "+e.message,1);console.error(e);} }
+async function loadLive(){
+  const m=M(),T=tbl(); status("กำลังคำนวณ…",true);
+  const conds=[...dWhere(m.date)]; const cat=$("#fCat").value; if(cat)conds.push(`${qq(m.cat)}='${cat.replace(/'/g,"\\'")}'`);
+  const W=conds.length?("WHERE "+conds.join(" AND ")):"";
+  try{
+    const Q=[
+      bq(`SELECT EXTRACT(YEAR FROM DATE(${qq(m.date)})) y, SUM(${qq(m.amount)}) v, COUNT(DISTINCT ${qq(m.order)}) o, COUNT(DISTINCT ${qq(m.cust)}) c, SUM(${qq(m.qty)}) q FROM ${T} ${W} GROUP BY y`),
+      m.dflag?bq(`SELECT SUM(CASE WHEN ${qq(m.dflag)}='Latest_MonthYear' THEN ${qq(m.amount)} END) latest, SUM(CASE WHEN ${qq(m.dflag)}='Previous_MonthYear' THEN ${qq(m.amount)} END) prevm FROM ${T} ${W}`):Promise.resolve({rows:[]}),
+      bq(`SELECT FORMAT_DATE('%Y-%m',DATE(${qq(m.date)})) m, SUM(${qq(m.amount)}) v FROM ${T} ${W} GROUP BY m ORDER BY m`),
+      bq(`SELECT CAST(${qq(m.cat)} AS STRING) k, SUM(${qq(m.amount)}) v FROM ${T} ${W} GROUP BY k ORDER BY v DESC`),
+      bq(`SELECT CAST(${qq(m.sku)} AS STRING) sku, ANY_VALUE(${qq(m.prodName)}) pn, ANY_VALUE(CAST(${qq(m.cat)} AS STRING)) cat, SUM(${qq(m.qty)}) qty, SUM(${qq(m.amount)}) v, COUNT(DISTINCT ${qq(m.order)}) ords FROM ${T} ${W} GROUP BY sku ORDER BY v DESC LIMIT 200`),
+      bq(`SELECT CAST(${qq(m.cust)} AS STRING) code, ANY_VALUE(${qq(m.custName)}) name, SUM(${qq(m.amount)}) v, COUNT(DISTINCT ${qq(m.order)}) ords FROM ${T} ${W} GROUP BY code ORDER BY v DESC LIMIT 300`),
+    ];
+    const[yr,yo,mon,catr,prod,cust]=await Promise.all(Q);
+    const byY={}; yr.rows.forEach(r=>byY[Number(r.y)]={v:Number(r.v)||0,o:Number(r.o)||0,c:Number(r.c)||0,q:Number(r.q)||0});
+    const yrs=Object.keys(byY).map(Number); const cy=yrs.length?Math.max(...yrs):new Date().getFullYear(),py=cy-1;
+    const k=yo.rows[0]||{}; const latest=Number(k.latest)||0,prevm=Number(k.prevm)||0;
+    const cur=byY[cy]||{v:0,o:0,c:0,q:0};
+    S.L={cy,py,total:cur.v,orders:cur.o,custs:cur.c,qty:cur.q,yoy:prevm?((latest-prevm)/prevm*100):null,
+      mon:mon.rows.map(r=>({m:r.m,v:Number(r.v)||0})),
+      cat:catr.rows.map(r=>({k:r.k||"(ว่าง)",v:Number(r.v)||0})),
+      prods:prod.rows.map(r=>({sku:r.sku,pn:r.pn||r.sku,cat:r.cat||"",qty:Number(r.qty)||0,v:Number(r.v)||0,ords:Number(r.ords)||0})),
+      custs2:cust.rows.map(r=>({code:r.code,name:r.name||r.code,v:Number(r.v)||0,ords:Number(r.ords)||0}))};
+    status(`${S.L.custs2.length} ลูกค้า`);
+    render();
+    if(S.sel) loadBuysLive(S.sel);
+  }catch(e){status("");toast("คำนวณไม่สำเร็จ: "+e.message,1);console.error(e);}
+}
+async function loadBuysLive(code){
+  const m=M(),T=tbl();
+  const conds=[`${qq(m.cust)}='${code.replace(/'/g,"\\'")}'`,...dWhere(m.date)]; const cat=$("#fCat").value; if(cat)conds.push(`${qq(m.cat)}='${cat.replace(/'/g,"\\'")}'`);
+  try{const{rows}=await bq(`SELECT DATE(${qq(m.date)}) d, ANY_VALUE(CAST(${qq(m.cat)} AS STRING)) cat, CAST(${qq(m.sku)} AS STRING) sku, ANY_VALUE(${qq(m.prodName)}) pn, SUM(${qq(m.qty)}) qty, SUM(${qq(m.amount)}) v FROM ${T} WHERE ${conds.join(" AND ")} GROUP BY d, sku ORDER BY d DESC, v DESC LIMIT 400`);
+    renderBuys(rows.map(r=>({d:String(r.d).slice(0,10),cat:r.cat||"",sku:r.sku||"",pn:r.pn||"",qty:Number(r.qty)||0,v:Number(r.v)||0})));}
+  catch(e){toast("โหลดสินค้าลูกค้าไม่สำเร็จ: "+e.message,1);console.error(e);}
 }
 
-function renderKPIs(a){
-  const aov=a.count?a.total/a.count:0;
-  const delta=periodDelta(a.byDay);
-  const cards=[
-    {label:"ยอดขายรวม",value:fmtMoney(a.total),accent:PALETTE[0],delta},
-    {label:"จำนวนธุรกรรม",value:fmtNum(a.count),accent:PALETTE[1]},
-    {label:"ยอดเฉลี่ย/รายการ",value:fmtMoney(aov),accent:PALETTE[2]},
+/* =========================================================================
+   Render
+   ========================================================================= */
+function applyData(){ if(S.mode==="live")loadLive(); else demoCompute(); }
+function render(){ if(!S.L)return; renderKPIs(); renderTrend(); renderCat(); renderProds(); renderCusts();
+  if(S.mode==="demo"){ if(S.sel)renderBuys(S.L.buys(S.sel)); else renderBuysEmpty(); } }
+function renderKPIs(){
+  const L=S.L; const cards=[
+    {l:`ยอดขายปี ${be(L.cy)}`,v:baht(L.total),a:PAL[0],d:L.yoy},
+    {l:"จำนวน Order",v:num(L.orders),a:PAL[1]},
+    {l:"จำนวนลูกค้า",v:num(L.custs),a:PAL[3]},
+    {l:"ยอดเฉลี่ย/Order",v:baht(L.orders?L.total/L.orders:0),a:PAL[2]},
+    {l:"จำนวนหน่วยขาย",v:num(L.qty),a:PAL[4]},
   ];
-  if(a.qty!=null) cards.push({label:"จำนวนหน่วยขาย",value:fmtNum(a.qty),accent:PALETTE[3]});
-  $("#kpis").innerHTML=cards.map(c=>`
-    <div class="kpi"><div class="accent" style="background:${c.accent}"></div>
-      <div class="label">${c.label}</div><div class="value">${c.value}</div>
-      ${c.delta!=null?`<div class="delta ${c.delta>=0?'up':'down'}">${c.delta>=0?'▲':'▼'} ${Math.abs(c.delta).toFixed(1)}% เทียบครึ่งก่อนหน้า</div>`:`<div class="delta">&nbsp;</div>`}
-    </div>`).join("");
+  $("#kpis").innerHTML=cards.map(c=>`<div class="kpi"><div class="accent" style="background:${c.a}"></div>
+    <div class="label">${c.l}</div><div class="value">${c.v}</div>
+    ${c.d!=null?`<div class="delta ${c.d>=0?'up':'down'}">${c.d>=0?'▲':'▼'} ${Math.abs(c.d).toFixed(2)}% YoY (เดือนล่าสุด)</div>`:`<div class="delta">&nbsp;</div>`}</div>`).join("");
 }
-function periodDelta(byDay){
-  if(!byDay||byDay.length<4) return null;
-  const half=Math.floor(byDay.length/2);
-  const a=byDay.slice(0,half).reduce((s,x)=>s+x.total,0);
-  const b=byDay.slice(half).reduce((s,x)=>s+x.total,0);
-  if(!a) return null; return (b-a)/a*100;
+function renderTrend(){ const d=S.L.mon; $("#trendSub").textContent=d.length?`${thM(d[0].m)} - ${thM(d[d.length-1].m)}`:"";
+  if(S.charts.trend)S.charts.trend.destroy();
+  S.charts.trend=new Chart($("#chartTrend"),{type:"line",data:{labels:d.map(x=>thM(x.m)),datasets:[{data:d.map(x=>x.v),borderColor:"#1a73e8",backgroundColor:"rgba(26,115,232,.12)",fill:true,tension:.3,pointRadius:0,borderWidth:2}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>" "+baht(c.raw)}}},
+      scales:{x:{grid:{display:false},ticks:{maxRotation:0,autoSkip:true,maxTicksLimit:10,font:{size:9}}},y:{ticks:{callback:v=>v>=1e6?(v/1e6)+"M":v/1e3+"K"},grid:{color:"#f1f3f4"},beginAtZero:true}}}});
+}
+function renderCat(){ const d=S.L.cat.slice(0,8); const rest=S.L.cat.slice(8).reduce((s,x)=>s+x.v,0); const labels=d.map(x=>x.k),data=d.map(x=>x.v); if(rest>0){labels.push("อื่นๆ");data.push(rest);}
+  if(S.charts.cat)S.charts.cat.destroy();
+  S.charts.cat=new Chart($("#chartCat"),{type:"doughnut",data:{labels,datasets:[{data,backgroundColor:PAL,borderWidth:2,borderColor:"#fff"}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:"58%",plugins:{legend:{position:"right",labels:{boxWidth:11,padding:7,font:{size:10}}},tooltip:{callbacks:{label:c=>{const t=c.dataset.data.reduce((s,x)=>s+x,0);return ` ${c.label}: ${baht(c.raw)} (${t?(c.raw/t*100).toFixed(1):0}%)`;}}}}}});
+}
+function thM(ym){const[y,m]=ym.split("-");return MONTHS[(+m)-1]+" "+be(+y).toString().slice(2);}
+
+function renderProds(){
+  let r=S.L.prods.slice(); const sc=S.prodSort.c,sd=S.prodSort.d;
+  r.sort((a,b)=>sc==="pn"?(a.pn<b.pn?-1:1)*sd:((a[sc]||0)-(b[sc]||0))*sd);
+  r=r.slice(0,100); const mx=Math.max(1,...r.map(x=>x.v));
+  const cols=[{c:"rank",t:"#"},{c:"pn",t:"สินค้า"},{c:"cat",t:"กลุ่ม"},{c:"qty",t:"จำนวน",num:1},{c:"v",t:"ยอดขาย",num:1},{c:"ords",t:"ออเดอร์",num:1}];
+  $("#prodTable thead").innerHTML="<tr>"+cols.map(c=>{const ar=S.prodSort.c===c.c?(sd>0?" ▲":" ▼"):"";return `<th class="${c.num?'num':''}" data-c="${c.c}">${c.t}${ar}</th>`;}).join("")+"</tr>";
+  $("#prodTable tbody").innerHTML=r.map((x,i)=>`<tr>
+    <td><span class="rank ${i<3?'r'+(i+1):''}">${i+1}</span></td>
+    <td class="prod" title="${x.pn}">${x.pn}</td><td>${x.cat}</td>
+    <td class="num">${num(x.qty)}</td>
+    <td class="num" style="background:linear-gradient(90deg,#e8f0fe ${(x.v/mx*100).toFixed(0)}%,transparent 0)">${baht(x.v)}</td>
+    <td class="num">${num(x.ords)}</td></tr>`).join("")||`<tr><td colspan="6" class="drill-hint">ไม่มีข้อมูล</td></tr>`;
+  $("#prodTable thead").querySelectorAll("th").forEach(th=>th.onclick=()=>{const c=th.dataset.c;if(c==="rank")return;if(S.prodSort.c===c)S.prodSort.d*=-1;else{S.prodSort.c=c;S.prodSort.d=c==="pn"?1:-1;}renderProds();});
+}
+let CUST_PP=10;
+function renderCusts(){
+  const cs=S.L.custs2; const pages=Math.max(1,Math.ceil(cs.length/CUST_PP)); S.custPage=Math.min(S.custPage,pages-1);
+  const sl=cs.slice(S.custPage*CUST_PP,S.custPage*CUST_PP+CUST_PP);
+  $("#custTable thead").innerHTML="<tr><th>รหัส</th><th>ชื่อลูกค้า</th><th class='num'>ยอดซื้อ</th><th class='num'>ออเดอร์</th></tr>";
+  $("#custTable tbody").innerHTML=sl.map(c=>`<tr class="click ${S.sel===c.code?'sel':''}" data-code="${c.code}">
+    <td>${c.code}</td><td title="${c.name}">${c.name}</td><td class="num">${baht(c.v)}</td><td class="num">${num(c.ords)}</td></tr>`).join("")||`<tr><td colspan="4" class="drill-hint">ไม่มีข้อมูล</td></tr>`;
+  $("#custTable tbody").querySelectorAll("tr[data-code]").forEach(tr=>tr.onclick=()=>selectCust(tr.dataset.code));
+  $("#custPager").innerHTML=`<span>${cs.length?(S.custPage*CUST_PP+1):0} - ${Math.min((S.custPage+1)*CUST_PP,cs.length)} / ${cs.length}</span>
+    <button ${S.custPage<=0?"disabled":""} id="cPrev">‹</button><button ${S.custPage>=pages-1?"disabled":""} id="cNext">›</button>`;
+  $("#cPrev")&&($("#cPrev").onclick=()=>{S.custPage--;renderCusts();}); $("#cNext")&&($("#cNext").onclick=()=>{S.custPage++;renderCusts();});
+}
+function selectCust(code){ S.sel=(S.sel===code)?"":code; S.buyPage=0; renderCusts();
+  if(!S.sel){ renderBuysEmpty(); return; }
+  if(S.mode==="live") loadBuysLive(S.sel); else renderBuys(S.L.buys(S.sel));
+}
+function renderBuysEmpty(){ $("#buySub").textContent=""; $("#buyTable thead").innerHTML=""; $("#buyTable tbody").innerHTML=`<tr><td class="drill-hint">เลือกลูกค้าทางซ้ายเพื่อดูสินค้าที่ซื้อ</td></tr>`; $("#buyPager").innerHTML=""; }
+let _buys=[];
+function renderBuys(arr){
+  const cust=S.L.custs2.find(c=>c.code===S.sel); $("#buySub").textContent=cust?`${cust.name} (${cust.code}) · ${arr.length} รายการ`:"";
+  _buys=arr; S.buyPage=0; renderBuyTable();
+}
+let BUY_PP=10;
+function renderBuyTable(){
+  const a=_buys; const pages=Math.max(1,Math.ceil(a.length/BUY_PP)); S.buyPage=Math.min(S.buyPage,pages-1);
+  const sl=a.slice(S.buyPage*BUY_PP,S.buyPage*BUY_PP+BUY_PP);
+  $("#buyTable thead").innerHTML="<tr><th>วันที่</th><th>กลุ่ม</th><th>รหัสสินค้า</th><th>ชื่อสินค้า</th><th class='num'>จำนวน</th><th class='num'>ยอดซื้อ</th></tr>";
+  $("#buyTable tbody").innerHTML=sl.map(b=>`<tr><td>${b.d}</td><td>${b.cat}</td><td>${b.sku}</td><td class="prod" title="${b.pn}">${b.pn}</td><td class="num">${num(b.qty)}</td><td class="num">${baht(b.v)}</td></tr>`).join("")||`<tr><td colspan="6" class="drill-hint">ไม่มีข้อมูล</td></tr>`;
+  $("#buyPager").innerHTML=`<span>${a.length?(S.buyPage*BUY_PP+1):0} - ${Math.min((S.buyPage+1)*BUY_PP,a.length)} / ${a.length}</span>
+    <button ${S.buyPage<=0?"disabled":""} id="bPrev">‹</button><button ${S.buyPage>=pages-1?"disabled":""} id="bNext">›</button>`;
+  $("#bPrev")&&($("#bPrev").onclick=()=>{S.buyPage--;renderBuyTable();}); $("#bNext")&&($("#bNext").onclick=()=>{S.buyPage++;renderBuyTable();});
 }
 
-function renderTime(byDay){
-  state.charts.time=new Chart($("#chartTime"),{type:"line",
-    data:{labels:byDay.map(d=>d.d),datasets:[{label:"ยอดขาย",data:byDay.map(d=>d.total),
-      borderColor:PALETTE[0],backgroundColor:"rgba(26,115,232,.12)",fill:true,tension:.3,pointRadius:0,borderWidth:2}]},
-    options:axisOpts(true)});
-}
-function renderCount(byDay){
-  state.charts.count=new Chart($("#chartCount"),{type:"bar",
-    data:{labels:byDay.map(d=>d.d),datasets:[{label:"จำนวนรายการ",data:byDay.map(d=>d.count),
-      backgroundColor:PALETTE[1],borderRadius:3}]},
-    options:axisOpts(false)});
-}
-function renderPie(byDim){
-  const top=byDim.slice(0,8); const rest=byDim.slice(8).reduce((s,x)=>s+x.v,0);
-  const labels=top.map(d=>d.k), data=top.map(d=>d.v);
-  if(rest>0){ labels.push("อื่นๆ"); data.push(rest); }
-  state.charts.pie=new Chart($("#chartPie"),{type:"doughnut",
-    data:{labels,datasets:[{data,backgroundColor:PALETTE,borderWidth:2,borderColor:"#fff"}]},
-    options:{responsive:true,maintainAspectRatio:false,cutout:"58%",
-      plugins:{legend:{position:"right",labels:{boxWidth:12,padding:8,font:{size:11}}},
-        tooltip:{callbacks:{label:c=>{ const tot=c.dataset.data.reduce((s,x)=>s+x,0);
-          const p=tot?(c.raw/tot*100).toFixed(1):0; return ` ${c.label}: ${fmtMoney(c.raw)} (${p}%)`; }}}}}});
-}
-function renderBar(byDim){
-  const d=byDim.slice(0,10);
-  state.charts.bar=new Chart($("#chartBar"),{type:"bar",
-    data:{labels:d.map(x=>x.k),datasets:[{label:"ยอดขาย",data:d.map(x=>x.v),
-      backgroundColor:d.map((_,i)=>PALETTE[i%PALETTE.length]),borderRadius:4}]},
-    options:{indexAxis:"y",responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>" "+fmtMoney(c.raw)}}},
-      scales:{x:{ticks:{callback:v=>fmtMoney(v)},grid:{color:"#f1f3f4"}},y:{grid:{display:false}}}}});
-}
-function axisOpts(money){
-  return {responsive:true,maintainAspectRatio:false,interaction:{mode:"index",intersect:false},
-    plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>" "+(money?fmtMoney(c.raw):fmtNum(c.raw))}}},
-    scales:{x:{grid:{display:false},ticks:{maxRotation:0,autoSkip:true,maxTicksLimit:10}},
-      y:{grid:{color:"#f1f3f4"},ticks:{callback:v=>money?fmtMoney(v):fmtNum(v)},beginAtZero:true}}};
-}
-
-function renderTable(sample,fields){
-  const cols=fields.map(c=>c.name);
-  const numCols=new Set(fields.filter(c=>NUMERIC_TYPES.includes((c.type||"").toUpperCase())).map(c=>c.name));
-  const thead=$("#dataTable thead"), tbody=$("#dataTable tbody");
-  thead.innerHTML="<tr>"+cols.map(c=>{ const ar=state.sort.col===c?(state.sort.dir>0?" ▲":" ▼"):"";
-    return `<th class="${numCols.has(c)?'num':''}" data-col="${c}">${c}${ar}</th>`; }).join("")+"</tr>";
-  let view=sample;
-  if(state.sort.col){ const c=state.sort.col,dr=state.sort.dir,isN=numCols.has(c);
-    view=[...sample].sort((a,b)=>{ let x=a[c],y=b[c];
-      if(isN){x=Number(x)||0;y=Number(y)||0;return (x-y)*dr;}
-      x=(x??"").toString();y=(y??"").toString();return x<y?-dr:x>y?dr:0; }); }
-  tbody.innerHTML=view.length?view.map(r=>"<tr>"+cols.map(c=>{ const isN=numCols.has(c); let v=r[c];
-    if(isN&&v!=null)v=Number(v).toLocaleString("en-US",{maximumFractionDigits:2});
-    return `<td class="${isN?'num':''}">${v??""}</td>`; }).join("")+"</tr>").join("")
-    :`<tr><td colspan="${cols.length}" class="empty">ไม่มีข้อมูลในช่วงที่เลือก</td></tr>`;
-  thead.querySelectorAll("th").forEach(th=>th.onclick=()=>{ const c=th.dataset.col;
-    if(state.sort.col===c)state.sort.dir*=-1; else{state.sort.col=c;state.sort.dir=1;} renderTable(sample,fields); });
-}
-
-/* ---------------- mode / events / boot ---------------- */
-function setModeBadge(){ const b=$("#modeBadge");
-  if(state.mode==="live"){b.className="badge live";b.textContent="LIVE · BigQuery";}
-  else{b.className="badge demo";b.textContent="DEMO MODE";} }
-
+/* ---------- events / boot ---------- */
 $("#signinBtn").onclick=signIn;
-$("#connectBtn").onclick=()=>{ saveCfg(); $("#cfgPanel").open=false; signIn(); };
-$("#refreshBtn").onclick=()=>{ if(state.mode==="live") loadLive(); else { buildDemo(); computeDemoAgg(); drawAll(); } };
-$("#applyBtn").onclick=()=>{ readMapSelections(); applyData(); };
-$("#clearBtn").onclick=async()=>{
-  if(state.mode==="live"){ state.map=guessMapping(state.schema); fillMapSelects(); state.rangeInit=false; await initLatestRange(); state.rangeInit=true; loadLive(); }
-  else { buildDemo(); computeDemoAgg(); drawAll(); }
-};
-["#mapDate","#mapMetric","#mapDim"].forEach(s=>$(s).onchange=()=>{ readMapSelections(); applyData(); });
+$("#connectBtn").onclick=()=>{saveCfg();$("#cfgPanel").open=false;if(S.token){S.mode="live";loadLive();}else signIn();};
+$("#refreshBtn").onclick=()=>{if(S.mode==="live")loadLive();else{buildDemo();demoCompute();}};
+$("#applyBtn").onclick=()=>applyData();
+$("#clearBtn").onclick=()=>{$("#dFrom").value="2023-12-01";$("#dTo").value="2025-12-31";$("#fCat").value="";S.sel="";applyData();};
+$("#fCat").addEventListener("change",()=>applyData());
 
-loadCfg();
-$("#originHint").textContent=(location.origin&&location.origin!=="null")?location.origin:"http://localhost:8080";
-buildDemo(); setModeBadge(); computeDemoAgg(); drawAll();
-
-// restore session from a previous login on the other page
-(function(){ let tok=null; try{tok=sessionStorage.getItem("bqToken");}catch(e){}
-  if(tok){ state.token=tok; state.mode="live"; setModeBadge(); bootLive(); } })();
+loadCfg(); buildDemo(); demoCompute();
+(function(){let tok=null;try{tok=sessionStorage.getItem("bqToken");}catch(e){}if(tok){S.token=tok;S.mode="live";badge();bootLive();}})();
 </script>
 </body>
 </html>
