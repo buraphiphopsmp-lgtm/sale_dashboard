@@ -248,7 +248,7 @@ function guessMap(sc){const lc=n=>n.toLowerCase();
     custName: has("best_customer_name")||has("customer_name")||find(Sx,/cust.*name|customer.*name|ชื่อลูกค้า/)||"",
     sales: has("best_seller_name")||has("sale_name_new")||has("sales_name_old")||find(Sx,/sale.*name|salesman|seller|เซลล์|พนักงานขาย|ผู้ดูแล/)||"",
     segment: has("DBsegment_final")||has("segment_rfm_25")||has("segment_rfm_24")||has("customer_type_1")||find(Sx,/segment|group.*type|cust.*group|tier|grade|กลุ่ม|ประเภท|class/)||"",
-    prodGroup: has("final_category")||has("category")||find(Sx,/prod.*group|item.*group|categor|กลุ่มสินค้า/)||"",
+    prodGroup: has("category")||has("final_category")||find(Sx,/prod.*group|item.*group|categor|กลุ่มสินค้า/)||"",
     prodCode: has("product_sku")||find(Sx,/prod.*code|item.*code|sku|รหัสสินค้า|product_id/)||"",
     prodName: has("product_name")||find(Sx,/prod.*name|item.*name|ชื่อสินค้า|desc/)||"",
   };}
@@ -393,7 +393,7 @@ async function loadLive(){
     // 4 monthly trend (date slider applies)
     Q.push(bq(`SELECT FORMAT_DATE('%Y-%m',DATE(${qq(m.date)})) m, SUM(${A}) v FROM ${T} ${dateW} GROUP BY m ORDER BY m`));
     // 5 products (date slider applies)
-    Q.push(bq(`SELECT DATE(${qq(m.date)}) d${m.prodGroup?`, ANY_VALUE(${qq(m.prodGroup)}) pg`:", '' pg"}${m.prodCode?`, CAST(${qq(m.prodCode)} AS STRING) pc`:", '' pc"}${m.prodName?`, ANY_VALUE(${qq(m.prodName)}) pn`:", '' pn"}${m.qty?`, SUM(${qq(m.qty)}) qty`:", COUNT(*) qty"}, SUM(${A}) v FROM ${T} ${dateW} GROUP BY d${m.prodCode?",pc":""} ORDER BY v DESC LIMIT 500`));
+    Q.push(bq(`SELECT DATE(${qq(m.date)}) d${m.prodGroup?`, ANY_VALUE(${qq(m.prodGroup)}) pg`:", '' pg"}${m.prodCode?`, CAST(${qq(m.prodCode)} AS STRING) pc`:", '' pc"}${m.prodName?`, ANY_VALUE(${qq(m.prodName)}) pn`:", '' pn"}${m.qty?`, SUM(${qq(m.qty)}) qty`:", COUNT(*) qty"}, SUM(${A}) v FROM ${T} ${dateW} GROUP BY d${m.prodCode?",pc":""} ORDER BY d DESC, v DESC LIMIT 500`));
 
     const[seg,yr,kpi,cu,mon,pr]=await Promise.all(Q);
     const byY={},billY={}; yr.rows.forEach(r=>{byY[Number(r.y)]=Number(r.v)||0;billY[Number(r.y)]=Number(r.b)||0;});
