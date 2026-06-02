@@ -365,11 +365,11 @@ async function loadLive(){
     Q.push(bq(`SELECT COUNT(DISTINCT ${qq(a.cust)}) custn FROM ${AGG} ${aw}`));
     // 2 customer list — one row per customer (names from agg if present, else join the txn table)
     if(a.name||a.seller){
-      Q.push(bq(`SELECT CAST(${qq(a.cust)} AS STRING) code, ${a.name?`ANY_VALUE(${qq(a.name)})`:"CAST(NULL AS STRING)"} name, ${a.seller?`ANY_VALUE(${qq(a.seller)})`:"CAST(NULL AS STRING)"} seller, ANY_VALUE(${s25}) v, CAST(ANY_VALUE(${qq(a.seg)}) AS STRING) seg FROM ${AGG} ${aw} GROUP BY code ORDER BY v DESC LIMIT 500`));
+      Q.push(bq(`SELECT CAST(${qq(a.cust)} AS STRING) code, ${a.name?`ANY_VALUE(${qq(a.name)})`:"CAST(NULL AS STRING)"} name, ${a.seller?`ANY_VALUE(${qq(a.seller)})`:"CAST(NULL AS STRING)"} seller FROM ${AGG} ${aw} GROUP BY code ORDER BY code LIMIT 500`));
     }else{
       const tn=m.custName?`ANY_VALUE(t.${qq(m.custName)})`:"CAST(NULL AS STRING)";
       const ts=m.sales?`ANY_VALUE(t.${qq(m.sales)})`:"CAST(NULL AS STRING)";
-      Q.push(bq(`SELECT CAST(g.${qq(a.cust)} AS STRING) code, ${tn} name, ${ts} seller, ANY_VALUE(g.${s25}) v, CAST(ANY_VALUE(g.${qq(a.seg)}) AS STRING) seg FROM ${AGG} g LEFT JOIN ${txnT()} t ON CAST(g.${qq(a.cust)} AS STRING)=CAST(t.${qq(m.custCode)} AS STRING) ${aggWhere("g")} GROUP BY code ORDER BY v DESC LIMIT 500`));
+      Q.push(bq(`SELECT CAST(g.${qq(a.cust)} AS STRING) code, ${tn} name, ${ts} seller FROM ${AGG} g LEFT JOIN ${txnT()} t ON CAST(g.${qq(a.cust)} AS STRING)=CAST(t.${qq(m.custCode)} AS STRING) ${aggWhere("g")} GROUP BY code ORDER BY code LIMIT 500`));
     }
     // 3 monthly trend (txn, scoped to HV customers + date range)
     Q.push((m.date&&m.amount)?bq(`SELECT FORMAT_DATE('%Y-%m',DATE(${qq(m.date)})) m, SUM(${qq(m.amount)}) v FROM ${txnT()} ${txnScope(true)} GROUP BY m ORDER BY m`):Promise.resolve({rows:[]}));
@@ -506,10 +506,10 @@ function renderCustomers(){
   const cs=S.live.cust||[]; const pages=Math.max(1,Math.ceil(cs.length/CUST_PP));
   S.custPage=Math.min(S.custPage,pages-1);
   const slice=cs.slice(S.custPage*CUST_PP,S.custPage*CUST_PP+CUST_PP);
-  $("#custTable thead").innerHTML="<tr><th style='width:34px'>#</th><th>รหัส</th><th>ชื่อลูกค้า</th><th>เซลล์ผู้ดูแล</th><th class='num'>ยอดซื้อ</th></tr>";
+  $("#custTable thead").innerHTML="<tr><th style='width:34px'>#</th><th>รหัส</th><th>ชื่อลูกค้า</th><th>เซลล์ผู้ดูแล</th></tr>";
   $("#custTable tbody").innerHTML=slice.map((c,i)=>`<tr data-code="${c.code}" class="${S.selCust===c.code?'sel':''}">
-    <td>${S.custPage*CUST_PP+i+1}</td><td>${c.code}</td><td title="${c.name}">${c.name}</td><td>${c.sales||""}</td><td class="num">${num(c.v)}</td></tr>`).join("")
-    ||`<tr><td colspan="5" style="text-align:center;color:#999;padding:20px">ไม่มีข้อมูล</td></tr>`;
+    <td>${S.custPage*CUST_PP+i+1}</td><td>${c.code}</td><td title="${c.name}">${c.name}</td><td>${c.sales||""}</td></tr>`).join("")
+    ||`<tr><td colspan="4" style="text-align:center;color:#999;padding:20px">ไม่มีข้อมูล</td></tr>`;
   $("#custTable tbody").querySelectorAll("tr[data-code]").forEach(tr=>tr.onclick=()=>{
     const code=tr.dataset.code; S.selCust=S.selCust===code?null:code; reCompute();});
   $("#custPager").innerHTML=`<span>${cs.length?(S.custPage*CUST_PP+1):0} - ${Math.min((S.custPage+1)*CUST_PP,cs.length)} / ${cs.length}</span>
