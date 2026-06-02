@@ -377,6 +377,7 @@ async function loadLive(){
   status("กำลังคำนวณ…",true);
   const AGG=aggT(), aw=aggWhere();
   const ordCol=S.schema.some(c=>c.name==="order_number")?"order_number":(m.bill||"");
+  const dflag=S.schema.some(c=>c.name==="date_flag")?"date_flag":""; // Looker %YOY uses Latest/Previous_MonthYear
   try{
     const Q=[];
     // 0 segment breakdown — distinct customers per segment (from customer master)
@@ -404,15 +405,15 @@ async function loadLive(){
     Q.push(ordCol?bq(`SELECT EXTRACT(YEAR FROM DATE(${qq(m.date)})) y, COUNT(DISTINCT ${qq(ordCol)}) b FROM ${txnT()} ${asScope(false)} GROUP BY y`):Promise.resolve({rows:[]}));
     // 8 average basket — AVG(avg_basket) over the customer set
     Q.push(a.avgBasket?bq(`SELECT AVG(${qq(a.avgBasket)}) aov FROM ${AGG} ${aw}`):Promise.resolve({rows:[]}));
+    // 9 %YOY — Looker formula: (latest month-year − same month last year) / same month last year
+    Q.push((dflag&&m.amount)?bq(`SELECT SUM(CASE WHEN ${qq(dflag)}='Latest_MonthYear' THEN ${qq(m.amount)} END) latest, SUM(CASE WHEN ${qq(dflag)}='Previous_MonthYear' THEN ${qq(m.amount)} END) prevp FROM ${txnT()} ${asScope(false)}`):Promise.resolve({rows:[]}));
 
-    const[seg,custq,cu,yrq,lastq,mon,pr,billq,aovq]=await Promise.all(Q);
+    const[seg,custq,cu,yrq,lastq,mon,pr,billq,aovq,yoyq]=await Promise.all(Q);
     const byY={}; yrq.rows.forEach(r=>{const y=Number(r.y);byY[y]=(byY[y]||0)+(Number(r.v)||0);});
     const billY={}; billq.rows.forEach(r=>{billY[Number(r.y)]=Number(r.b)||0;});
     const yrs=Object.keys(byY).map(Number); const cy=yrs.length?Math.max(...yrs):new Date().getFullYear(),py=cy-1;
-    // YTD same-period growth: current year up to its latest month vs the same months last year
-    let maxMo=0; yrq.rows.forEach(r=>{if(Number(r.y)===cy)maxMo=Math.max(maxMo,Number(r.mo));});
-    let prevPeriod=0; yrq.rows.forEach(r=>{if(Number(r.y)===py&&Number(r.mo)<=maxMo)prevPeriod+=Number(r.v)||0;});
-    const yoy=prevPeriod?(((byY[cy]||0)-prevPeriod)/prevPeriod*100):null;
+    const yr0=yoyq.rows[0]||{}; const yLatest=Number(yr0.latest)||0, yPrev=Number(yr0.prevp)||0;
+    const yoy=yPrev?((yLatest-yPrev)/yPrev*100):null;
     S.live={
       seg:seg.rows.map(r=>({k:r.k??"(ว่าง)",n:Number(r.n)||0})),
       custn:Number(custq.rows[0]?.custn)||0, cur:byY[cy]||0, prev:byY[py]||0, curYear:cy, prevYear:py, yoy,
@@ -522,7 +523,7 @@ function renderScores(){
   $("#scYearV").textContent=num(L.cur)+" บาท";
   $("#scYearSub").textContent=`${num(L.prev)} บาท (ทั้งหมดในปี ${be(py)})`;
   $("#scGrowV").textContent=growth==null?"–":growth.toFixed(2)+"%";
-  $("#scGrowSub").textContent="ยอดปีนี้ถึงเดือนล่าสุด เทียบช่วงเดียวกันปีก่อน";
+  $("#scGrowSub").textContent="ยอดเดือนล่าสุด เทียบเดือนเดียวกันปีก่อน";
   $("#scBillK").textContent=`จำนวนบิลทั้งหมด ปี ${be(cy).toString().slice(2)}`;
   $("#scBillV").textContent=num(L.bills)+" ใบ";
   $("#scBillSub").textContent=`${num(L.billsPrev)} ใบ (ทั้งหมดในปี ${be(py).toString().slice(2)})`;

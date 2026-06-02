@@ -357,6 +357,7 @@ async function loadLive(){
   status("กำลังคำนวณ…",true);
   const AGG=aggT(), aw=aggWhere();
   const ordCol=S.schema.some(c=>c.name==="order_number")?"order_number":(m.bill||""); // bills = distinct order_number
+  const dflag=S.schema.some(c=>c.name==="date_flag")?"date_flag":""; // Looker %YOY uses Latest/Previous_MonthYear
   try{
     const Q=[];
     // 0 segment breakdown — one segment per customer (MAX) then count, so a customer
@@ -379,14 +380,18 @@ async function loadLive(){
 
     // 7 average basket — AVG over all (filtered) rows, matching Looker's default aggregation
     Q.push(a.avgBasket?bq(`SELECT AVG(${qq(a.avgBasket)}) aov FROM ${AGG} ${aw}`):Promise.resolve({rows:[]}));
+    // 8 %YOY — Looker formula: (latest month-year − same month last year) / same month last year
+    Q.push((dflag&&m.amount)?bq(`SELECT SUM(CASE WHEN ${qq(dflag)}='Latest_MonthYear' THEN ${qq(m.amount)} END) latest, SUM(CASE WHEN ${qq(dflag)}='Previous_MonthYear' THEN ${qq(m.amount)} END) prevp FROM ${txnT()} ${txnScope(false)}`):Promise.resolve({rows:[]}));
 
-    const[seg,custq,cu,mon,yrq,lastq,pr,aovq]=await Promise.all(Q);
+    const[seg,custq,cu,mon,yrq,lastq,pr,aovq,yoyq]=await Promise.all(Q);
     const byY={},billY={}; yrq.rows.forEach(r=>{byY[Number(r.y)]=Number(r.v)||0;billY[Number(r.y)]=Number(r.b)||0;});
     const yrs=Object.keys(byY).map(Number); const cy=yrs.length?Math.max(...yrs):new Date().getFullYear(),py=cy-1;
+    const yr0=yoyq.rows[0]||{}; const yLatest=Number(yr0.latest)||0, yPrev=Number(yr0.prevp)||0;
+    const yoy=yPrev?((yLatest-yPrev)/yPrev*100):null;
     S.live={
       seg:seg.rows.map(r=>({k:r.k??"(ว่าง)",n:Number(r.n)||0})),
       custn:Number(custq.rows[0]?.custn)||0,
-      cur:byY[cy]||0, prev:byY[py]||0,
+      cur:byY[cy]||0, prev:byY[py]||0, yoy,
       curYear:cy, prevYear:py, bills:billY[cy]||0, billsPrev:billY[py]||0, last:lastq.rows[0]?.last||null,
       aov:a.avgBasket?(Number(aovq.rows[0]?.aov)||0):null,
       mon:mon.rows.map(r=>({m:r.m,v:Number(r.v)||0})),
@@ -488,12 +493,12 @@ function thMonth(ym){const[y,m]=ym.split("-");return MONTHS[(+m)-1]+" "+be(+y).t
 
 function renderScores(){
   const L=S.live; const cy=L.curYear,py=L.prevYear;
-  const growth=L.prev?((L.cur-L.prev)/L.prev*100):null;
+  const growth=L.yoy!=null?L.yoy:(L.prev?((L.cur-L.prev)/L.prev*100):null);
   $("#scYearK").textContent=`ยอดซื้อปี ${be(cy)} จนถึงปัจจุบัน`;
   $("#scYearV").textContent=num(L.cur)+" บาท";
   $("#scYearSub").textContent=`${num(L.prev)} บาท (ทั้งหมดในปี ${be(py)})`;
   $("#scGrowV").textContent=growth==null?"–":growth.toFixed(2)+"%";
-  $("#scGrowSub").textContent="ยอดปีนี้เทียบทั้งปีก่อน";
+  $("#scGrowSub").textContent="ยอดเดือนล่าสุด เทียบเดือนเดียวกันปีก่อน";
   $("#scBillK").textContent=`จำนวนบิลทั้งหมด ปี ${be(cy).toString().slice(2)}`;
   $("#scBillV").textContent=num(L.bills)+" ใบ";
   $("#scBillSub").textContent=`${num(L.billsPrev)} ใบ (ทั้งหมดในปี ${be(py).toString().slice(2)})`;
