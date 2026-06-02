@@ -257,7 +257,7 @@ function demoCompute(){
   S.demoRows.forEach(r=>{ if(!inRange(r.date))return; const y=+r.date.slice(0,4),mo=+r.date.slice(5,7)-1; const o=map.get(r.seller); if(!o)return;
     if(y===cy&&mo===latestMonth)o.latest+=r.amount; if(y===py&&mo===latestMonth)o.prevm+=r.amount; });
   const rows=[...map.values()].map(o=>({seller:o.seller,vCy:o.vCy,vPy:o.vPy,custs:o.custs.size,bills:o.bills.size,
-    yoy:o.prevm?((o.latest-o.prevm)/o.prevm*100):null}));
+    yoy:o.vPy>0?((o.vCy-o.vPy)/o.vPy*100):null}));
   S.L={cy,py,rows,
     segByseller:(sl)=>{const m=new Map();S.demoCust.filter(c=>!sl||c.seller===sl).forEach(c=>m.set(c.seg,(m.get(c.seg)||0)+1));return [...m.entries()].map(([k,n])=>({k,n}));},
     custBySeller:(sl)=>S.demoCust.filter(c=>!sl||c.seller===sl).map(c=>({code:c.code,name:c.name,seg:c.seg,v:c.s25,last:c.last})).sort((a,b)=>b.v-a.v)};
@@ -281,32 +281,29 @@ async function loadLive(){
   status("กำลังคำนวณ…",true);
   const dW=dateWhere(m.date); const baseW="WHERE "+[`${qq(m.seller)} IS NOT NULL`,...dW].join(" AND ");
   try{
-    const Q=[];
-    // 0 leaderboard by seller+year
-    Q.push(bq(`SELECT CAST(${qq(m.seller)} AS STRING) s, EXTRACT(YEAR FROM DATE(${qq(m.date)})) y, SUM(${qq(m.amount)}) v, COUNT(DISTINCT ${qq(m.cust)}) c, COUNT(DISTINCT ${qq(m.order)}) b FROM ${T} ${baseW} GROUP BY s, y`));
-    // 1 YoY per seller (date_flag)
-    Q.push(m.dflag?bq(`SELECT CAST(${qq(m.seller)} AS STRING) s, SUM(CASE WHEN ${qq(m.dflag)}='Latest_MonthYear' THEN ${qq(m.amount)} END) latest, SUM(CASE WHEN ${qq(m.dflag)}='Previous_MonthYear' THEN ${qq(m.amount)} END) prevm FROM ${T} WHERE ${qq(m.seller)} IS NOT NULL GROUP BY s`):Promise.resolve({rows:[]}));
-    const[lb,yo]=await Promise.all(Q);
-    const yoMap={}; yo.rows.forEach(r=>yoMap[r.s]={latest:Number(r.latest)||0,prevm:Number(r.prevm)||0});
+    // leaderboard by seller + year (growth = year over year on the shown columns)
+    const{rows:lbRows}=await bq(`SELECT CAST(${qq(m.seller)} AS STRING) s, EXTRACT(YEAR FROM DATE(${qq(m.date)})) y, SUM(${qq(m.amount)}) v, COUNT(DISTINCT ${qq(m.cust)}) c, COUNT(DISTINCT ${qq(m.order)}) b FROM ${T} ${baseW} GROUP BY s, y`);
     const sellerMap=new Map(); const years=new Set();
-    lb.rows.forEach(r=>{const s=r.s,y=Number(r.y);years.add(y);
+    lbRows.forEach(r=>{const s=r.s,y=Number(r.y);years.add(y);
       if(!sellerMap.has(s))sellerMap.set(s,{});sellerMap.get(s)[y]={v:Number(r.v)||0,c:Number(r.c)||0,b:Number(r.b)||0};});
     const cy=years.size?Math.max(...years):new Date().getFullYear(),py=cy-1;
-    const rows=[...sellerMap.entries()].map(([s,by])=>{const yy=yoMap[s]||{};return{
-      seller:s, vCy:(by[cy]?.v)||0, vPy:(by[py]?.v)||0, custs:(by[cy]?.c)||0, bills:(by[cy]?.b)||0,
-      yoy:yy.prevm?((yy.latest-yy.prevm)/yy.prevm*100):null};});
+    const rows=[...sellerMap.entries()].map(([s,by])=>{const vCy=(by[cy]?.v)||0,vPy=(by[py]?.v)||0;return{
+      seller:s, vCy, vPy, custs:(by[cy]?.c)||0, bills:(by[cy]?.b)||0,
+      yoy:vPy>0?((vCy-vPy)/vPy*100):null};});
     S.L={cy,py,rows,_loaded:true};
     status(`${rows.length} เซลล์`);
     // populate seller dropdown once
     const sel=$("#fSeller"); if(sel.options.length<=1){ rows.slice().sort((a,b)=>a.seller<b.seller?-1:1).forEach(r=>{const o=document.createElement("option");o.value=r.seller;o.textContent=r.seller;sel.appendChild(o);}); }
     render();
-    if(S.sel) loadDrillLive(S.sel);
+    loadDrillLive(S.sel);
   }catch(e){status("");toast("คำนวณไม่สำเร็จ: "+e.message,1);console.error(e);}
 }
 async function loadDrillLive(seller){
   const c=readCfg(),m=M(); const A=`\`${c.project}.${c.dataset}.${c.aggTable}\``;
   if(!c.aggTable||!S.mSchema.length){ renderDrillData([], []); return; }
-  const w=`WHERE ${qq(m.mSeller)}='${seller.replace(/'/g,"\\'")}' AND ${qq(m.mCust)} IS NOT NULL AND ${qq(m.mSeg)} IS NOT NULL AND TRIM(CAST(${qq(m.mSeg)} AS STRING))<>''`;
+  const conds=[`${qq(m.mCust)} IS NOT NULL`,`${qq(m.mSeg)} IS NOT NULL AND TRIM(CAST(${qq(m.mSeg)} AS STRING))<>''`];
+  if(seller) conds.unshift(`${qq(m.mSeller)}='${seller.replace(/'/g,"\\'")}'`);
+  const w="WHERE "+conds.join(" AND ");
   try{
     const segP=bq(`SELECT CAST(${qq(m.mSeg)} AS STRING) k, COUNT(DISTINCT ${qq(m.mCust)}) n FROM ${A} ${w} GROUP BY k ORDER BY k`);
     const cuP=bq(`SELECT CAST(${qq(m.mCust)} AS STRING) code, ANY_VALUE(${qq(m.mName)}) name, CAST(MAX(CAST(${qq(m.mSeg)} AS STRING)) AS STRING) seg${m.mS25?`, ANY_VALUE(${qq(m.mS25)}) v`:", 0 v"}${m.mLast?`, MAX(${qq(m.mLast)}) last`:", CAST(NULL AS STRING) last"} FROM ${A} ${w} GROUP BY code ORDER BY v DESC LIMIT 300`);
@@ -320,8 +317,8 @@ async function loadDrillLive(seller){
    ========================================================================= */
 function applyData(){ if(S.mode==="live"){loadLive();} else {demoCompute();} }
 function render(){ if(!S.L)return; renderKPIs(); renderRankBar(); renderTrend(); renderLeaderboard();
-  if(S.sel){ if(S.mode==="demo") renderDrillData(S.L.segByseller(S.sel),S.L.custBySeller(S.sel)); }
-  else renderDrillEmpty();
+  if(S.mode==="demo") renderDrillData(S.L.segByseller(S.sel),S.L.custBySeller(S.sel));
+  // live: drill (overall when no seller) is loaded async via loadDrillLive(S.sel)
 }
 function sellerRows(){ let r=S.L.rows.slice(); const f=$("#fSeller").value; if(f)r=r.filter(x=>x.seller===f); return r; }
 function renderKPIs(){
@@ -394,7 +391,7 @@ function renderLeaderboard(){
   $("#lbTable thead").querySelectorAll("th").forEach(th=>th.onclick=()=>{const c=th.dataset.c;if(c==="rank")return;if(S.sort.c===c)S.sort.d*=-1;else{S.sort.c=c;S.sort.d=c==="seller"?1:-1;}renderLeaderboard();});
   $("#lbTable tbody").querySelectorAll("tr[data-s]").forEach(tr=>tr.onclick=()=>selectSeller(tr.dataset.s));
 }
-function selectSeller(s){ S.sel=(S.sel===s)?"":s; S.cuPage=0; render(); if(S.mode==="live"){ if(S.sel)loadDrillLive(S.sel); else renderDrillEmpty(); trendLive(); } }
+function selectSeller(s){ S.sel=(S.sel===s)?"":s; S.cuPage=0; render(); if(S.mode==="live"){ loadDrillLive(S.sel); trendLive(); } }
 
 function renderDrillEmpty(){
   $("#segSub").textContent="";
@@ -405,7 +402,7 @@ function renderDrillEmpty(){
 const segNo=k=>{const m=(k||"").match(/(\d+)/);return m?+m[1]:99;};
 let _cuData=[];
 function renderDrillData(segArr,custArr){
-  $("#segSub").textContent=S.sel||"";
+  $("#segSub").textContent=S.sel||"ภาพรวมทั้งหมด";
   S.segFilter=""; _cuData=custArr; S.cuPage=0;
   const segs=segArr.slice().sort((a,b)=>segNo(a.k)-segNo(b.k)); const tot=segs.reduce((s,x)=>s+x.n,0); const mx=Math.max(1,...segs.map(s=>s.n));
   $("#segBars").innerHTML=(`<div style="font-size:12px;color:var(--muted);margin-bottom:6px">รวม ${tot} ลูกค้า · คลิกกลุ่มเพื่อกรอง</div>`)+segs.map(s=>`<div class="seg-row clickable" data-seg="${s.k}">
