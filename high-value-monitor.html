@@ -355,7 +355,7 @@ async function loadLive(){
   if(!a.seg||!a.cust){toast("ไม่พบคอลัมน์ segment/customer ในตารางสรุปลูกค้า — ตรวจชื่อตารางใน ⚙",1);$("#cfgPanel").open=true;return;}
   status("กำลังคำนวณ…",true);
   const AGG=aggT(), aw=aggWhere();
-  const s25=a.sales25?qq(a.sales25):"0", s24=a.sales24?qq(a.sales24):"0";
+  const ordCol=S.schema.some(c=>c.name==="order_number")?"order_number":(m.bill||""); // bills = distinct order_number
   try{
     const Q=[];
     // 0 segment breakdown — one segment per customer (MAX) then count, so a customer
@@ -363,18 +363,18 @@ async function loadLive(){
     Q.push(bq(`SELECT seg k, COUNT(*) n FROM (SELECT ${qq(a.cust)} cid, MAX(CAST(${qq(a.seg)} AS STRING)) seg FROM ${AGG} ${aw} GROUP BY cid) GROUP BY seg ORDER BY seg`));
     // 1 distinct High Value customers
     Q.push(bq(`SELECT COUNT(DISTINCT ${qq(a.cust)}) custn FROM ${AGG} ${aw}`));
-    // 2 customer list — one row per customer (names from agg if present, else join the txn table)
-    if(a.name||a.seller){
-      Q.push(bq(`SELECT CAST(${qq(a.cust)} AS STRING) code, ${a.name?`ANY_VALUE(${qq(a.name)})`:"CAST(NULL AS STRING)"} name, ${a.seller?`ANY_VALUE(${qq(a.seller)})`:"CAST(NULL AS STRING)"} seller FROM ${AGG} ${aw} GROUP BY code ORDER BY code LIMIT 500`));
-    }else{
-      const tn=m.custName?`ANY_VALUE(t.${qq(m.custName)})`:"CAST(NULL AS STRING)";
-      const ts=m.sales?`ANY_VALUE(t.${qq(m.sales)})`:"CAST(NULL AS STRING)";
-      Q.push(bq(`SELECT CAST(g.${qq(a.cust)} AS STRING) code, ${tn} name, ${ts} seller FROM ${AGG} g LEFT JOIN ${txnT()} t ON CAST(g.${qq(a.cust)} AS STRING)=CAST(t.${qq(m.custCode)} AS STRING) ${aggWhere("g")} GROUP BY code ORDER BY code LIMIT 500`));
+    // 2 customer list — sorted by SUM(product_price_amount) DESC (amount itself not shown)
+    {
+      const nm=a.name?`ANY_VALUE(g.${qq(a.name)})`:(m.custName?`ANY_VALUE(t.${qq(m.custName)})`:"CAST(NULL AS STRING)");
+      const sl=a.seller?`ANY_VALUE(g.${qq(a.seller)})`:(m.sales?`ANY_VALUE(t.${qq(m.sales)})`:"CAST(NULL AS STRING)");
+      Q.push((m.amount&&m.custCode)
+        ? bq(`SELECT CAST(g.${qq(a.cust)} AS STRING) code, ${nm} name, ${sl} seller FROM ${AGG} g LEFT JOIN ${txnT()} t ON CAST(g.${qq(a.cust)} AS STRING)=CAST(t.${qq(m.custCode)} AS STRING) ${aggWhere("g")} GROUP BY code ORDER BY SUM(t.${qq(m.amount)}) DESC LIMIT 500`)
+        : bq(`SELECT CAST(${qq(a.cust)} AS STRING) code, ${a.name?`ANY_VALUE(${qq(a.name)})`:"CAST(NULL AS STRING)"} name, ${a.seller?`ANY_VALUE(${qq(a.seller)})`:"CAST(NULL AS STRING)"} seller FROM ${AGG} ${aw} GROUP BY code ORDER BY code LIMIT 500`));
     }
     // 3 monthly trend (txn, scoped to HV customers + date range)
     Q.push((m.date&&m.amount)?bq(`SELECT FORMAT_DATE('%Y-%m',DATE(${qq(m.date)})) m, SUM(${qq(m.amount)}) v FROM ${txnT()} ${txnScope(true)} GROUP BY m ORDER BY m`):Promise.resolve({rows:[]}));
     // 4 sales + bills by year (txn, scoped, full year) — the scorecards source
-    Q.push((m.date&&m.amount)?bq(`SELECT EXTRACT(YEAR FROM DATE(${qq(m.date)})) y, SUM(${qq(m.amount)}) v${m.bill?`, COUNT(DISTINCT ${qq(m.bill)}) b`:", 0 b"} FROM ${txnT()} ${txnScope(false)} GROUP BY y`):Promise.resolve({rows:[]}));
+    Q.push((m.date&&m.amount)?bq(`SELECT EXTRACT(YEAR FROM DATE(${qq(m.date)})) y, SUM(${qq(m.amount)}) v${ordCol?`, COUNT(DISTINCT ${qq(ordCol)}) b`:", 0 b"} FROM ${txnT()} ${txnScope(false)} GROUP BY y`):Promise.resolve({rows:[]}));
     // 5 last purchase date (txn, scoped)
     Q.push(m.date?bq(`SELECT MAX(DATE(${qq(m.date)})) last FROM ${txnT()} ${txnScope(false)}`):Promise.resolve({rows:[]}));
     // 6 products (txn, scoped + date range)
