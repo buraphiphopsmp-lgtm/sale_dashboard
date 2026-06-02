@@ -357,13 +357,13 @@ async function loadLive(){
   const s25=a.sales25?qq(a.sales25):"0", s24=a.sales24?qq(a.sales24):"0";
   try{
     const Q=[];
-    // 0 segment breakdown (1 row = 1 customer)
-    Q.push(bq(`SELECT CAST(${qq(a.seg)} AS STRING) k, COUNT(*) n FROM ${AGG} ${aw} GROUP BY k ORDER BY n DESC`));
-    // 1 scorecards from the aggregate table
-    Q.push(bq(`SELECT SUM(${s25}) cur, SUM(${s24}) prev, COUNT(*) custn${a.last?`, MAX(${qq(a.last)}) last`:""} FROM ${AGG} ${aw}`));
-    // 2 customer list (names from agg if present, else join the txn table)
+    // 0 segment breakdown — distinct customers per segment (table has duplicate rows)
+    Q.push(bq(`SELECT CAST(${qq(a.seg)} AS STRING) k, COUNT(DISTINCT ${qq(a.cust)}) n FROM ${AGG} ${aw} GROUP BY k ORDER BY n DESC`));
+    // 1 scorecards — dedupe to one row per customer first, then aggregate
+    Q.push(bq(`SELECT SUM(s25) cur, SUM(s24) prev, COUNT(*) custn${a.last?`, MAX(lastd) last`:""} FROM (SELECT ${qq(a.cust)} c, ANY_VALUE(${s25}) s25, ANY_VALUE(${s24}) s24${a.last?`, MAX(${qq(a.last)}) lastd`:""} FROM ${AGG} ${aw} GROUP BY c)`));
+    // 2 customer list — one row per customer (names from agg if present, else join the txn table)
     if(a.name||a.seller){
-      Q.push(bq(`SELECT CAST(${qq(a.cust)} AS STRING) code, ${a.name?qq(a.name):"CAST(NULL AS STRING)"} name, ${a.seller?qq(a.seller):"CAST(NULL AS STRING)"} seller, ${s25} v, CAST(${qq(a.seg)} AS STRING) seg FROM ${AGG} ${aw} ORDER BY v DESC LIMIT 500`));
+      Q.push(bq(`SELECT CAST(${qq(a.cust)} AS STRING) code, ${a.name?`ANY_VALUE(${qq(a.name)})`:"CAST(NULL AS STRING)"} name, ${a.seller?`ANY_VALUE(${qq(a.seller)})`:"CAST(NULL AS STRING)"} seller, ANY_VALUE(${s25}) v, CAST(ANY_VALUE(${qq(a.seg)}) AS STRING) seg FROM ${AGG} ${aw} GROUP BY code ORDER BY v DESC LIMIT 500`));
     }else{
       const tn=m.custName?`ANY_VALUE(t.${qq(m.custName)})`:"CAST(NULL AS STRING)";
       const ts=m.sales?`ANY_VALUE(t.${qq(m.sales)})`:"CAST(NULL AS STRING)";
