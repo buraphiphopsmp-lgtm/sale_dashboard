@@ -340,6 +340,10 @@ function txnScope(withDate){const a=S.amap,m=S.map;const c=[];
 
 // find the column holding the 7-level RFM segments (High Value..Lost) in the aggregate table
 async function detectSegCol(){
+  // the 7-level RFM segment lives in this column
+  const pref=["segment_rfm_25_fixed","segment_rfm_25","segment_rfm_24_fixed"].find(n=>S.schema.some(c=>c.name===n));
+  if(pref){S.map.segment=pref; const el=$("#mSegment"); if(el)el.value=pref; return;}
+  // fallback: detect by value
   const strs=S.schema.filter(c=>c.type==="STRING"); if(!strs.length)return;
   const sel=strs.map((c,i)=>`COUNTIF(REGEXP_CONTAINS(CAST(${qq(c.name)} AS STRING),r'At Risk|Lost|Non ?Focus|non focus|New Customer')) v${i}`).join(",");
   try{ const{rows}=await bq(`SELECT ${sel} FROM ${txnT()}`);
