@@ -266,6 +266,7 @@ function guessAgg(sc){const has=n=>sc.find(c=>c.name===n)?n:"";
     sales25: has("sales_2025")||find(N,/2025|_25|sales.*25/)||"",
     sales24: has("sales_2024")||find(N,/2024|_24|sales.*24/)||"",
     monetary: has("monetary")||find(N,/monetary|total.*sale|ยอดรวม/)||"",
+    avgBasket: has("avg_basket")||find(N,/avg.*basket|basket.*avg/)||"",
     freq: has("frequency")||has("total_orders")||find(N,/freq|orders|จำนวนบิล/)||"",
     last: find(D,/last.*purchas|ล่าสุด/)||has("last_purchase")||sc.find(c=>D.includes(c.type))?.name||"",
     name: has("best_customer_name")||has("customer_name")||find(Sx,/cust.*name|ชื่อลูกค้า/)||"",
@@ -356,6 +357,7 @@ async function loadLive(){
   status("กำลังคำนวณ…",true);
   const AGG=aggT(), aw=aggWhere();
   const ordCol=S.schema.some(c=>c.name==="order_number")?"order_number":(m.bill||""); // bills = distinct order_number
+  const aAmt=S.aggSchema.some(c=>c.name==="product_price_amount")?"product_price_amount":(a.sales25||""); // sort key (in summary table)
   try{
     const Q=[];
     // 0 segment breakdown — one segment per customer (MAX) then count, so a customer
@@ -363,14 +365,8 @@ async function loadLive(){
     Q.push(bq(`SELECT seg k, COUNT(*) n FROM (SELECT ${qq(a.cust)} cid, MAX(CAST(${qq(a.seg)} AS STRING)) seg FROM ${AGG} ${aw} GROUP BY cid) GROUP BY seg ORDER BY seg`));
     // 1 distinct High Value customers
     Q.push(bq(`SELECT COUNT(DISTINCT ${qq(a.cust)}) custn FROM ${AGG} ${aw}`));
-    // 2 customer list — sorted by SUM(product_price_amount) DESC (amount itself not shown)
-    {
-      const nm=a.name?`ANY_VALUE(g.${qq(a.name)})`:(m.custName?`ANY_VALUE(t.${qq(m.custName)})`:"CAST(NULL AS STRING)");
-      const sl=a.seller?`ANY_VALUE(g.${qq(a.seller)})`:(m.sales?`ANY_VALUE(t.${qq(m.sales)})`:"CAST(NULL AS STRING)");
-      Q.push((m.amount&&m.custCode)
-        ? bq(`SELECT CAST(g.${qq(a.cust)} AS STRING) code, ${nm} name, ${sl} seller FROM ${AGG} g LEFT JOIN ${txnT()} t ON CAST(g.${qq(a.cust)} AS STRING)=CAST(t.${qq(m.custCode)} AS STRING) ${aggWhere("g")} GROUP BY code ORDER BY SUM(t.${qq(m.amount)}) DESC LIMIT 500`)
-        : bq(`SELECT CAST(${qq(a.cust)} AS STRING) code, ${a.name?`ANY_VALUE(${qq(a.name)})`:"CAST(NULL AS STRING)"} name, ${a.seller?`ANY_VALUE(${qq(a.seller)})`:"CAST(NULL AS STRING)"} seller FROM ${AGG} ${aw} GROUP BY code ORDER BY code LIMIT 500`));
-    }
+    // 2 customer list — from the summary table, sorted by SUM(product_price_amount) DESC (not shown)
+    Q.push(bq(`SELECT CAST(${qq(a.cust)} AS STRING) code, ${a.name?`ANY_VALUE(${qq(a.name)})`:"CAST(NULL AS STRING)"} name, ${a.seller?`ANY_VALUE(${qq(a.seller)})`:"CAST(NULL AS STRING)"} seller FROM ${AGG} ${aw} GROUP BY code ORDER BY ${aAmt?`SUM(${qq(aAmt)}) DESC`:"code"} LIMIT 500`));
     // 3 monthly trend (txn, scoped to HV customers + date range)
     Q.push((m.date&&m.amount)?bq(`SELECT FORMAT_DATE('%Y-%m',DATE(${qq(m.date)})) m, SUM(${qq(m.amount)}) v FROM ${txnT()} ${txnScope(true)} GROUP BY m ORDER BY m`):Promise.resolve({rows:[]}));
     // 4 sales + bills by year (txn, scoped, full year) — the scorecards source
@@ -380,7 +376,10 @@ async function loadLive(){
     // 6 products (txn, scoped + date range)
     Q.push((m.date&&m.amount)?bq(`SELECT DATE(${qq(m.date)}) d${m.prodGroup?`, ANY_VALUE(${qq(m.prodGroup)}) pg`:", '' pg"}${m.prodCode?`, CAST(${qq(m.prodCode)} AS STRING) pc`:", '' pc"}${m.prodName?`, ANY_VALUE(${qq(m.prodName)}) pn`:", '' pn"}${m.qty?`, SUM(${qq(m.qty)}) qty`:", COUNT(*) qty"}, SUM(${qq(m.amount)}) v FROM ${txnT()} ${txnScope(true)} GROUP BY d${m.prodCode?",pc":""} ORDER BY v DESC LIMIT 500`):Promise.resolve({rows:[]}));
 
-    const[seg,custq,cu,mon,yrq,lastq,pr]=await Promise.all(Q);
+    // 7 average basket (AVG of avg_basket per HV customer)
+    Q.push(a.avgBasket?bq(`SELECT AVG(ab) aov FROM (SELECT ${qq(a.cust)} c, ANY_VALUE(${qq(a.avgBasket)}) ab FROM ${AGG} ${aw} GROUP BY c)`):Promise.resolve({rows:[]}));
+
+    const[seg,custq,cu,mon,yrq,lastq,pr,aovq]=await Promise.all(Q);
     const byY={},billY={}; yrq.rows.forEach(r=>{byY[Number(r.y)]=Number(r.v)||0;billY[Number(r.y)]=Number(r.b)||0;});
     const yrs=Object.keys(byY).map(Number); const cy=yrs.length?Math.max(...yrs):new Date().getFullYear(),py=cy-1;
     S.live={
@@ -388,6 +387,7 @@ async function loadLive(){
       custn:Number(custq.rows[0]?.custn)||0,
       cur:byY[cy]||0, prev:byY[py]||0,
       curYear:cy, prevYear:py, bills:billY[cy]||0, billsPrev:billY[py]||0, last:lastq.rows[0]?.last||null,
+      aov:a.avgBasket?(Number(aovq.rows[0]?.aov)||0):null,
       mon:mon.rows.map(r=>({m:r.m,v:Number(r.v)||0})),
       cust:cu.rows.map(r=>({code:r.code,name:r.name||r.code,sales:r.seller||"",v:Number(r.v)||0})),
       prod:pr.rows.map(r=>({d:String(r.d).slice(0,10),pg:r.pg||"",pc:r.pc||"",pn:r.pn||"",qty:Number(r.qty)||0,v:Number(r.v)||0})),
@@ -496,7 +496,7 @@ function renderScores(){
   $("#scBillK").textContent=`จำนวนบิลทั้งหมด ปี ${be(cy).toString().slice(2)}`;
   $("#scBillV").textContent=num(L.bills)+" ใบ";
   $("#scBillSub").textContent=`${num(L.billsPrev)} ใบ (ทั้งหมดในปี ${be(py).toString().slice(2)})`;
-  $("#scAovV").textContent=num(L.bills?L.cur/L.bills:0);
+  $("#scAovV").textContent=num(L.aov!=null?L.aov:(L.bills?L.cur/L.bills:0));
   $("#scLastV").textContent=L.last?fmtDate(String(L.last).slice(0,10)):"–";
 }
 function fmtDate(iso){const[y,m,d]=iso.split("-");return `${["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][(+m)-1]} ${+d}, ${y}`;}
