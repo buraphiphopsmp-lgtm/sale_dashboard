@@ -338,6 +338,13 @@ function txnScope(withDate){const a=S.amap,m=S.map;const c=[];
   if(withDate&&S.filt.from&&m.date)c.push(`DATE(${qq(m.date)})>='${esc(S.filt.from)}'`);
   if(withDate&&S.filt.to&&m.date)c.push(`DATE(${qq(m.date)})<='${esc(S.filt.to)}'`);
   return c.length?("WHERE "+c.join(" AND ")):"";}
+// All Segment: sum ALL transactions by default; only scope to a customer set when a filter is active
+function asScope(withDate){const a=S.amap,m=S.map;const c=[];
+  const active=S.filt.segment||S.filt.custCode||S.selCust||(S._codes&&S._codes.length);
+  if(active&&a.cust&&m.custCode)c.push(`${qq(m.custCode)} IN (SELECT ${qq(a.cust)} FROM ${aggT()} ${aggWhere()})`);
+  if(withDate&&S.filt.from&&m.date)c.push(`DATE(${qq(m.date)})>='${esc(S.filt.from)}'`);
+  if(withDate&&S.filt.to&&m.date)c.push(`DATE(${qq(m.date)})<='${esc(S.filt.to)}'`);
+  return c.length?("WHERE "+c.join(" AND ")):"";}
 
 // the 7-level RFM segment (High Value..Lost) lives in the customer master table
 async function detectSegCol(){
@@ -384,13 +391,13 @@ async function loadLive(){
         : bq(`SELECT CAST(${qq(a.cust)} AS STRING) code, ${a.name?`ANY_VALUE(${qq(a.name)})`:"CAST(NULL AS STRING)"} name, ${a.seller?`ANY_VALUE(${qq(a.seller)})`:"CAST(NULL AS STRING)"} seller FROM ${AGG} ${aw} GROUP BY code ORDER BY code LIMIT 500`));
     }
     // 3 sales + bills by year (txn, scoped to those customers, full year)
-    Q.push((m.date&&m.amount)?bq(`SELECT EXTRACT(YEAR FROM DATE(${qq(m.date)})) y, SUM(${qq(m.amount)}) v${ordCol?`, COUNT(DISTINCT ${qq(ordCol)}) b`:", 0 b"} FROM ${txnT()} ${txnScope(false)} GROUP BY y`):Promise.resolve({rows:[]}));
+    Q.push((m.date&&m.amount)?bq(`SELECT EXTRACT(YEAR FROM DATE(${qq(m.date)})) y, SUM(${qq(m.amount)}) v${ordCol?`, COUNT(DISTINCT ${qq(ordCol)}) b`:", 0 b"} FROM ${txnT()} ${asScope(false)} GROUP BY y`):Promise.resolve({rows:[]}));
     // 4 last purchase date (txn, scoped)
-    Q.push(m.date?bq(`SELECT MAX(DATE(${qq(m.date)})) last FROM ${txnT()} ${txnScope(false)}`):Promise.resolve({rows:[]}));
+    Q.push(m.date?bq(`SELECT MAX(DATE(${qq(m.date)})) last FROM ${txnT()} ${asScope(false)}`):Promise.resolve({rows:[]}));
     // 5 monthly trend (txn, scoped + date slider)
-    Q.push((m.date&&m.amount)?bq(`SELECT FORMAT_DATE('%Y-%m',DATE(${qq(m.date)})) m, SUM(${qq(m.amount)}) v FROM ${txnT()} ${txnScope(true)} GROUP BY m ORDER BY m`):Promise.resolve({rows:[]}));
+    Q.push((m.date&&m.amount)?bq(`SELECT FORMAT_DATE('%Y-%m',DATE(${qq(m.date)})) m, SUM(${qq(m.amount)}) v FROM ${txnT()} ${asScope(true)} GROUP BY m ORDER BY m`):Promise.resolve({rows:[]}));
     // 6 products (txn, scoped + date slider)
-    Q.push((m.date&&m.amount)?bq(`SELECT DATE(${qq(m.date)}) d${m.prodGroup?`, ANY_VALUE(${qq(m.prodGroup)}) pg`:", '' pg"}${m.prodCode?`, CAST(${qq(m.prodCode)} AS STRING) pc`:", '' pc"}${m.prodName?`, ANY_VALUE(${qq(m.prodName)}) pn`:", '' pn"}${m.qty?`, SUM(${qq(m.qty)}) qty`:", COUNT(*) qty"}, SUM(${qq(m.amount)}) v FROM ${txnT()} ${txnScope(true)} GROUP BY d${m.prodCode?",pc":""} ORDER BY d DESC, v DESC LIMIT 500`):Promise.resolve({rows:[]}));
+    Q.push((m.date&&m.amount)?bq(`SELECT DATE(${qq(m.date)}) d${m.prodGroup?`, ANY_VALUE(${qq(m.prodGroup)}) pg`:", '' pg"}${m.prodCode?`, CAST(${qq(m.prodCode)} AS STRING) pc`:", '' pc"}${m.prodName?`, ANY_VALUE(${qq(m.prodName)}) pn`:", '' pn"}${m.qty?`, SUM(${qq(m.qty)}) qty`:", COUNT(*) qty"}, SUM(${qq(m.amount)}) v FROM ${txnT()} ${asScope(true)} GROUP BY d${m.prodCode?",pc":""} ORDER BY d DESC, v DESC LIMIT 500`):Promise.resolve({rows:[]}));
 
     const[seg,custq,cu,yrq,lastq,mon,pr]=await Promise.all(Q);
     const byY={},billY={}; yrq.rows.forEach(r=>{byY[Number(r.y)]=Number(r.v)||0;billY[Number(r.y)]=Number(r.b)||0;});
@@ -564,9 +571,7 @@ function setRange(lo,hi){ if(lo){$("#fFrom").value=lo;S.filt.from=lo;} if(hi){$(
 function setDemoRange(){const m=S.map;let lo=null,hi=null;
   S.rows.forEach(r=>{const d=(r[m.date]||"").slice(0,10);if(!d)return;if(!lo||d<lo)lo=d;if(!hi||d>hi)hi=d;});
   setRange(lo,hi);}
-async function initRangeLive(){ if(S.filt._init||!S.map.date)return; const c=readCfg();
-  try{const{rows}=await bq(`SELECT FORMAT_DATE('%Y-%m-%d',MIN(DATE(${qq(S.map.date)}))) lo, FORMAT_DATE('%Y-%m-%d',MAX(DATE(${qq(S.map.date)}))) hi FROM \`${c.project}.${c.dataset}.${c.table}\``);
-    const r=rows[0]; if(r){setRange(r.lo,r.hi);S.filt._init=true;}}catch(e){console.warn("range init",e);}}
+async function initRangeLive(){ if(S.filt._init)return; setRange("2023-12-01","2025-12-31"); S.filt._init=true; }
 
 /* ---- events ---- */
 ["#fSegment","#fCustCode","#fCustName","#fSales","#fFrom","#fTo"].forEach(s=>$(s).addEventListener("change",readFilters));
