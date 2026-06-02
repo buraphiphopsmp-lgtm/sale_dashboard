@@ -390,8 +390,8 @@ async function loadLive(){
         ? bq(`SELECT CAST(g.${qq(a.cust)} AS STRING) code, ${nm} name, ${sl} seller FROM ${AGG} g LEFT JOIN ${txnT()} t ON CAST(g.${qq(a.cust)} AS STRING)=CAST(t.${qq(m.custCode)} AS STRING) ${aggWhere("g")} GROUP BY code ORDER BY SUM(t.${qq(m.amount)}) DESC LIMIT 500`)
         : bq(`SELECT CAST(${qq(a.cust)} AS STRING) code, ${a.name?`ANY_VALUE(${qq(a.name)})`:"CAST(NULL AS STRING)"} name, ${a.seller?`ANY_VALUE(${qq(a.seller)})`:"CAST(NULL AS STRING)"} seller FROM ${AGG} ${aw} GROUP BY code ORDER BY code LIMIT 500`));
     }
-    // 3 sales + bills by year (txn, scoped to those customers, full year)
-    Q.push((m.date&&m.amount)?bq(`SELECT EXTRACT(YEAR FROM DATE(${qq(m.date)})) y, SUM(${qq(m.amount)}) v${ordCol?`, COUNT(DISTINCT ${qq(ordCol)}) b`:", 0 b"} FROM ${txnT()} ${asScope(false)} GROUP BY y`):Promise.resolve({rows:[]}));
+    // 3 sales + bills by year & month (for YTD same-period YoY)
+    Q.push((m.date&&m.amount)?bq(`SELECT EXTRACT(YEAR FROM DATE(${qq(m.date)})) y, EXTRACT(MONTH FROM DATE(${qq(m.date)})) mo, SUM(${qq(m.amount)}) v${ordCol?`, COUNT(DISTINCT ${qq(ordCol)}) b`:", 0 b"} FROM ${txnT()} ${asScope(false)} GROUP BY y, mo`):Promise.resolve({rows:[]}));
     // 4 last purchase date (txn, scoped)
     Q.push(m.date?bq(`SELECT MAX(DATE(${qq(m.date)})) last FROM ${txnT()} ${asScope(false)}`):Promise.resolve({rows:[]}));
     // 5 monthly trend (txn, scoped + date slider)
@@ -400,11 +400,15 @@ async function loadLive(){
     Q.push((m.date&&m.amount)?bq(`SELECT DATE(${qq(m.date)}) d${m.prodGroup?`, ANY_VALUE(${qq(m.prodGroup)}) pg`:", '' pg"}${m.prodCode?`, CAST(${qq(m.prodCode)} AS STRING) pc`:", '' pc"}${m.prodName?`, ANY_VALUE(${qq(m.prodName)}) pn`:", '' pn"}${m.qty?`, SUM(${qq(m.qty)}) qty`:", COUNT(*) qty"}, SUM(${qq(m.amount)}) v FROM ${txnT()} ${asScope(true)} GROUP BY d${m.prodCode?",pc":""} ORDER BY d DESC, v DESC LIMIT 500`):Promise.resolve({rows:[]}));
 
     const[seg,custq,cu,yrq,lastq,mon,pr]=await Promise.all(Q);
-    const byY={},billY={}; yrq.rows.forEach(r=>{byY[Number(r.y)]=Number(r.v)||0;billY[Number(r.y)]=Number(r.b)||0;});
+    const byY={},billY={}; yrq.rows.forEach(r=>{const y=Number(r.y);byY[y]=(byY[y]||0)+(Number(r.v)||0);billY[y]=(billY[y]||0)+(Number(r.b)||0);});
     const yrs=Object.keys(byY).map(Number); const cy=yrs.length?Math.max(...yrs):new Date().getFullYear(),py=cy-1;
+    // YTD same-period growth: current year up to its latest month vs the same months last year
+    let maxMo=0; yrq.rows.forEach(r=>{if(Number(r.y)===cy)maxMo=Math.max(maxMo,Number(r.mo));});
+    let prevPeriod=0; yrq.rows.forEach(r=>{if(Number(r.y)===py&&Number(r.mo)<=maxMo)prevPeriod+=Number(r.v)||0;});
+    const yoy=prevPeriod?(((byY[cy]||0)-prevPeriod)/prevPeriod*100):null;
     S.live={
       seg:seg.rows.map(r=>({k:r.k??"(ว่าง)",n:Number(r.n)||0})),
-      custn:Number(custq.rows[0]?.custn)||0, cur:byY[cy]||0, prev:byY[py]||0, curYear:cy, prevYear:py,
+      custn:Number(custq.rows[0]?.custn)||0, cur:byY[cy]||0, prev:byY[py]||0, curYear:cy, prevYear:py, yoy,
       bills:billY[cy]||0, billsPrev:billY[py]||0, last:lastq.rows[0]?.last||null,
       mon:mon.rows.map(r=>({m:r.m,v:Number(r.v)||0})),
       cust:cu.rows.map(r=>({code:r.code,name:r.name||r.code,sales:r.seller||"",v:0})),
@@ -505,12 +509,12 @@ function thMonth(ym){const[y,m]=ym.split("-");return MONTHS[(+m)-1]+" "+be(+y).t
 
 function renderScores(){
   const L=S.live; const cy=L.curYear,py=L.prevYear;
-  const growth=L.prev?((L.cur-L.prev)/L.prev*100):null;
+  const growth=L.yoy!=null?L.yoy:(L.prev?((L.cur-L.prev)/L.prev*100):null);
   $("#scYearK").textContent=`ยอดซื้อปี ${be(cy)} จนถึงปัจจุบัน`;
   $("#scYearV").textContent=num(L.cur)+" บาท";
   $("#scYearSub").textContent=`${num(L.prev)} บาท (ทั้งหมดในปี ${be(py)})`;
   $("#scGrowV").textContent=growth==null?"–":growth.toFixed(2)+"%";
-  $("#scGrowSub").textContent="ยอดปีนี้เทียบทั้งปีก่อน";
+  $("#scGrowSub").textContent="ยอดปีนี้ถึงเดือนล่าสุด เทียบช่วงเดียวกันปีก่อน";
   $("#scBillK").textContent=`จำนวนบิลทั้งหมด ปี ${be(cy).toString().slice(2)}`;
   $("#scBillV").textContent=num(L.bills)+" ใบ";
   $("#scBillSub").textContent=`${num(L.billsPrev)} ใบ (ทั้งหมดในปี ${be(py).toString().slice(2)})`;
