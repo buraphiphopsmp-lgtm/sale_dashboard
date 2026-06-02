@@ -325,6 +325,7 @@ function aggT(){const c=readCfg();return `\`${c.project}.${c.dataset}.${c.aggTab
 function txnT(){const c=readCfg();return `\`${c.project}.${c.dataset}.${c.table}\``;}
 // WHERE on the customer-aggregate table: High Value scope + active filters
 function aggWhere(px){const a=S.amap;const p=px?px+".":"";const c=[];
+  if(a.cust)c.push(`${p}${qq(a.cust)} IS NOT NULL`);
   if(a.seg)c.push(`${p}${qq(a.seg)} IS NOT NULL AND TRIM(CAST(${p}${qq(a.seg)} AS STRING))<>''`);
   if(S.filt.segment&&a.seg)c.push(`${p}${qq(a.seg)}='${esc(S.filt.segment)}'`);
   if(S.filt.custCode&&a.cust)c.push(`${p}${qq(a.cust)}='${esc(S.filt.custCode)}'`);
@@ -374,11 +375,13 @@ async function loadLive(){
     Q.push(bq(`SELECT CAST(${qq(a.seg)} AS STRING) k, COUNT(DISTINCT ${qq(a.cust)}) n FROM ${AGG} ${aw} GROUP BY k ORDER BY k`));
     // 1 distinct customers in the system
     Q.push(bq(`SELECT COUNT(DISTINCT ${qq(a.cust)}) custn FROM ${AGG} ${aw}`));
-    // 2 customer list — id / best_customer_name / best_seller_name
+    // 2 customer list — id / best_customer_name / best_seller_name, sorted by SUM(product_price_amount) DESC
     {
-      const nm=a.name?`ANY_VALUE(${qq(a.name)})`:"CAST(NULL AS STRING)";
-      const sl=a.seller?`ANY_VALUE(${qq(a.seller)})`:"CAST(NULL AS STRING)";
-      Q.push(bq(`SELECT CAST(${qq(a.cust)} AS STRING) code, ${nm} name, ${sl} seller FROM ${AGG} ${aw} GROUP BY code ORDER BY code LIMIT 500`));
+      const nm=a.name?`ANY_VALUE(g.${qq(a.name)})`:"CAST(NULL AS STRING)";
+      const sl=a.seller?`ANY_VALUE(g.${qq(a.seller)})`:"CAST(NULL AS STRING)";
+      Q.push((m.amount&&m.custCode)
+        ? bq(`SELECT CAST(g.${qq(a.cust)} AS STRING) code, ${nm} name, ${sl} seller FROM ${AGG} g LEFT JOIN ${txnT()} t ON CAST(g.${qq(a.cust)} AS STRING)=CAST(t.${qq(m.custCode)} AS STRING) ${aggWhere("g")} GROUP BY code ORDER BY SUM(t.${qq(m.amount)}) DESC LIMIT 500`)
+        : bq(`SELECT CAST(${qq(a.cust)} AS STRING) code, ${a.name?`ANY_VALUE(${qq(a.name)})`:"CAST(NULL AS STRING)"} name, ${a.seller?`ANY_VALUE(${qq(a.seller)})`:"CAST(NULL AS STRING)"} seller FROM ${AGG} ${aw} GROUP BY code ORDER BY code LIMIT 500`));
     }
     // 3 sales + bills by year (txn, scoped to those customers, full year)
     Q.push((m.date&&m.amount)?bq(`SELECT EXTRACT(YEAR FROM DATE(${qq(m.date)})) y, SUM(${qq(m.amount)}) v${ordCol?`, COUNT(DISTINCT ${qq(ordCol)}) b`:", 0 b"} FROM ${txnT()} ${txnScope(false)} GROUP BY y`):Promise.resolve({rows:[]}));
