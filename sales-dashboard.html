@@ -43,7 +43,7 @@
   .kpi .value{font-size:25px;font-weight:700;margin:5px 0 2px;letter-spacing:-.4px}
   .kpi .delta{font-size:12px;font-weight:600} .kpi .delta.up{color:var(--green)} .kpi .delta.down{color:var(--red)}
   .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:14px}
-  .s8{grid-column:span 8}.s4{grid-column:span 4}.s12{grid-column:span 12}.s5{grid-column:span 5}.s7{grid-column:span 7}
+  .s8{grid-column:span 8}.s4{grid-column:span 4}.s12{grid-column:span 12}.s5{grid-column:span 5}.s7{grid-column:span 7}.s6{grid-column:span 6}.s3{grid-column:span 3}
   @media(max-width:1000px){.grid>div{grid-column:span 12 !important}}
   .card{background:#fff;border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px}
   .card h3{margin:0 0 12px;font-size:14px;font-weight:600;display:flex;justify-content:space-between;align-items:center;gap:8px}
@@ -114,8 +114,9 @@
   <div class="kpis" id="kpis"></div>
 
   <div class="grid">
-    <div class="s8 card"><h3>เทรนด์ยอดขายรายเดือน <span class="sub" id="trendSub"></span></h3><div class="chart-box"><canvas id="chartTrend"></canvas></div></div>
-    <div class="s4 card"><h3>สัดส่วนตามกลุ่มสินค้า</h3><div class="chart-box"><canvas id="chartCat"></canvas></div></div>
+    <div class="s6 card"><h3>เทรนด์ยอดขายรายเดือน <span class="sub" id="trendSub"></span></h3><div class="chart-box"><canvas id="chartTrend"></canvas></div></div>
+    <div class="s3 card"><h3>สัดส่วนตามกลุ่มสินค้า <span class="sub">ตามยอดขาย</span></h3><div class="chart-box"><canvas id="chartCat"></canvas></div></div>
+    <div class="s3 card"><h3>สัดส่วนลูกค้า (ประเภท) <span class="sub">จำนวนราย</span></h3><div class="chart-box"><canvas id="chartCustType"></canvas></div></div>
 
     <div class="s12 card">
       <h3><span>สินค้าขายดี (Top Products)</span>
@@ -192,7 +193,8 @@ function M(){const s=S.schema;return{
   qty:hasCol(s,"qty")||"qty", order:hasCol(s,"order_number")||hasCol(s,"invoice_number")||"order_number",
   cust:hasCol(s,"customer_id")||"customer_id", custName:hasCol(s,"best_customer_name")||hasCol(s,"customer_name")||"customer_name",
   prodName:hasCol(s,"product_name")||"product_name", sku:hasCol(s,"product_sku")||"product_sku",
-  cat:hasCol(s,"final_category")||hasCol(s,"category")||"final_category", dflag:hasCol(s,"date_flag")};}
+  cat:hasCol(s,"final_category")||hasCol(s,"category")||"final_category", dflag:hasCol(s,"date_flag"),
+  custType:hasCol(s,"customer_type_2")||hasCol(s,"customer_type_1")||"customer_type_2"};}
 function tbl(){const c=readCfg();return `\`${c.project}.${c.dataset}.${c.table}\``;}
 function dWhere(col){const f=$("#dFrom").value,t=$("#dTo").value;const c=[];if(f)c.push(`DATE(${qq(col)})>='${f}'`);if(t)c.push(`DATE(${qq(col)})<='${t}'`);return c;}
 
@@ -204,8 +206,11 @@ function buildDemo(){
   const prods={}; cats.forEach((c,ci)=>{prods[c]=[];const n=4+((Math.random()*5)|0);for(let i=0;i<n;i++)prods[c].push({sku:(c==="unknown"?"H":"APH")+(100000+ci*1000+i*7),name:c+" รุ่น "+String.fromCharCode(65+i)+(100+((Math.random()*900)|0)),unit:200+Math.random()*2400});});
   const names=["วุ่นเทคเฟอร์นิช","พี.เอส.พีเฟอร์นิเจอร์","ชัคริชบุญมีลีค","วอร์มเบอร์บิวด์","ทองไทยเฟอร์นิเชอร์","สยามดีไซน์","ลัคกี้สโตนกรุ๊ป","เอเชียโปรดักส์","บ้านสวยวัสดุ","กรีนโฮมดีไซน์","เอ็มเจครีเอชั่น","ไอพลัสดีไซน์","เดอะวู้ดเวิร์ค","ครัวสวยสตูดิโอ"];
   const cust=[],rows=[]; let order=900000;
+  const types=["โรงงานเฟอร์นิเจอร์","ผู้รับเหมา","ร้านค้า/ตัวแทน","ช่างมืออาชีพ","ออกแบบ-ตกแต่ง","ลูกค้าทั่วไป"];
+  const typeW=[0.18,0.22,0.2,0.16,0.12,0.12];
   for(let i=0;i<60;i++){ const nc=2+((Math.random()*3)|0); const pc=[...cats].sort(()=>Math.random()-.5).slice(0,nc);
-    cust.push({code:("กพชวอตศมบ"[i%9]||"ก")+String(100+i).slice(-3),name:names[i%names.length]+(i>13?" "+i:""),scale:0.3+Math.random()*3.2,cats:pc}); }
+    let tr=Math.random(),ty=types[0],ac=0; for(let t=0;t<types.length;t++){ac+=typeW[t];if(tr<=ac){ty=types[t];break;}}
+    cust.push({code:("กพชวอตศมบ"[i%9]||"ก")+String(100+i).slice(-3),name:names[i%names.length]+(i>13?" "+i:""),scale:0.3+Math.random()*3.2,cats:pc,type:ty}); }
   const today=new Date(); const start=new Date(today); start.setFullYear(start.getFullYear()-2); start.setDate(1);
   for(let m=0;;m++){ const day=new Date(start); day.setMonth(start.getMonth()+m); if(day>today)break;
     const yF=day.getFullYear()===today.getFullYear()?1.15:1; const peak=(day.getMonth()===6||day.getMonth()===7)?1.8:1;
@@ -238,7 +243,9 @@ function demoCompute(){
     const cu=custM.get(r.customer_id); cu.v+=r.product_price_amount;cu.ords.add(r.order_number);
     if(y===cy&&mo===maxMo)curM+=r.product_price_amount; if(y===py&&mo===maxMo)prevM+=r.product_price_amount;
   });
+  const typeM=new Map(); S.demoCust.forEach(c=>{if(custs.has(c.code))typeM.set(c.type,(typeM.get(c.type)||0)+1);});
   S.L={cy,py,total,orders:ords.size,custs:custs.size,qty:qtyTot,yoy:prevM?((curM-prevM)/prevM*100):null,
+    custType:[...typeM.entries()].sort((a,b)=>b[1]-a[1]).map(([k,n])=>({k,n})),
     mon:[...mon.entries()].sort((a,b)=>a[0]<b[0]?-1:1).map(([m,v])=>({m,v})),
     cat:[...catM.entries()].sort((a,b)=>b[1]-a[1]).map(([k,v])=>({k,v})),
     prods:[...prodM.values()].map(p=>({sku:p.sku,pn:p.pn,cat:p.cat,qty:p.qty,v:p.v,ords:p.ords.size})),
@@ -265,8 +272,9 @@ async function loadLive(){
       bq(`SELECT CAST(${qq(m.cat)} AS STRING) k, SUM(${qq(m.amount)}) v FROM ${T} ${W} GROUP BY k ORDER BY v DESC`),
       bq(`SELECT CAST(${qq(m.sku)} AS STRING) sku, ANY_VALUE(${qq(m.prodName)}) pn, ANY_VALUE(CAST(${qq(m.cat)} AS STRING)) cat, SUM(${qq(m.qty)}) qty, SUM(${qq(m.amount)}) v, COUNT(DISTINCT ${qq(m.order)}) ords FROM ${T} ${W} GROUP BY sku ORDER BY v DESC LIMIT 200`),
       bq(`SELECT CAST(${qq(m.cust)} AS STRING) code, ANY_VALUE(${qq(m.custName)}) name, SUM(${qq(m.amount)}) v, COUNT(DISTINCT ${qq(m.order)}) ords FROM ${T} ${W} GROUP BY code ORDER BY v DESC LIMIT 300`),
+      bq(`SELECT CAST(${qq(m.custType)} AS STRING) k, COUNT(DISTINCT ${qq(m.cust)}) n FROM ${T} ${W} GROUP BY k ORDER BY n DESC`),
     ];
-    const[yr,yo,mon,catr,prod,cust]=await Promise.all(Q);
+    const[yr,yo,mon,catr,prod,cust,ctype]=await Promise.all(Q);
     const byY={}; yr.rows.forEach(r=>byY[Number(r.y)]={v:Number(r.v)||0,o:Number(r.o)||0,c:Number(r.c)||0,q:Number(r.q)||0});
     const yrs=Object.keys(byY).map(Number); const cy=yrs.length?Math.max(...yrs):new Date().getFullYear(),py=cy-1;
     const k=yo.rows[0]||{}; const latest=Number(k.latest)||0,prevm=Number(k.prevm)||0;
@@ -274,6 +282,7 @@ async function loadLive(){
     S.L={cy,py,total:cur.v,orders:cur.o,custs:cur.c,qty:cur.q,yoy:prevm?((latest-prevm)/prevm*100):null,
       mon:mon.rows.map(r=>({m:r.m,v:Number(r.v)||0})),
       cat:catr.rows.map(r=>({k:r.k||"(ว่าง)",v:Number(r.v)||0})),
+      custType:ctype.rows.map(r=>({k:r.k||"(ว่าง)",n:Number(r.n)||0})),
       prods:prod.rows.map(r=>({sku:r.sku,pn:r.pn||r.sku,cat:r.cat||"",qty:Number(r.qty)||0,v:Number(r.v)||0,ords:Number(r.ords)||0})),
       custs2:cust.rows.map(r=>({code:r.code,name:r.name||r.code,v:Number(r.v)||0,ords:Number(r.ords)||0}))};
     status(`${S.L.custs2.length} ลูกค้า`);
@@ -293,7 +302,7 @@ async function loadBuysLive(code){
    Render
    ========================================================================= */
 function applyData(){ if(S.mode==="live")loadLive(); else demoCompute(); }
-function render(){ if(!S.L)return; renderKPIs(); renderTrend(); renderCat(); renderProds(); renderCusts();
+function render(){ if(!S.L)return; renderKPIs(); renderTrend(); renderCat(); renderCustType(); renderProds(); renderCusts();
   if(S.mode==="demo"){ if(S.sel)renderBuys(S.L.buys(S.sel)); else renderBuysEmpty(); } }
 function renderKPIs(){
   const L=S.L; const cards=[
@@ -325,7 +334,13 @@ const pctPlugin={id:"pct",afterDatasetsDraw(chart){
 function renderCat(){ const d=S.L.cat.slice(0,8); const rest=S.L.cat.slice(8).reduce((s,x)=>s+x.v,0); const labels=d.map(x=>x.k),data=d.map(x=>x.v); if(rest>0){labels.push("อื่นๆ");data.push(rest);}
   if(S.charts.cat)S.charts.cat.destroy();
   S.charts.cat=new Chart($("#chartCat"),{type:"doughnut",data:{labels,datasets:[{data,backgroundColor:PAL,borderWidth:2,borderColor:"#fff"}]},
-    options:{responsive:true,maintainAspectRatio:false,cutout:"58%",plugins:{legend:{position:"right",labels:{boxWidth:11,padding:7,font:{size:10}}},tooltip:{callbacks:{label:c=>{const t=c.dataset.data.reduce((s,x)=>s+x,0);return ` ${c.label}: ${baht(c.raw)} (${t?(c.raw/t*100).toFixed(1):0}%)`;}}}}},
+    options:{responsive:true,maintainAspectRatio:false,cutout:"56%",plugins:{legend:{position:"bottom",labels:{boxWidth:9,padding:5,font:{size:9}}},tooltip:{callbacks:{label:c=>{const t=c.dataset.data.reduce((s,x)=>s+x,0);return ` ${c.label}: ${baht(c.raw)} (${t?(c.raw/t*100).toFixed(1):0}%)`;}}}}},
+    plugins:[pctPlugin]});
+}
+function renderCustType(){ const d=(S.L.custType||[]).slice(0,8); const labels=d.map(x=>x.k),data=d.map(x=>x.n);
+  if(S.charts.ctype)S.charts.ctype.destroy();
+  S.charts.ctype=new Chart($("#chartCustType"),{type:"doughnut",data:{labels,datasets:[{data,backgroundColor:[PAL[4],PAL[2],PAL[0],PAL[3],PAL[5],PAL[1],PAL[6],PAL[7]],borderWidth:2,borderColor:"#fff"}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:"56%",plugins:{legend:{position:"bottom",labels:{boxWidth:9,padding:5,font:{size:9}}},tooltip:{callbacks:{label:c=>{const t=c.dataset.data.reduce((s,x)=>s+x,0);return ` ${c.label}: ${num(c.raw)} ราย (${t?(c.raw/t*100).toFixed(1):0}%)`;}}}}},
     plugins:[pctPlugin]});
 }
 function thM(ym){const[y,m]=ym.split("-");return MONTHS[(+m)-1]+" "+be(+y).toString().slice(2);}
