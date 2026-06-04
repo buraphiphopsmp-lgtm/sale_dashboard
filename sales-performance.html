@@ -73,6 +73,12 @@
   .seg-row .bar i{position:absolute;left:0;top:0;bottom:0;border-radius:3px}
   .seg-row .v{width:46px;text-align:right;font-weight:600;font-size:11px}
   .drill-hint{color:var(--muted);text-align:center;padding:34px;font-size:13px}
+  #typeMixLegend{display:flex;flex-wrap:wrap;gap:10px 14px;margin-bottom:10px;font-size:11px;color:#3c4043}
+  #typeMixLegend span{display:inline-flex;align-items:center;gap:5px}
+  #typeMixLegend i{width:11px;height:11px;border-radius:3px;display:inline-block}
+  .mixbar{display:flex;height:16px;border-radius:3px;overflow:hidden;background:#f1f3f4}
+  .mixbar i{display:block;height:100%}
+  td.mixpct{color:#9aa0a6;font-size:10px;font-weight:400}
   .pager{display:flex;justify-content:flex-end;align-items:center;gap:6px;font-size:11px;color:var(--muted);margin-top:7px}
   .pager button{padding:2px 8px}
   .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#202124;color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;box-shadow:0 4px 12px rgba(0,0,0,.3);z-index:50;opacity:0;pointer-events:none;transition:.25s;max-width:90vw}
@@ -141,6 +147,12 @@
       <div class="tbl-scroll"><table id="lbTable"><thead></thead><tbody></tbody></table></div>
     </div>
 
+    <div class="s12 card">
+      <h3>สัดส่วนประเภทลูกค้าที่เซลล์แต่ละคนดูแล <span class="sub" id="typeMixSub">จำนวนลูกค้าแยกตามประเภท (customer_type_2)</span></h3>
+      <div id="typeMixLegend"></div>
+      <div class="tbl-scroll"><table id="typeMixTable"><thead></thead><tbody></tbody></table></div>
+    </div>
+
     <div class="s5 card">
       <h3 id="segTitle">กลุ่มลูกค้าของเซลล์ <span class="sub" id="segSub"></span></h3>
       <div id="segBars"><div class="drill-hint">เลือกเซลล์จาก Leaderboard เพื่อดูพอร์ตลูกค้า</div></div>
@@ -203,6 +215,7 @@ function M(){ // resolve column names
     date: hasCol(s,"date")||"date", amount: hasCol(s,"product_price_amount")||"product_price_amount",
     cust: hasCol(s,"customer_id")||"customer_id", order: hasCol(s,"order_number")||hasCol(s,"invoice_number")||"order_number",
     dflag: hasCol(s,"date_flag"),
+    cType: hasCol(s,"customer_type_2")||hasCol(s,"customer_type_1")||"customer_type_2",
     mSeller: hasCol(ms,"best_seller_name")||"best_seller_name", mCust: hasCol(ms,"customer_id")||"customer_id",
     mName: hasCol(ms,"best_customer_name")||hasCol(ms,"customer_name")||"best_customer_name",
     mSeg: hasCol(ms,"segment_rfm_25_fixed")||hasCol(ms,"DBsegment_final")||"segment_rfm_25_fixed",
@@ -218,6 +231,8 @@ function buildDemo(){
   const segs=["1.High Value","2.High Potential","3.Potential","4.At Risk","5.New Customer","6.Non Focus","7.Lost"];
   const segW=[0.03,0.04,0.16,0.34,0.04,0.38,0.01];
   const cats=["เฟรมอลูมิเนียม","บานพับถ้วย","รางลิ้นชัก","มือจับเฟอร์นิเจอร์","อุปกรณ์จัดเก็บ","unknown"];
+  const ctypes=["โรงงานเฟอร์นิเจอร์","ผู้รับเหมา","ร้านค้า/ตัวแทน","ช่างมืออาชีพ","ออกแบบ-ตกแต่ง","ลูกค้าทั่วไป"];
+  const ctypeW=[0.18,0.22,0.2,0.16,0.12,0.12];
   const names=["วุ่นเทคเฟอร์นิช","พี.เอส.พีเฟอร์นิเจอร์","ชัคริชบุญมีลีค","วอร์มเบอร์บิวด์","ทองไทยเฟอร์นิเชอร์","สยามดีไซน์","ลัคกี้สโตนกรุ๊ป","เอเชียโปรดักส์","บ้านสวยวัสดุ","กรีนโฮมดีไซน์","เอ็มเจครีเอชั่น","ไอพลัสดีไซน์"];
   const today=new Date(); const cust=[],rows=[]; let cc=0,bill=70000;
   sellers.forEach((sl,si)=>{ const ncust=8+((Math.random()*16)|0); const skill=0.5+Math.random()*2;
@@ -226,7 +241,8 @@ function buildDemo(){
       const scale=0.3+Math.random()*3;
       const lastDays=seg.match(/Lost/)?200+((Math.random()*150)|0):seg.match(/At Risk/)?80+((Math.random()*120)|0):((Math.random()*60)|0);
       const last=new Date(today); last.setDate(last.getDate()-lastDays);
-      cust.push({code,name:names[cc%names.length]+(cc>11?" "+cc:""),seller:sl,seg,scale,last:last.toISOString().slice(0,10),
+      let tr=Math.random(),ctype=ctypes[0],tacc=0; for(let t=0;t<ctypes.length;t++){tacc+=ctypeW[t];if(tr<=tacc){ctype=ctypes[t];break;}}
+      cust.push({code,name:names[cc%names.length]+(cc>11?" "+cc:""),seller:sl,seg,ctype,scale,last:last.toISOString().slice(0,10),
         s25:Math.round(scale*skill*(800000+Math.random()*2500000))});
       // transactions across 2 years
       const start=new Date(today); start.setFullYear(start.getFullYear()-2); start.setDate(1);
@@ -259,7 +275,14 @@ function demoCompute(){
     if(y===cy&&mo===latestMonth)o.latest+=r.amount; if(y===py&&mo===latestMonth)o.prevm+=r.amount; });
   const rows=[...map.values()].map(o=>({seller:o.seller,vCy:o.vCy,vPy:o.vPy,custs:o.custs.size,bills:o.bills.size,
     yoy:o.vPy>0?((o.vCy-o.vPy)/o.vPy*100):null}));
-  S.L={cy,py,rows,
+  // customer-type mix per seller (พอร์ตลูกค้าที่เซลล์ดูแล)
+  const tmTot=new Map(),tmSeller=new Map();
+  S.demoCust.forEach(c=>{ const t=c.ctype||"(ไม่ระบุ)";
+    tmTot.set(t,(tmTot.get(t)||0)+1);
+    if(!tmSeller.has(c.seller))tmSeller.set(c.seller,{seller:c.seller,total:0,byType:{}});
+    const o=tmSeller.get(c.seller); o.byType[t]=(o.byType[t]||0)+1; o.total++; });
+  const tmTypes=[...tmTot.entries()].sort((a,b)=>b[1]-a[1]).map(e=>e[0]);
+  S.L={cy,py,rows,typeMix:{types:tmTypes,rows:[...tmSeller.values()]},
     segByseller:(sl)=>{const m=new Map();S.demoCust.filter(c=>!sl||c.seller===sl).forEach(c=>m.set(c.seg,(m.get(c.seg)||0)+1));return [...m.entries()].map(([k,n])=>({k,n}));},
     custBySeller:(sl)=>S.demoCust.filter(c=>!sl||c.seller===sl).map(c=>({code:c.code,name:c.name,seg:c.seg,v:c.s25,last:c.last})).sort((a,b)=>b.v-a.v)};
   render();
@@ -283,7 +306,11 @@ async function loadLive(){
   const dW=dateWhere(m.date); const baseW="WHERE "+[`${qq(m.seller)} IS NOT NULL`,...dW].join(" AND ");
   try{
     // leaderboard by seller + year (growth = year over year on the shown columns)
-    const{rows:lbRows}=await bq(`SELECT CAST(${qq(m.seller)} AS STRING) s, EXTRACT(YEAR FROM DATE(${qq(m.date)})) y, SUM(${qq(m.amount)}) v, COUNT(DISTINCT ${qq(m.cust)}) c, COUNT(DISTINCT ${qq(m.order)}) b FROM ${T} ${baseW} GROUP BY s, y`);
+    // + customer-type mix per seller (distinct customers by customer_type_2)
+    const[{rows:lbRows},{rows:tmRows}]=await Promise.all([
+      bq(`SELECT CAST(${qq(m.seller)} AS STRING) s, EXTRACT(YEAR FROM DATE(${qq(m.date)})) y, SUM(${qq(m.amount)}) v, COUNT(DISTINCT ${qq(m.cust)}) c, COUNT(DISTINCT ${qq(m.order)}) b FROM ${T} ${baseW} GROUP BY s, y`),
+      bq(`SELECT CAST(${qq(m.seller)} AS STRING) s, CAST(${qq(m.cType)} AS STRING) t, COUNT(DISTINCT ${qq(m.cust)}) n FROM ${T} ${baseW} GROUP BY s, t`),
+    ]);
     const sellerMap=new Map(); const years=new Set();
     lbRows.forEach(r=>{const s=r.s,y=Number(r.y);years.add(y);
       if(!sellerMap.has(s))sellerMap.set(s,{});sellerMap.get(s)[y]={v:Number(r.v)||0,c:Number(r.c)||0,b:Number(r.b)||0};});
@@ -291,7 +318,14 @@ async function loadLive(){
     const rows=[...sellerMap.entries()].map(([s,by])=>{const vCy=(by[cy]?.v)||0,vPy=(by[py]?.v)||0;return{
       seller:s, vCy, vPy, custs:(by[cy]?.c)||0, bills:(by[cy]?.b)||0,
       yoy:vPy>0?((vCy-vPy)/vPy*100):null};});
-    S.L={cy,py,rows,_loaded:true};
+    // build customer-type mix
+    const tmTot=new Map(),tmSeller=new Map();
+    tmRows.forEach(r=>{ const s=r.s; const t=(r.t&&String(r.t).trim())?String(r.t):"(ไม่ระบุ)"; const n=Number(r.n)||0;
+      tmTot.set(t,(tmTot.get(t)||0)+n);
+      if(!tmSeller.has(s))tmSeller.set(s,{seller:s,total:0,byType:{}});
+      const o=tmSeller.get(s); o.byType[t]=(o.byType[t]||0)+n; o.total+=n; });
+    const tmTypes=[...tmTot.entries()].sort((a,b)=>b[1]-a[1]).map(e=>e[0]);
+    S.L={cy,py,rows,typeMix:{types:tmTypes,rows:[...tmSeller.values()]},_loaded:true};
     status(`${rows.length} เซลล์`);
     // populate seller dropdown once
     const sel=$("#fSeller"); if(sel.options.length<=1){ rows.slice().sort((a,b)=>a.seller<b.seller?-1:1).forEach(r=>{const o=document.createElement("option");o.value=r.seller;o.textContent=r.seller;sel.appendChild(o);}); }
@@ -317,7 +351,7 @@ async function loadDrillLive(seller){
    Render
    ========================================================================= */
 function applyData(){ if(S.mode==="live"){loadLive();} else {demoCompute();} }
-function render(){ if(!S.L)return; renderKPIs(); renderRankBar(); renderTrend(); renderLeaderboard();
+function render(){ if(!S.L)return; renderKPIs(); renderRankBar(); renderTrend(); renderLeaderboard(); renderTypeMix();
   if(S.mode==="demo") renderDrillData(S.L.segByseller(S.sel),S.L.custBySeller(S.sel));
   // live: drill (overall when no seller) is loaded async via loadDrillLive(S.sel)
 }
@@ -393,6 +427,29 @@ function renderLeaderboard(){
   $("#lbTable tbody").querySelectorAll("tr[data-s]").forEach(tr=>tr.onclick=()=>selectSeller(tr.dataset.s));
 }
 function selectSeller(s){ S.sel=(S.sel===s)?"":s; S.cuPage=0; render(); if(S.mode==="live"){ loadDrillLive(S.sel); trendLive(); } }
+
+function renderTypeMix(){
+  const data=S.L&&S.L.typeMix; const sub=$("#typeMixSub"), leg=$("#typeMixLegend");
+  if(!data||!data.types.length){ leg.innerHTML=""; $("#typeMixTable thead").innerHTML="";
+    $("#typeMixTable tbody").innerHTML=`<tr><td class="drill-hint">ไม่มีข้อมูลประเภทลูกค้า</td></tr>`; return; }
+  const types=data.types; const colorOf={}; types.forEach((t,i)=>colorOf[t]=PAL[i%PAL.length]);
+  const f=$("#fSeller").value;
+  let rows=data.rows.filter(r=>!f||r.seller===f).slice().sort((a,b)=>b.total-a.total);
+  const grand=rows.reduce((s,r)=>s+r.total,0);
+  sub.textContent=`จำนวนลูกค้าแยกตามประเภท (customer_type_2) · ${rows.length} เซลล์ · ${num(grand)} ลูกค้า`;
+  leg.innerHTML=types.map(t=>`<span><i style="background:${colorOf[t]}"></i>${t}</span>`).join("");
+  $("#typeMixTable thead").innerHTML="<tr><th>เซลล์</th>"+types.map(t=>`<th class="num">${t}</th>`).join("")
+    +`<th class="num">รวม</th><th style="min-width:160px">สัดส่วน</th></tr>`;
+  $("#typeMixTable tbody").innerHTML=rows.map(r=>{
+    const tot=r.total||0;
+    const cells=types.map(t=>{const n=r.byType[t]||0; const pct=tot?n/tot*100:0;
+      return `<td class="num" title="${num(n)} ราย (${pct.toFixed(1)}%)">${n?num(n)+` <span class="mixpct">${pct.toFixed(0)}%</span>`:"–"}</td>`;}).join("");
+    const bar='<div class="mixbar">'+types.map(t=>{const n=r.byType[t]||0; const pct=tot?n/tot*100:0;
+      return pct?`<i style="width:${pct.toFixed(2)}%;background:${colorOf[t]}" title="${t}: ${num(n)} (${pct.toFixed(0)}%)"></i>`:"";}).join("")+'</div>';
+    return `<tr data-s="${r.seller}" class="${S.sel===r.seller?'sel':''}"><td>${r.seller}</td>${cells}<td class="num">${num(tot)}</td><td>${bar}</td></tr>`;
+  }).join("")||`<tr><td colspan="${types.length+3}" class="drill-hint">ไม่มีข้อมูล</td></tr>`;
+  $("#typeMixTable tbody").querySelectorAll("tr[data-s]").forEach(tr=>tr.onclick=()=>selectSeller(tr.dataset.s));
+}
 
 function renderDrillEmpty(){
   $("#segSub").textContent="";
