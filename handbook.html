@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>คู่มือการใช้งาน (Handbook) · Futuretech Dashboards</title>
+<link rel="icon" href="data:," />
+<style>
+  :root{--bg:#eef1f4;--panel:#fff;--ink:#1f2933;--muted:#5f6368;--line:#e2e5e9;
+    --brand:#1a73e8;--gold:#f9ab00;--green:#188038;--red:#c5221f;--teal:#12b5cb;--purple:#9334e6;
+    --shadow:0 1px 2px rgba(60,64,67,.1),0 1px 3px rgba(60,64,67,.08);--radius:10px;}
+  *{box-sizing:border-box} html,body{margin:0;padding:0}
+  body{font-family:"Google Sans","Segoe UI",Roboto,Arial,"Noto Sans Thai",sans-serif;background:var(--bg);color:var(--ink);font-size:13px;line-height:1.6}
+  .appnav{display:flex;align-items:center;gap:2px;background:#202124;padding:0 16px;height:46px;overflow-x:auto}
+  .appnav .brand{color:#fff;font-weight:600;font-size:14px;margin-right:18px;display:flex;align-items:center;gap:8px;white-space:nowrap}
+  .appnav a.tab{color:#bdc1c6;text-decoration:none;font-size:13px;padding:0 16px;height:46px;display:flex;align-items:center;border-bottom:3px solid transparent;white-space:nowrap}
+  .appnav a.tab:hover{color:#fff;background:rgba(255,255,255,.06)}
+  .appnav a.tab.active{color:#fff;border-bottom-color:var(--brand)}
+  .topbar{display:flex;align-items:center;gap:12px;padding:12px 22px;flex-wrap:wrap}
+  .topbar h1{font-size:20px;font-weight:700;margin:0} .topbar h1 .lite{color:var(--brand)}
+  .topbar .tag{font-size:12px;color:var(--muted)} .topbar .spacer{flex:1}
+  .badge{font-size:11px;padding:3px 9px;border-radius:999px;font-weight:500;white-space:nowrap}
+  .badge.demo{background:var(--gold);color:#fff} .badge.live{background:var(--green);color:#fff}
+  .wrap{max-width:1080px;margin:0 auto;padding:4px 18px 70px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px 22px;margin-bottom:16px}
+  .card h2{font-size:16px;font-weight:700;margin:0 0 4px;display:flex;align-items:center;gap:9px;scroll-margin-top:60px}
+  .card h2 .n{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:7px;background:var(--brand);color:#fff;font-size:13px;flex:0 0 auto}
+  .card h3{font-size:13.5px;font-weight:700;margin:18px 0 6px;color:#202124}
+  .card p{margin:6px 0}
+  .lead{color:var(--muted);font-size:13px;margin:0 0 14px}
+  .toc{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px;margin-top:6px}
+  .toc a{display:flex;gap:8px;align-items:center;text-decoration:none;color:var(--ink);background:#f6f8fa;border:1px solid var(--line);border-radius:8px;padding:9px 12px;font-size:12.5px;transition:.12s}
+  .toc a:hover{background:#e8f0fe;border-color:var(--brand)}
+  .toc a b{color:var(--brand)}
+  .steps{counter-reset:s;margin:8px 0 0;padding:0;list-style:none}
+  .steps>li{counter-increment:s;position:relative;padding:0 0 14px 40px;margin:0}
+  .steps>li::before{content:counter(s);position:absolute;left:0;top:-1px;width:26px;height:26px;border-radius:50%;background:var(--brand);color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center;font-size:13px}
+  .steps>li:not(:last-child)::after{content:"";position:absolute;left:12.5px;top:27px;bottom:2px;width:1px;background:var(--line)}
+  .steps b{font-weight:700}
+  ul.tick{list-style:none;padding-left:0;margin:8px 0}
+  ul.tick li{position:relative;padding-left:22px;margin:5px 0}
+  ul.tick li::before{content:"✓";position:absolute;left:0;color:var(--green);font-weight:700}
+  table{border-collapse:collapse;width:100%;font-size:12.5px;margin:10px 0}
+  th,td{padding:9px 12px;border:1px solid var(--line);text-align:left;vertical-align:top}
+  th{background:#f6f8fa;color:#3c4043;font-weight:600}
+  td.k{white-space:nowrap;font-weight:600;color:#202124;width:1%}
+  .chip{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;background:#eef1f4;color:#3c4043;white-space:nowrap}
+  .chip.brand{background:#e8f0fe;color:var(--brand)} .chip.green{background:#e6f4ea;color:var(--green)}
+  .chip.gold{background:#fef7e0;color:#b06000} .chip.red{background:#fce8e6;color:var(--red)} .chip.purple{background:#f3e8fd;color:var(--purple)}
+  code{background:#f1f3f4;border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-family:"SF Mono",Consolas,monospace;font-size:12px;color:#0b57d0}
+  .note{background:#e8f0fe;border-left:4px solid var(--brand);border-radius:6px;padding:11px 14px;margin:12px 0;font-size:12.5px}
+  .note.warn{background:#fef7e0;border-left-color:var(--gold)}
+  .note.safe{background:#e6f4ea;border-left-color:var(--green)}
+  .formula{background:#f6f8fa;border:1px solid var(--line);border-radius:8px;padding:10px 14px;margin:8px 0;font-family:"SF Mono",Consolas,monospace;font-size:12.5px;color:#202124;overflow-x:auto}
+  .pages{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;margin-top:10px}
+  .pg{border:1px solid var(--line);border-radius:9px;padding:13px 15px;background:#fafbfc}
+  .pg .pt{font-weight:700;font-size:13.5px;margin:0 0 3px;display:flex;align-items:center;gap:7px}
+  .pg .q{color:var(--muted);font-size:12px;margin:3px 0 7px}
+  .pg a{color:var(--brand);text-decoration:none;font-size:12px;font-weight:600}
+  .pg a:hover{text-decoration:underline}
+  .foot{font-size:10px;color:#9aa0a6;margin-top:18px;text-align:center}
+  .backtop{display:inline-block;margin-top:6px;font-size:11px;color:var(--muted);text-decoration:none}
+  .backtop:hover{color:var(--brand)}
+</style>
+</head>
+<body>
+
+<nav class="appnav">
+  <div class="brand">📊 Futuretech Dashboards</div>
+  <a href="sales-dashboard.html" class="tab">Sales Dashboard</a>
+  <a href="high-value-monitor.html" class="tab">High Value Monitor</a>
+  <a href="all-segment-monitor.html" class="tab">All Segment Monitor</a>
+  <a href="sales-performance.html" class="tab">Sales Performance</a>
+  <a href="churn-winback.html" class="tab">Churn &amp; Win-back</a>
+  <a href="handbook.html" class="tab active">📖 คู่มือ</a></nav>
+
+<div class="topbar">
+  <h1>FUTURETECH <span class="lite">DASHBOARD</span> · คู่มือการใช้งาน</h1>
+  <span class="tag">Smart Fitting, Smart Living · Handbook อธิบายทุกหน้า ทุกตัวกรอง และคำศัพท์ที่ใช้</span>
+  <span class="spacer"></span>
+  <span class="badge demo">HANDBOOK</span>
+</div>
+
+<div class="wrap" id="top">
+
+  <div class="card">
+    <h2><span class="n">i</span> Dashboard ชุดนี้คืออะไร</h2>
+    <p class="lead">ชุด dashboard สำหรับธุรกิจ Futuretech (อุปกรณ์เฟอร์นิเจอร์ — บานพับ ราง มือจับ ฯลฯ)
+      ดึงข้อมูลยอดขายจริงจาก Google BigQuery มาแสดงผลแบบ Looker Studio
+      ครอบคลุมตั้งแต่ภาพรวมการขาย พยากรณ์ สินค้า ตะกร้าสินค้า ไปจนถึงพฤติกรรมลูกค้าและผลงานเซลล์
+      ทุกหน้าใช้ <b>แถบเมนูด้านบน</b> ร่วมกัน คลิกสลับได้ทันที</p>
+    <div class="note safe"><b>ไม่ต้องล็อกอินก็ลองได้</b> — ทุกหน้าเปิดมาในโหมด <span class="chip gold">DEMO</span>
+      ที่ใช้ข้อมูลจำลอง ให้เห็นหน้าตาและวิธีอ่านก่อน เมื่อพร้อมค่อยกด “เข้าสู่ระบบ Google” เพื่อดูข้อมูลจริง</div>
+    <h3>สารบัญ</h3>
+    <div class="toc">
+      <a href="#start"><b>1.</b> เริ่มต้นใช้งาน 3 ขั้นตอน</a>
+      <a href="#mode"><b>2.</b> โหมด DEMO vs LIVE &amp; BigQuery</a>
+      <a href="#filter"><b>3.</b> แถบตัวกรองร่วม</a>
+      <a href="#pages"><b>4.</b> แนะนำ 5 หน้า Dashboard</a>
+      <a href="#sales"><b>5.</b> เจาะลึก Sales Dashboard</a>
+      <a href="#glossary"><b>6.</b> คำศัพท์ &amp; สูตรคำนวณ</a>
+      <a href="#faq"><b>7.</b> คำถามที่พบบ่อย / แก้ปัญหา</a>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2 id="start"><span class="n">1</span> เริ่มต้นใช้งาน 3 ขั้นตอน</h2>
+    <ol class="steps">
+      <li><b>เปิดหน้าใดก็ได้</b> — จะเริ่มที่โหมด <span class="chip gold">DEMO MODE</span> โดยอัตโนมัติ
+        ลองเล่นตัวกรองและคลิกกราฟได้เลย ข้อมูลทั้งหมดเป็นของจำลอง</li>
+      <li><b>กด “เข้าสู่ระบบ Google”</b> (มุมขวาบน) แล้วเลือกบัญชี Google ที่มีสิทธิ์เข้าถึง BigQuery
+        ของโปรเจกต์ — ระบบจะอ่านโครงสร้างตาราง (schema) ให้เองและสลับเป็น <span class="chip green">LIVE · BigQuery</span></li>
+      <li><b>กรองและอ่านผล</b> — เลือกช่วงวันที่ / กลุ่มสินค้า / ประเภทลูกค้า แล้วกด “ใช้ตัวกรอง”
+        ตัวเลขและกราฟทุกอันจะอัปเดตพร้อมกัน</li>
+    </ol>
+    <div class="note">ปุ่ม <code>↻</code> ข้างปุ่มล็อกอิน = โหลดข้อมูลใหม่ (LIVE) หรือสุ่มข้อมูลจำลองชุดใหม่ (DEMO)</div>
+  </div>
+
+  <div class="card">
+    <h2 id="mode"><span class="n">2</span> โหมด DEMO vs LIVE &amp; การเชื่อมต่อ BigQuery</h2>
+    <table>
+      <tr><th>หัวข้อ</th><th><span class="chip gold">DEMO MODE</span></th><th><span class="chip green">LIVE · BigQuery</span></th></tr>
+      <tr><td class="k">ข้อมูล</td><td>จำลองขึ้นในเบราว์เซอร์ (สุ่มใหม่ได้)</td><td>ข้อมูลจริงจากตาราง <code>sale_transaction</code></td></tr>
+      <tr><td class="k">ต้องล็อกอิน?</td><td>ไม่ต้อง</td><td>ต้องเข้าสู่ระบบ Google ที่มีสิทธิ์ BigQuery</td></tr>
+      <tr><td class="k">ใช้ทำอะไร</td><td>เรียนรู้หน้าตา / สอนงาน / นำเสนอแนวคิด</td><td>วิเคราะห์และตัดสินใจจริง</td></tr>
+    </table>
+    <h3>การตั้งค่าการเชื่อมต่อ (กดที่ ⚙ ด้านบนของหน้า)</h3>
+    <table>
+      <tr><td class="k">Project ID</td><td>โปรเจกต์ Google Cloud ที่ใช้คิดค่า query — ค่าเริ่มต้น <code>futuretech-468203</code></td></tr>
+      <tr><td class="k">Dataset</td><td>ชุดข้อมูลใน BigQuery — <code>sales_data</code></td></tr>
+      <tr><td class="k">Table</td><td>ตารางธุรกรรม — <code>sale_transaction</code></td></tr>
+      <tr><td class="k">OAuth Client ID</td><td>รหัสสำหรับล็อกอินผ่าน Google Identity Services (เว็บอ่าน BigQuery โดยตรง)</td></tr>
+    </table>
+    <div class="note safe"><b>ความปลอดภัย:</b> ระบบล็อกอินด้วยบัญชี Google ของผู้ใช้เอง
+      <u>ไม่มีการเก็บรหัสผ่านหรือ secret ใด ๆ ไว้ในไฟล์</u> และเชื่อมต่อ BigQuery แบบ <b>อ่านอย่างเดียว (read-only)</b></div>
+  </div>
+
+  <div class="card">
+    <h2 id="filter"><span class="n">3</span> แถบตัวกรองร่วม (Filters)</h2>
+    <p class="lead">ตัวกรองด้านบนมีผลกับทั้งหน้า เลือกแล้วกด <b>“ใช้ตัวกรอง”</b> หรือกด <b>“ล้างตัวกรอง”</b> เพื่อรีเซ็ต</p>
+    <table>
+      <tr><th>ตัวกรอง</th><th>ความหมาย</th></tr>
+      <tr><td class="k">ตั้งแต่ / ถึงวันที่</td><td>จำกัดช่วงเวลาของข้อมูลที่นำมาคำนวณทุกการ์ด</td></tr>
+      <tr><td class="k">กลุ่มสินค้า</td><td>โฟกัสเฉพาะหมวดสินค้าที่เลือก (เช่น รางลิ้นชัก, บานพับถ้วย)</td></tr>
+      <tr><td class="k">ประเภทลูกค้า</td><td>กรองตามชนิดลูกค้า (โรงงาน, ผู้รับเหมา, ร้านค้า ฯลฯ)</td></tr>
+      <tr><td class="k">พยากรณ์</td><td>เลือกจำนวนเดือนข้างหน้าที่จะพยากรณ์ (3 หรือ 6 เดือน) — เฉพาะ Sales Dashboard</td></tr>
+    </table>
+    <div class="note"><b>เคล็ดลับ — คลิกกราฟเพื่อกรอง:</b> ใน Sales Dashboard คลิก “ชิ้น” ของกราฟโดนัท
+      (กลุ่มสินค้า/ประเภทลูกค้า) เพื่อกรองทั้งหน้าได้ทันที คลิกซ้ำที่ชิ้นเดิมเพื่อยกเลิก
+      ส่วนหน้า Monitor คลิกที่แถบ segment เพื่อเจาะดูเฉพาะกลุ่มนั้น</div>
+  </div>
+
+  <div class="card">
+    <h2 id="pages"><span class="n">4</span> แนะนำ 5 หน้า Dashboard</h2>
+    <p class="lead">แต่ละหน้าตอบโจทย์คนละมุม เลือกใช้ตามคำถามที่อยากได้คำตอบ</p>
+    <div class="pages">
+      <div class="pg">
+        <div class="pt">📈 Sales Dashboard</div>
+        <div class="q">“ภาพรวมการขายเป็นอย่างไร และกำลังไปทางไหน?”</div>
+        ภาพรวมยอดขาย แนวโน้ม พยากรณ์ สัดส่วนสินค้า/ลูกค้า โมเมนตัมกลุ่มสินค้า สินค้าขายดี ตะกร้าสินค้า และโอกาสขายเพิ่ม รวมในหน้าเดียว
+        <div><a href="sales-dashboard.html">เปิดหน้านี้ →</a></div>
+      </div>
+      <div class="pg">
+        <div class="pt">💎 High Value Monitor</div>
+        <div class="q">“ลูกค้ามูลค่าสูงเป็นใคร ซื้ออะไร และเทรนด์เป็นอย่างไร?”</div>
+        เจาะกลุ่มลูกค้า High Value — ประเภทลูกค้า, เทรนด์ยอดขายรายเดือน, รายชื่อลูกค้า และสินค้าที่เคยซื้อ
+        <div><a href="high-value-monitor.html">เปิดหน้านี้ →</a></div>
+      </div>
+      <div class="pg">
+        <div class="pt">🗂️ All Segment Monitor</div>
+        <div class="q">“ลูกค้าทุกกลุ่มกระจายตัวอย่างไร?”</div>
+        เหมือน High Value แต่ครอบคลุมลูกค้าทุก segment — เปรียบเทียบประเภทลูกค้า เทรนด์ และเจาะรายชื่อ/สินค้าที่เคยซื้อได้
+        <div><a href="all-segment-monitor.html">เปิดหน้านี้ →</a></div>
+      </div>
+      <div class="pg">
+        <div class="pt">🧑‍💼 Sales Performance</div>
+        <div class="q">“เซลล์แต่ละคนทำผลงานอย่างไร?”</div>
+        อันดับเซลล์ตามยอดขาย, เทรนด์รายเดือน และ Leaderboard เปรียบเทียบผลงานรายบุคคล
+        <div><a href="sales-performance.html">เปิดหน้านี้ →</a></div>
+      </div>
+      <div class="pg">
+        <div class="pt">⚠️ Churn &amp; Win-back</div>
+        <div class="q">“ลูกค้าคนไหนกำลังจะหลุด และควรดึงกลับใคร?”</div>
+        สถานะการซื้อของลูกค้า, การกระจายตามระยะเวลาที่หายไป (Recency) และเป้าหมายดึงกลับ
+        <div><a href="churn-winback.html">เปิดหน้านี้ →</a></div>
+      </div>
+    </div>
+    <a class="backtop" href="#top">↑ กลับขึ้นสารบัญ</a>
+  </div>
+
+  <div class="card">
+    <h2 id="sales"><span class="n">5</span> เจาะลึก Sales Dashboard</h2>
+    <p class="lead">หน้านี้เรียงเป็น 5 ส่วนตามลำดับการเล่าเรื่อง — ไล่จากบนลงล่างจะได้ภาพครบตั้งแต่ “ภาพใหญ่” ไปจนถึง “สิ่งที่ต้องลงมือทำ”</p>
+
+    <h3><span class="chip brand">KPI</span> แถบตัวเลขสรุปด้านบน</h3>
+    <ul class="tick">
+      <li><b>ยอดขายปี</b> — ยอดรวมปีล่าสุด พร้อม YoY ของเดือนล่าสุด</li>
+      <li><b>เดือนล่าสุด</b> — ยอดเดือนล่าสุด พร้อม MoM (เทียบเดือนก่อนหน้า)</li>
+      <li><b>เติบโต YTD</b> — เทียบยอดสะสมตั้งแต่ต้นปีกับช่วงเดียวกันของปีก่อน</li>
+      <li><b>พยากรณ์</b> — คาดการณ์ยอดรวมของเดือนข้างหน้า (ตามจำนวนเดือนที่เลือก)</li>
+      <li><b>จำนวน Order / ลูกค้า / SKU</b> — ปริมาณธุรกรรม ฐานลูกค้า และความหลากหลายของสินค้าที่ขายได้</li>
+      <li><b>เฉลี่ยรายการ/ออเดอร์ (Basket size)</b> — เฉลี่ยกี่ชนิดสินค้าต่อ 1 ออเดอร์</li>
+    </ul>
+
+    <h3>① ทิศทางธุรกิจ</h3>
+    <p>กราฟ <b>ยอดขายรายเดือน · แนวโน้ม · พยากรณ์</b> (เส้นจริง + ค่าเฉลี่ยเคลื่อนที่ 3 เดือน + เส้นพยากรณ์),
+      <b>เทียบรายเดือนปีนี้ vs ปีก่อน</b> และ <b>ฤดูกาล</b> (เดือนไหนขายดีเฉลี่ยทุกปี)</p>
+
+    <h3>② โครงสร้างยอดขาย</h3>
+    <p>โดนัท <b>สัดส่วนกลุ่มสินค้า</b> และ <b>สัดส่วนประเภทลูกค้า</b> — <b>คลิกที่ชิ้น</b> เพื่อกรองทั้งหน้า</p>
+
+    <h3>③ โมเมนตัมกลุ่มสินค้า</h3>
+    <p>กราฟแท่ง <b>การเติบโต (YoY)</b> รายกลุ่มสินค้า และ <b>เทรนด์ Top 5 รายเดือน</b> — ดูว่ากลุ่มไหนกำลังโต กลุ่มไหนกำลังหด</p>
+
+    <h3>④ สินค้า &amp; ตะกร้าสินค้า</h3>
+    <p><b>ตารางสินค้าขายดี</b> (มีคอลัมน์ YoY บอกโมเมนตัมรายสินค้า — เรียง/ค้นหาได้)
+      และ <b>ตะกร้าสินค้า (Market Basket)</b> ที่บอกว่าลูกค้ามักซื้อสินค้าคู่ไหนด้วยกัน พร้อมค่า Support / Confidence / Lift</p>
+
+    <h3>⑤ ลูกค้า &amp; โอกาสขายเพิ่ม</h3>
+    <p><b>ตารางลูกค้า</b> (คลิกชื่อเพื่อดูสินค้าที่ลูกค้ารายนั้นเคยซื้อ) และ <b>โอกาสขายเพิ่ม (Cross-sell)</b> —
+      สินค้าขายดีที่ลูกค้ายังไม่เคยซื้อ ใช้เป็นรายการแนะนำให้ทีมขาย</p>
+    <a class="backtop" href="#top">↑ กลับขึ้นสารบัญ</a>
+  </div>
+
+  <div class="card">
+    <h2 id="glossary"><span class="n">6</span> คำศัพท์ &amp; สูตรคำนวณ</h2>
+    <table>
+      <tr><th>คำศัพท์</th><th>ความหมาย</th></tr>
+      <tr><td class="k">YoY</td><td>Year over Year — เทียบกับช่วงเดียวกันของ <b>ปีก่อน</b> &nbsp; <span class="chip green">▲ โต</span> <span class="chip red">▼ หด</span></td></tr>
+      <tr><td class="k">MoM</td><td>Month over Month — เทียบกับ <b>เดือนก่อนหน้า</b></td></tr>
+      <tr><td class="k">YTD</td><td>Year To Date — ยอดสะสมตั้งแต่ต้นปีจนถึงเดือนล่าสุด</td></tr>
+      <tr><td class="k">SKU</td><td>รหัสสินค้าแต่ละชนิด (Stock Keeping Unit)</td></tr>
+      <tr><td class="k">พยากรณ์</td><td>ประมาณการอนาคตจากเส้นแนวโน้มในอดีต (linear trend) — เป็นแนวทาง <b>ไม่รวม</b> ปัจจัยฤดูกาล/โปรโมชัน</td></tr>
+      <tr><td class="k">ค่าเฉลี่ยเคลื่อนที่</td><td>Moving Average — เฉลี่ยยอด 3 เดือนล่าสุดเพื่อให้เห็นแนวโน้มเรียบขึ้น</td></tr>
+    </table>
+
+    <h3>ตะกร้าสินค้า (Market Basket) — 3 ค่าหลัก</h3>
+    <p>ใช้บอกว่าสินค้า A กับ B ถูกซื้อพร้อมกันบ่อยแค่ไหน (กำหนดให้ N = จำนวนออเดอร์ทั้งหมด)</p>
+    <div class="formula">Support&nbsp;&nbsp;&nbsp;&nbsp;= ออเดอร์ที่มีทั้ง A และ B ÷ N&nbsp;&nbsp;<span style="color:#5f6368">(คู่นี้พบบ่อยแค่ไหนในภาพรวม)</span></div>
+    <div class="formula">Confidence = ออเดอร์ที่มีทั้ง A และ B ÷ ออเดอร์ที่มี A&nbsp;&nbsp;<span style="color:#5f6368">(ซื้อ A แล้วมีโอกาสซื้อ B กี่ %)</span></div>
+    <div class="formula">Lift&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= Support ÷ (สัดส่วนที่มี A × สัดส่วนที่มี B)</div>
+    <ul class="tick">
+      <li><span class="chip green">Lift &gt; 1</span> ซื้อคู่กัน <b>บ่อยกว่า</b> โอกาสปกติ → คู่ที่น่าจับมาทำโปรร่วม/วางคู่กัน</li>
+      <li><span class="chip">Lift ≈ 1</span> ซื้อคู่กันพอ ๆ กับโอกาสปกติ (ไม่สัมพันธ์กันชัด)</li>
+      <li><span class="chip red">Lift &lt; 1</span> มักไม่ถูกซื้อคู่กัน</li>
+    </ul>
+
+    <div class="note warn"><b>ปี พ.ศ.:</b> ตัวเลขปีบนหน้าจอแสดงเป็น <b>พุทธศักราช</b> (เช่น 2568) ขณะที่ช่องวันที่ในตัวกรองใช้ ค.ศ. (เช่น 2025)</div>
+    <a class="backtop" href="#top">↑ กลับขึ้นสารบัญ</a>
+  </div>
+
+  <div class="card">
+    <h2 id="faq"><span class="n">7</span> คำถามที่พบบ่อย / แก้ปัญหา</h2>
+    <h3>เข้าสู่ระบบไม่สำเร็จ / ขึ้น error ตอนล็อกอิน</h3>
+    <p>ตรวจว่าบัญชี Google ที่ใช้มีสิทธิ์เข้าถึงโปรเจกต์ BigQuery และถูกเพิ่มใน Test users ของ OAuth consent screen แล้ว
+      จากนั้นลองกด “เข้าสู่ระบบ Google” อีกครั้ง</p>
+    <h3>ข้อมูลไม่ขึ้น / ตัวเลขเป็น 0</h3>
+    <p>ส่วนใหญ่เกิดจากช่วงวันที่ไม่ครอบคลุมข้อมูล — ลองกด <b>“ล้างตัวกรอง”</b> เพื่อกลับไปช่วงเริ่มต้น แล้วค่อยปรับใหม่</p>
+    <h3>ระบบเดาคอลัมน์ผิด (กลุ่มสินค้า/ยอดเงินไม่ตรง)</h3>
+    <p>ระบบจะเดาชื่อคอลัมน์จาก schema ให้อัตโนมัติ หากตารางใช้ชื่อไม่มาตรฐาน อาจคลาดเคลื่อนได้
+      ลองกดปุ่ม <code>↻</code> เพื่อโหลดใหม่ หรือตรวจค่าใน ⚙ การตั้งค่า</p>
+    <h3>ตัวเลขใน DEMO ไม่ตรงกับของจริง</h3>
+    <p>ถูกต้องแล้ว — DEMO เป็นข้อมูลจำลองล้วน ใช้ดูหน้าตาเท่านั้น ต้องล็อกอินเพื่อดูข้อมูลจริง (LIVE)</p>
+    <h3>หน้า “Product &amp; Basket” เดิมหายไป?</h3>
+    <p>ถูกรวมเข้ากับ <b>Sales Dashboard</b> แล้ว (ส่วน ③ โมเมนตัมกลุ่มสินค้า และ ④ ตะกร้าสินค้า) ลิงก์เก่าจะพาไปหน้า Sales Dashboard โดยอัตโนมัติ</p>
+    <a class="backtop" href="#top">↑ กลับขึ้นสารบัญ</a>
+  </div>
+
+  <div class="foot">Futuretech Dashboards · Handbook · Smart Fitting, Smart Living</div>
+</div>
+
+</body>
+</html>
