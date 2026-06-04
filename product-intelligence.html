@@ -184,7 +184,16 @@ function M(){const s=S.schema;return{
   date:hasCol(s,"date")||"date", amount:hasCol(s,"product_price_amount")||"product_price_amount",
   qty:hasCol(s,"qty")||"qty", order:hasCol(s,"order_number")||hasCol(s,"invoice_number")||"order_number",
   sku:hasCol(s,"product_sku")||"product_sku", prodName:hasCol(s,"product_name")||"product_name",
+  model:hasCol(s,"product_model")||hasCol(s,"model")||hasCol(s,"product_series")||hasCol(s,"series"),
+  color:hasCol(s,"product_color")||hasCol(s,"color")||hasCol(s,"colour"),
   cat:hasCol(s,"final_category")||hasCol(s,"category")||"final_category"};}
+// fall back to extracting รุ่น/สี from the product name when dedicated columns are absent
+function parseDetail(name){ name=name||"";
+  const COLORS=["ขาว","ดำ","เทา","เงิน","ทอง","น้ำเงิน","น้ำตาล","แดง","เขียว","นิกเกิล","โครเมียม","ลายไม้","ไม้","ใส"];
+  let color=""; for(const c of COLORS){ if(name.includes(c)){color=c;break;} }
+  let model=""; const m=name.match(/รุ่น\s*([A-Za-z0-9\-\.\/]+)/); if(m)model=m[1];
+  else { const m2=name.match(/([A-Za-z]{1,4}-?\d{2,4})/); if(m2)model=m2[1]; }
+  return {model,color};}
 function tbl(){const c=readCfg();return `\`${c.project}.${c.dataset}.${c.table}\``;}
 function dWhere(col){const f=$("#dFrom").value,t=$("#dTo").value;const c=[];if(f)c.push(`DATE(${qq(col)})>='${f}'`);if(t)c.push(`DATE(${qq(col)})<='${t}'`);return c;}
 function fillOpts(sel,vals){const el=$(sel);if(!el)return;const cur=el.value;el.querySelectorAll("option:not([value=''])").forEach(o=>o.remove());[...new Set(vals.filter(Boolean))].forEach(v=>{const o=document.createElement("option");o.value=v;o.textContent=v;if(v===cur)o.selected=true;el.appendChild(o);});}
@@ -194,7 +203,11 @@ function fillOpts(sel,vals){const el=$(sel);if(!el)return;const cur=el.value;el.
    ========================================================================= */
 function buildDemo(){
   const cats=["เฟรมอลูมิเนียม","บานพับถ้วย","รางลิ้นชัก","มือจับเฟอร์นิเจอร์","ปุ่มจับลิ้นชัก","อุปกรณ์จัดเก็บตู้เสื้อผ้า","อุปกรณ์จัดเก็บชุดครัว","unknown"];
-  const prods={}; cats.forEach((c,ci)=>{prods[c]=[];const n=4+((Math.random()*4)|0);for(let i=0;i<n;i++)prods[c].push({sku:(c==="unknown"?"H":"APH")+(100000+ci*1000+i*7),name:c+" รุ่น "+String.fromCharCode(65+i)+(100+((Math.random()*900)|0)),unit:200+Math.random()*2400});});
+  const COLORS=["ขาว","ดำ","เงิน","ทอง","น้ำเงิน","ลายไม้","นิกเกิลด้าน","โครเมียมเงา"];
+  const SIZES=["16 มม.","18 มม.","25 มม.","35 มม.","350 มม.","450 มม.","ชุดมาตรฐาน"];
+  const prods={}; cats.forEach((c,ci)=>{prods[c]=[];const n=4+((Math.random()*4)|0);for(let i=0;i<n;i++){
+    const model=String.fromCharCode(65+i)+"-"+(100+((Math.random()*900)|0)); const color=COLORS[(Math.random()*COLORS.length)|0]; const size=SIZES[(Math.random()*SIZES.length)|0];
+    prods[c].push({sku:(c==="unknown"?"H":"APH")+(100000+ci*1000+i*7),name:c+" รุ่น "+model+" สี"+color,model,color,size,unit:200+Math.random()*2400});}});
   // category affinity: some categories are bought together more often
   const affinity=[["เฟรมอลูมิเนียม","มือจับเฟอร์นิเจอร์"],["บานพับถ้วย","รางลิ้นชัก"],["รางลิ้นชัก","ปุ่มจับลิ้นชัก"],["อุปกรณ์จัดเก็บชุดครัว","รางลิ้นชัก"]];
   const rows=[]; let order=900000;
@@ -210,7 +223,7 @@ function buildDemo(){
         affinity.forEach(([a,b])=>{ if(base===a&&Math.random()<0.55)lineCats.add(b); if(base===b&&Math.random()<0.45)lineCats.add(a); });
         const extra=(Math.random()*2)|0; for(let e=0;e<extra;e++)lineCats.add(myCats[(Math.random()*myCats.length)|0]);
         [...lineCats].forEach(cat=>{ const p=prods[cat][(Math.random()*prods[cat].length)|0]; const qty=1+((Math.random()*30)|0);
-          rows.push({date:iso,product_price_amount:Math.round(qty*p.unit*yF*0.5),qty,order_number:ordn,product_sku:p.sku,product_name:p.name,category:cat}); });
+          rows.push({date:iso,product_price_amount:Math.round(qty*p.unit*yF*0.5),qty,order_number:ordn,product_sku:p.sku,product_name:p.name,product_model:p.model,product_color:p.color,product_size:p.size,category:cat}); });
       } } }
   S.demoRows=rows; S.mode="demo"; badge();
   $("#dTo").value="2025-12-31"; $("#dFrom").value="2023-12-01";
@@ -230,7 +243,7 @@ function demoCompute(){
     if(!catM.has(r.category))catM.set(r.category,{k:r.category,v:0,cy:0,py:0,qty:0,ords:new Set()});
     const cm=catM.get(r.category); cm.v+=r.product_price_amount; cm.qty+=r.qty; cm.ords.add(r.order_number);
     if(y===cy)cm.cy+=r.product_price_amount; if(y===py)cm.py+=r.product_price_amount;
-    if(!prodM.has(r.product_sku))prodM.set(r.product_sku,{sku:r.product_sku,pn:r.product_name,cat:r.category,v:0,qty:0,cy:0,py:0,ords:new Set()});
+    if(!prodM.has(r.product_sku))prodM.set(r.product_sku,{sku:r.product_sku,pn:r.product_name,cat:r.category,model:r.product_model||"",color:r.product_color||"",size:r.product_size||"",v:0,qty:0,cy:0,py:0,ords:new Set()});
     const p=prodM.get(r.product_sku); p.v+=r.product_price_amount; p.qty+=r.qty; p.ords.add(r.order_number);
     if(y===cy)p.cy+=r.product_price_amount; if(y===py)p.py+=r.product_price_amount;
     const key=r.category+"|"+mo; monCat.set(key,(monCat.get(key)||0)+r.product_price_amount);
@@ -253,7 +266,7 @@ function demoCompute(){
   S.L={cy,py,total,orders:ords.size,skus:skus.size,cats:catsSet.size,qty:qtyTot,basketOrders,
     avgLines:ords.size?rows.length/ords.size:0,
     cat:catTotals.map(c=>({k:c.k,v:c.v,cy:c.cy,py:c.py,qty:c.qty,ords:c.ords.size,yoy:c.py>0?((c.cy-c.py)/c.py*100):null})),
-    prods:[...prodM.values()].map(p=>({sku:p.sku,pn:p.pn,cat:p.cat,v:p.v,qty:p.qty,ords:p.ords.size,cy:p.cy,py:p.py,yoy:p.py>0?((p.cy-p.py)/p.py*100):null})),
+    prods:[...prodM.values()].map(p=>({sku:p.sku,pn:p.pn,cat:p.cat,model:p.model,color:p.color,size:p.size,v:p.v,qty:p.qty,ords:p.ords.size,cy:p.cy,py:p.py,yoy:p.py>0?((p.cy-p.py)/p.py*100):null})),
     pairs, months:monthsSet, top5,
     monCat:(c)=>monthsSet.map(mm=>monCat.get(c+"|"+mm)||0)};
   render();
@@ -273,7 +286,7 @@ async function loadLive(){
     const Q=[
       bq(`SELECT EXTRACT(YEAR FROM DATE(${qq(m.date)})) y, SUM(${qq(m.amount)}) v, SUM(${qq(m.qty)}) q, COUNT(DISTINCT ${qq(m.order)}) o, COUNT(DISTINCT ${qq(m.sku)}) sk, COUNT(DISTINCT CAST(${qq(m.cat)} AS STRING)) c, COUNT(*) lines FROM ${T} ${W} GROUP BY y`),
       bq(`SELECT CAST(${qq(m.cat)} AS STRING) k, SUM(${qq(m.amount)}) v, SUM(${qq(m.qty)}) qty, COUNT(DISTINCT ${qq(m.order)}) ords, SUM(CASE WHEN EXTRACT(YEAR FROM DATE(${qq(m.date)}))=(SELECT MAX(EXTRACT(YEAR FROM DATE(${qq(m.date)}))) FROM ${T} ${W}) THEN ${qq(m.amount)} END) cyv, SUM(CASE WHEN EXTRACT(YEAR FROM DATE(${qq(m.date)}))=(SELECT MAX(EXTRACT(YEAR FROM DATE(${qq(m.date)})))-1 FROM ${T} ${W}) THEN ${qq(m.amount)} END) pyv FROM ${T} ${W} GROUP BY k ORDER BY v DESC`),
-      bq(`SELECT CAST(${qq(m.sku)} AS STRING) sku, ANY_VALUE(${qq(m.prodName)}) pn, ANY_VALUE(CAST(${qq(m.cat)} AS STRING)) cat, SUM(${qq(m.amount)}) v, SUM(${qq(m.qty)}) qty, COUNT(DISTINCT ${qq(m.order)}) ords, SUM(CASE WHEN EXTRACT(YEAR FROM DATE(${qq(m.date)}))=(SELECT MAX(EXTRACT(YEAR FROM DATE(${qq(m.date)}))) FROM ${T} ${W}) THEN ${qq(m.amount)} END) cyv, SUM(CASE WHEN EXTRACT(YEAR FROM DATE(${qq(m.date)}))=(SELECT MAX(EXTRACT(YEAR FROM DATE(${qq(m.date)})))-1 FROM ${T} ${W}) THEN ${qq(m.amount)} END) pyv FROM ${T} ${W} GROUP BY sku ORDER BY v DESC LIMIT 200`),
+      bq(`SELECT CAST(${qq(m.sku)} AS STRING) sku, ANY_VALUE(${qq(m.prodName)}) pn, ANY_VALUE(CAST(${qq(m.cat)} AS STRING)) cat${m.model?`, ANY_VALUE(CAST(${qq(m.model)} AS STRING)) model`:", CAST(NULL AS STRING) model"}${m.color?`, ANY_VALUE(CAST(${qq(m.color)} AS STRING)) color`:", CAST(NULL AS STRING) color"}, SUM(${qq(m.amount)}) v, SUM(${qq(m.qty)}) qty, COUNT(DISTINCT ${qq(m.order)}) ords, SUM(CASE WHEN EXTRACT(YEAR FROM DATE(${qq(m.date)}))=(SELECT MAX(EXTRACT(YEAR FROM DATE(${qq(m.date)}))) FROM ${T} ${W}) THEN ${qq(m.amount)} END) cyv, SUM(CASE WHEN EXTRACT(YEAR FROM DATE(${qq(m.date)}))=(SELECT MAX(EXTRACT(YEAR FROM DATE(${qq(m.date)})))-1 FROM ${T} ${W}) THEN ${qq(m.amount)} END) pyv FROM ${T} ${W} GROUP BY sku ORDER BY v DESC LIMIT 200`),
       bq(`SELECT FORMAT_DATE('%Y-%m',DATE(${qq(m.date)})) m, CAST(${qq(m.cat)} AS STRING) k, SUM(${qq(m.amount)}) v FROM ${T} ${W} GROUP BY m,k ORDER BY m`),
       bq(`WITH ord AS (SELECT ${qq(m.order)} o, CAST(${qq(m.sku)} AS STRING) sku, ANY_VALUE(${qq(m.prodName)}) pn FROM ${T} ${W} GROUP BY o, sku),
            tot AS (SELECT COUNT(DISTINCT o) n FROM ord),
@@ -297,7 +310,7 @@ async function loadLive(){
     S.L={cy,py,total:cur.v,orders:cur.o,skus:cur.sk,cats:cur.c,qty:cur.q,basketOrders:totord,
       avgLines:cur.o?cur.lines/cur.o:0,
       cat:catArr,
-      prods:prod.rows.map(r=>({sku:r.sku,pn:r.pn||r.sku,cat:r.cat||"",v:Number(r.v)||0,qty:Number(r.qty)||0,ords:Number(r.ords)||0,cy:Number(r.cyv)||0,py:Number(r.pyv)||0,yoy:Number(r.pyv)>0?((Number(r.cyv)-Number(r.pyv))/Number(r.pyv)*100):null})),
+      prods:prod.rows.map(r=>{const det=parseDetail(r.pn);return{sku:r.sku,pn:r.pn||r.sku,cat:r.cat||"",model:r.model||det.model||"",color:r.color||det.color||"",size:"",v:Number(r.v)||0,qty:Number(r.qty)||0,ords:Number(r.ords)||0,cy:Number(r.cyv)||0,py:Number(r.pyv)||0,yoy:Number(r.pyv)>0?((Number(r.cyv)-Number(r.pyv))/Number(r.pyv)*100):null};}),
       pairs:pairr.rows.map(r=>{const cnt=Number(r.cnt)||0,c1=Number(r.c1)||1,c2=Number(r.c2)||1,n=Number(r.totord)||1;
         const sup=cnt/n; const lift=sup/((c1/n)*(c2/n));
         return{s1:r.s1,s2:r.s2,n1:r.n1||r.s1,n2:r.n2||r.s2,cnt,sup,lift,conf:cnt/c1};}),
@@ -344,20 +357,24 @@ function thM(ym){const[y,m]=ym.split("-");return MONTHS[(+m)-1]+" "+be(+y).toStr
 function renderProds(){
   const q=($("#prodSearch")?.value||"").trim().toLowerCase();
   let r=S.L.prods.slice();
-  if(q)r=r.filter(p=>(p.pn||"").toLowerCase().includes(q)||(p.sku||"").toLowerCase().includes(q)||(p.cat||"").toLowerCase().includes(q));
+  if(q)r=r.filter(p=>(p.pn||"").toLowerCase().includes(q)||(p.sku||"").toLowerCase().includes(q)||(p.cat||"").toLowerCase().includes(q)||(p.model||"").toLowerCase().includes(q)||(p.color||"").toLowerCase().includes(q));
+  const STR=["pn","cat","model","color","sku"];
   const sc=S.prodSort.c,sd=S.prodSort.d;
-  r.sort((a,b)=>sc==="pn"?(a.pn<b.pn?-1:1)*sd:(((a[sc]==null?-1e15:a[sc])-(b[sc]==null?-1e15:b[sc]))*sd));
+  r.sort((a,b)=>STR.includes(sc)?(((a[sc]||"")<(b[sc]||"")?-1:1)*sd):(((a[sc]==null?-1e15:a[sc])-(b[sc]==null?-1e15:b[sc]))*sd));
   r=r.slice(0,120); const mx=Math.max(1,...r.map(x=>x.v));
-  const cols=[{c:"rank",t:"#"},{c:"pn",t:"สินค้า"},{c:"cat",t:"กลุ่ม"},{c:"qty",t:"จำนวน",num:1},{c:"v",t:"ยอดขายรวม",num:1},{c:"ords",t:"ออเดอร์",num:1},{c:"yoy",t:"YoY",num:1}];
+  const cols=[{c:"rank",t:"#"},{c:"pn",t:"สินค้า"},{c:"cat",t:"กลุ่ม"},{c:"model",t:"รุ่น"},{c:"color",t:"สี"},{c:"qty",t:"จำนวน",num:1},{c:"v",t:"ยอดขายรวม",num:1},{c:"ords",t:"ออเดอร์",num:1},{c:"yoy",t:"YoY",num:1}];
   $("#prodTable thead").innerHTML="<tr>"+cols.map(c=>{const ar=S.prodSort.c===c.c?(sd>0?" ▲":" ▼"):"";return `<th class="${c.num?'num':''}" data-c="${c.c}">${c.t}${ar}</th>`;}).join("")+"</tr>";
   $("#prodTable tbody").innerHTML=r.map((x,i)=>`<tr>
     <td><span class="rank ${i<3?'r'+(i+1):''}">${i+1}</span></td>
-    <td class="prod" title="${x.pn}">${x.pn}</td><td>${x.cat}</td>
+    <td class="prod" title="${x.pn}">${x.pn}<div style="font-size:10px;color:#9aa0a6">SKU: ${x.sku||"–"}${x.size?" · "+x.size:""}</div></td>
+    <td>${x.cat}</td>
+    <td>${x.model?`<span class="pill" style="background:#eef1f4;color:#3c4043">${x.model}</span>`:"–"}</td>
+    <td>${x.color||"–"}</td>
     <td class="num">${num(x.qty)}</td>
     <td class="num" style="background:linear-gradient(90deg,#e8f0fe ${(x.v/mx*100).toFixed(0)}%,transparent 0)">${baht(x.v)}</td>
     <td class="num">${num(x.ords)}</td>
-    <td class="num ${x.yoy==null?"":(x.yoy>=0?"up":"down")}">${x.yoy==null?"–":(x.yoy>=0?"▲":"▼")+" "+Math.abs(x.yoy).toFixed(0)+"%"}</td></tr>`).join("")||`<tr><td colspan="7" class="drill-hint">ไม่มีข้อมูล</td></tr>`;
-  $("#prodTable thead").querySelectorAll("th").forEach(th=>th.onclick=()=>{const c=th.dataset.c;if(c==="rank")return;if(S.prodSort.c===c)S.prodSort.d*=-1;else{S.prodSort.c=c;S.prodSort.d=c==="pn"?1:-1;}renderProds();});
+    <td class="num ${x.yoy==null?"":(x.yoy>=0?"up":"down")}">${x.yoy==null?"–":(x.yoy>=0?"▲":"▼")+" "+Math.abs(x.yoy).toFixed(0)+"%"}</td></tr>`).join("")||`<tr><td colspan="9" class="drill-hint">ไม่มีข้อมูล</td></tr>`;
+  $("#prodTable thead").querySelectorAll("th").forEach(th=>th.onclick=()=>{const c=th.dataset.c;if(c==="rank")return;if(S.prodSort.c===c)S.prodSort.d*=-1;else{S.prodSort.c=c;S.prodSort.d=STR.includes(c)?1:-1;}renderProds();});
 }
 function renderBasket(){
   const d=S.L.pairs.slice(0,50);
