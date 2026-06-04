@@ -141,11 +141,6 @@
       <div class="tbl-scroll"><table id="lbTable"><thead></thead><tbody></tbody></table></div>
     </div>
 
-    <div class="s12 card">
-      <h3 id="typeMixTitle">สัดส่วนประเภทลูกค้าที่เซลล์ดูแล <span class="sub" id="typeMixSub">จำนวนลูกค้าแยกตามประเภท (customer_type_2)</span></h3>
-      <div class="chart-box" style="height:330px"><canvas id="chartTypeMix"></canvas></div>
-    </div>
-
     <div class="s5 card">
       <h3 id="segTitle">กลุ่มลูกค้าของเซลล์ <span class="sub" id="segSub"></span></h3>
       <div id="segBars"><div class="drill-hint">เลือกเซลล์จาก Leaderboard เพื่อดูพอร์ตลูกค้า</div></div>
@@ -208,11 +203,11 @@ function M(){ // resolve column names
     date: hasCol(s,"date")||"date", amount: hasCol(s,"product_price_amount")||"product_price_amount",
     cust: hasCol(s,"customer_id")||"customer_id", order: hasCol(s,"order_number")||hasCol(s,"invoice_number")||"order_number",
     dflag: hasCol(s,"date_flag"),
-    cType: hasCol(s,"customer_type_2")||hasCol(s,"customer_type_1")||"customer_type_2",
     mSeller: hasCol(ms,"best_seller_name")||"best_seller_name", mCust: hasCol(ms,"customer_id")||"customer_id",
     mName: hasCol(ms,"best_customer_name")||hasCol(ms,"customer_name")||"best_customer_name",
     mSeg: hasCol(ms,"segment_rfm_25_fixed")||hasCol(ms,"DBsegment_final")||"segment_rfm_25_fixed",
     mS25: hasCol(ms,"sales_2025"), mLast: hasCol(ms,"last_purchase")||hasCol(ms,"Last_Purchase"),
+    mType: hasCol(ms,"customer_type_2")||hasCol(ms,"customer_type_1"),
   };
 }
 
@@ -268,16 +263,9 @@ function demoCompute(){
     if(y===cy&&mo===latestMonth)o.latest+=r.amount; if(y===py&&mo===latestMonth)o.prevm+=r.amount; });
   const rows=[...map.values()].map(o=>({seller:o.seller,vCy:o.vCy,vPy:o.vPy,custs:o.custs.size,bills:o.bills.size,
     yoy:o.vPy>0?((o.vCy-o.vPy)/o.vPy*100):null}));
-  // customer-type mix per seller (พอร์ตลูกค้าที่เซลล์ดูแล)
-  const tmTot=new Map(),tmSeller=new Map();
-  S.demoCust.forEach(c=>{ const t=c.ctype||"(ไม่ระบุ)";
-    tmTot.set(t,(tmTot.get(t)||0)+1);
-    if(!tmSeller.has(c.seller))tmSeller.set(c.seller,{seller:c.seller,total:0,byType:{}});
-    const o=tmSeller.get(c.seller); o.byType[t]=(o.byType[t]||0)+1; o.total++; });
-  const tmTypes=[...tmTot.entries()].sort((a,b)=>b[1]-a[1]).map(e=>e[0]);
-  S.L={cy,py,rows,typeMix:{types:tmTypes,rows:[...tmSeller.values()]},
+  S.L={cy,py,rows,
     segByseller:(sl)=>{const m=new Map();S.demoCust.filter(c=>!sl||c.seller===sl).forEach(c=>m.set(c.seg,(m.get(c.seg)||0)+1));return [...m.entries()].map(([k,n])=>({k,n}));},
-    custBySeller:(sl)=>S.demoCust.filter(c=>!sl||c.seller===sl).map(c=>({code:c.code,name:c.name,seg:c.seg,v:c.s25,last:c.last})).sort((a,b)=>b.v-a.v)};
+    custBySeller:(sl)=>S.demoCust.filter(c=>!sl||c.seller===sl).map(c=>({code:c.code,name:c.name,seg:c.seg,type:c.ctype||"",v:c.s25,last:c.last})).sort((a,b)=>b.v-a.v)};
   render();
 }
 
@@ -299,11 +287,7 @@ async function loadLive(){
   const dW=dateWhere(m.date); const baseW="WHERE "+[`${qq(m.seller)} IS NOT NULL`,...dW].join(" AND ");
   try{
     // leaderboard by seller + year (growth = year over year on the shown columns)
-    // + customer-type mix per seller (distinct customers by customer_type_2)
-    const[{rows:lbRows},{rows:tmRows}]=await Promise.all([
-      bq(`SELECT CAST(${qq(m.seller)} AS STRING) s, EXTRACT(YEAR FROM DATE(${qq(m.date)})) y, SUM(${qq(m.amount)}) v, COUNT(DISTINCT ${qq(m.cust)}) c, COUNT(DISTINCT ${qq(m.order)}) b FROM ${T} ${baseW} GROUP BY s, y`),
-      bq(`SELECT CAST(${qq(m.seller)} AS STRING) s, CAST(${qq(m.cType)} AS STRING) t, COUNT(DISTINCT ${qq(m.cust)}) n FROM ${T} ${baseW} GROUP BY s, t`),
-    ]);
+    const{rows:lbRows}=await bq(`SELECT CAST(${qq(m.seller)} AS STRING) s, EXTRACT(YEAR FROM DATE(${qq(m.date)})) y, SUM(${qq(m.amount)}) v, COUNT(DISTINCT ${qq(m.cust)}) c, COUNT(DISTINCT ${qq(m.order)}) b FROM ${T} ${baseW} GROUP BY s, y`);
     const sellerMap=new Map(); const years=new Set();
     lbRows.forEach(r=>{const s=r.s,y=Number(r.y);years.add(y);
       if(!sellerMap.has(s))sellerMap.set(s,{});sellerMap.get(s)[y]={v:Number(r.v)||0,c:Number(r.c)||0,b:Number(r.b)||0};});
@@ -311,14 +295,7 @@ async function loadLive(){
     const rows=[...sellerMap.entries()].map(([s,by])=>{const vCy=(by[cy]?.v)||0,vPy=(by[py]?.v)||0;return{
       seller:s, vCy, vPy, custs:(by[cy]?.c)||0, bills:(by[cy]?.b)||0,
       yoy:vPy>0?((vCy-vPy)/vPy*100):null};});
-    // build customer-type mix
-    const tmTot=new Map(),tmSeller=new Map();
-    tmRows.forEach(r=>{ const s=r.s; const t=(r.t&&String(r.t).trim())?String(r.t):"(ไม่ระบุ)"; const n=Number(r.n)||0;
-      tmTot.set(t,(tmTot.get(t)||0)+n);
-      if(!tmSeller.has(s))tmSeller.set(s,{seller:s,total:0,byType:{}});
-      const o=tmSeller.get(s); o.byType[t]=(o.byType[t]||0)+n; o.total+=n; });
-    const tmTypes=[...tmTot.entries()].sort((a,b)=>b[1]-a[1]).map(e=>e[0]);
-    S.L={cy,py,rows,typeMix:{types:tmTypes,rows:[...tmSeller.values()]},_loaded:true};
+    S.L={cy,py,rows,_loaded:true};
     status(`${rows.length} เซลล์`);
     // populate seller dropdown once
     const sel=$("#fSeller"); if(sel.options.length<=1){ rows.slice().sort((a,b)=>a.seller<b.seller?-1:1).forEach(r=>{const o=document.createElement("option");o.value=r.seller;o.textContent=r.seller;sel.appendChild(o);}); }
@@ -334,9 +311,9 @@ async function loadDrillLive(seller){
   const w="WHERE "+conds.join(" AND ");
   try{
     const segP=bq(`SELECT CAST(${qq(m.mSeg)} AS STRING) k, COUNT(DISTINCT ${qq(m.mCust)}) n FROM ${A} ${w} GROUP BY k ORDER BY k`);
-    const cuP=bq(`SELECT CAST(${qq(m.mCust)} AS STRING) code, ANY_VALUE(${qq(m.mName)}) name, CAST(MAX(CAST(${qq(m.mSeg)} AS STRING)) AS STRING) seg${m.mS25?`, ANY_VALUE(${qq(m.mS25)}) v`:", 0 v"}${m.mLast?`, MAX(${qq(m.mLast)}) last`:", CAST(NULL AS STRING) last"} FROM ${A} ${w} GROUP BY code ORDER BY v DESC LIMIT 300`);
+    const cuP=bq(`SELECT CAST(${qq(m.mCust)} AS STRING) code, ANY_VALUE(${qq(m.mName)}) name, CAST(MAX(CAST(${qq(m.mSeg)} AS STRING)) AS STRING) seg${m.mType?`, ANY_VALUE(CAST(${qq(m.mType)} AS STRING)) type`:", CAST(NULL AS STRING) type"}${m.mS25?`, ANY_VALUE(${qq(m.mS25)}) v`:", 0 v"}${m.mLast?`, MAX(${qq(m.mLast)}) last`:", CAST(NULL AS STRING) last"} FROM ${A} ${w} GROUP BY code ORDER BY v DESC LIMIT 300`);
     const[seg,cu]=await Promise.all([segP,cuP]);
-    renderDrillData(seg.rows.map(r=>({k:r.k,n:Number(r.n)||0})), cu.rows.map(r=>({code:r.code,name:r.name||r.code,seg:r.seg||"",v:Number(r.v)||0,last:r.last?String(r.last).slice(0,10):""})));
+    renderDrillData(seg.rows.map(r=>({k:r.k,n:Number(r.n)||0})), cu.rows.map(r=>({code:r.code,name:r.name||r.code,seg:r.seg||"",type:r.type||"",v:Number(r.v)||0,last:r.last?String(r.last).slice(0,10):""})));
   }catch(e){toast("โหลดพอร์ตลูกค้าไม่สำเร็จ: "+e.message,1);console.error(e);}
 }
 
@@ -344,7 +321,7 @@ async function loadDrillLive(seller){
    Render
    ========================================================================= */
 function applyData(){ if(S.mode==="live"){loadLive();} else {demoCompute();} }
-function render(){ if(!S.L)return; renderKPIs(); renderRankBar(); renderTrend(); renderLeaderboard(); renderTypeMix();
+function render(){ if(!S.L)return; renderKPIs(); renderRankBar(); renderTrend(); renderLeaderboard();
   if(S.mode==="demo") renderDrillData(S.L.segByseller(S.sel),S.L.custBySeller(S.sel));
   // live: drill (overall when no seller) is loaded async via loadDrillLive(S.sel)
 }
@@ -421,38 +398,6 @@ function renderLeaderboard(){
 }
 function selectSeller(s){ S.sel=(S.sel===s)?"":s; S.cuPage=0; render(); if(S.mode==="live"){ loadDrillLive(S.sel); trendLive(); } }
 
-const typePctPlugin={id:"typePct",afterDatasetsDraw(chart){
-  const ctx=chart.ctx,meta=chart.getDatasetMeta(0),data=chart.data.datasets[0].data;
-  const total=data.reduce((s,v)=>s+(v||0),0); if(!total)return;
-  ctx.save(); ctx.font="bold 12px "+Chart.defaults.font.family; ctx.fillStyle="#fff"; ctx.textAlign="center"; ctx.textBaseline="middle";
-  ctx.shadowColor="rgba(0,0,0,.35)"; ctx.shadowBlur=3;
-  meta.data.forEach((arc,i)=>{ const pct=data[i]/total*100; if(pct<5)return; const p=arc.tooltipPosition();
-    ctx.fillText(pct.toFixed(0)+"%",p.x,p.y); });
-  ctx.restore();
-}};
-function renderTypeMix(){
-  const data=S.L&&S.L.typeMix;
-  if(!data||!data.types.length){ if(S.charts.typeMix){S.charts.typeMix.destroy();S.charts.typeMix=null;} $("#typeMixSub").textContent="ไม่มีข้อมูลประเภทลูกค้า"; return; }
-  const types=data.types;
-  // selected seller (from leaderboard / bar / dropdown) → that seller; otherwise overall
-  const sel=S.sel;
-  const byType={};
-  if(sel){ const row=data.rows.find(r=>r.seller===sel); if(row)Object.assign(byType,row.byType); }
-  else { data.rows.forEach(r=>types.forEach(t=>byType[t]=(byType[t]||0)+(r.byType[t]||0))); }
-  const labels=types.filter(t=>(byType[t]||0)>0); const vals=labels.map(t=>byType[t]||0);
-  const total=vals.reduce((s,v)=>s+v,0);
-  const colors=labels.map(t=>PAL[types.indexOf(t)%PAL.length]);
-  $("#typeMixSub").textContent=`${sel?sel:"ภาพรวมทั้งหมด"} · ${num(total)} ลูกค้า`;
-  if(S.charts.typeMix)S.charts.typeMix.destroy();
-  if(!labels.length){ S.charts.typeMix=null; return; }
-  S.charts.typeMix=new Chart($("#chartTypeMix"),{type:"pie",
-    data:{labels,datasets:[{data:vals,backgroundColor:colors,borderWidth:2,borderColor:"#fff"}]},
-    options:{responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{position:"right",labels:{boxWidth:12,padding:8,font:{size:11}}},
-        tooltip:{callbacks:{label:c=>{const t=c.dataset.data.reduce((s,x)=>s+x,0);return ` ${c.label}: ${num(c.raw)} ราย (${t?(c.raw/t*100).toFixed(1):0}%)`;}}}}},
-    plugins:[typePctPlugin]});
-}
-
 function renderDrillEmpty(){
   $("#segSub").textContent="";
   $("#segBars").innerHTML='<div class="drill-hint">เลือกเซลล์จาก Leaderboard เพื่อดูพอร์ตลูกค้า</div>';
@@ -481,11 +426,12 @@ function renderCuTable(){
   $("#cuSub").textContent=S.segFilter?`(กลุ่ม ${S.segFilter} · ${cs.length} ราย · คลิกกลุ่มซ้ำเพื่อล้าง)`:`(${_cuData.length} ลูกค้า · เสี่ยง ${_cuData.filter(c=>RISKY.test(c.seg)).length} ราย)`;
   const pages=Math.max(1,Math.ceil(cs.length/CU_PP)); S.cuPage=Math.min(S.cuPage,pages-1);
   const sl=cs.slice(S.cuPage*CU_PP,S.cuPage*CU_PP+CU_PP);
-  $("#cuTable thead").innerHTML="<tr><th>รหัส</th><th>ชื่อลูกค้า</th><th>กลุ่ม</th><th class='num'>ยอดปีนี้</th><th>ซื้อล่าสุด</th></tr>";
+  $("#cuTable thead").innerHTML="<tr><th>รหัส</th><th>ชื่อลูกค้า</th><th>กลุ่ม</th><th>ประเภทลูกค้า</th><th class='num'>ยอดปีนี้</th><th>ซื้อล่าสุด</th></tr>";
   $("#cuTable tbody").innerHTML=sl.map(c=>`<tr>
     <td>${c.code}</td><td title="${c.name}">${c.name}</td>
     <td><span class="pill" style="background:${RISKY.test(c.seg)?'#fce8e6':'#e8f0fe'};color:${RISKY.test(c.seg)?'#c5221f':'#1a73e8'}">${c.seg}</span></td>
-    <td class="num">${num(c.v)}</td><td>${c.last||"–"}</td></tr>`).join("")||`<tr><td colspan="5" style="text-align:center;color:#999;padding:20px">ไม่มีข้อมูล</td></tr>`;
+    <td><span class="pill" style="background:#eef1f4;color:#3c4043">${c.type||"–"}</span></td>
+    <td class="num">${num(c.v)}</td><td>${c.last||"–"}</td></tr>`).join("")||`<tr><td colspan="6" style="text-align:center;color:#999;padding:20px">ไม่มีข้อมูล</td></tr>`;
   $("#cuPager").innerHTML=`<span>${cs.length?(S.cuPage*CU_PP+1):0} - ${Math.min((S.cuPage+1)*CU_PP,cs.length)} / ${cs.length}</span>
     <button ${S.cuPage<=0?"disabled":""} id="cuPrev">‹</button><button ${S.cuPage>=pages-1?"disabled":""} id="cuNext">›</button>`;
   $("#cuPrev")&&($("#cuPrev").onclick=()=>{S.cuPage--;renderCuTable();}); $("#cuNext")&&($("#cuNext").onclick=()=>{S.cuPage++;renderCuTable();});
