@@ -243,13 +243,13 @@ function demoCompute(){
     const cu=custM.get(r.customer_id); cu.v+=r.product_price_amount;cu.ords.add(r.order_number);
     if(y===cy&&mo===maxMo)curM+=r.product_price_amount; if(y===py&&mo===maxMo)prevM+=r.product_price_amount;
   });
-  const typeM=new Map(); S.demoCust.forEach(c=>{if(custs.has(c.code))typeM.set(c.type,(typeM.get(c.type)||0)+1);});
+  const typeM=new Map(),typeByCode={}; S.demoCust.forEach(c=>{typeByCode[c.code]=c.type;if(custs.has(c.code))typeM.set(c.type,(typeM.get(c.type)||0)+1);});
   S.L={cy,py,total,orders:ords.size,custs:custs.size,qty:qtyTot,yoy:prevM?((curM-prevM)/prevM*100):null,
     custType:[...typeM.entries()].sort((a,b)=>b[1]-a[1]).map(([k,n])=>({k,n})),
     mon:[...mon.entries()].sort((a,b)=>a[0]<b[0]?-1:1).map(([m,v])=>({m,v})),
     cat:[...catM.entries()].sort((a,b)=>b[1]-a[1]).map(([k,v])=>({k,v})),
     prods:[...prodM.values()].map(p=>({sku:p.sku,pn:p.pn,cat:p.cat,qty:p.qty,v:p.v,ords:p.ords.size})),
-    custs2:[...custM.values()].map(c=>({code:c.code,name:c.name,v:c.v,ords:c.ords.size})).sort((a,b)=>b.v-a.v),
+    custs2:[...custM.values()].map(c=>({code:c.code,name:c.name,type:typeByCode[c.code]||"",v:c.v,ords:c.ords.size})).sort((a,b)=>b.v-a.v),
     buys:(code)=>{const m=new Map();S.demoRows.filter(r=>r.customer_id===code&&(!f||r.date>=f)&&(!t||r.date<=t)&&(!cat||r.category===cat)).forEach(r=>{const k=r.date+"|"+r.product_sku;if(!m.has(k))m.set(k,{d:r.date,cat:r.category,sku:r.product_sku,pn:r.product_name,qty:0,v:0});const o=m.get(k);o.qty+=r.qty;o.v+=r.product_price_amount;});return [...m.values()].sort((a,b)=>a.d<b.d?1:a.d>b.d?-1:b.v-a.v);}};
   render();
 }
@@ -271,7 +271,7 @@ async function loadLive(){
       bq(`SELECT FORMAT_DATE('%Y-%m',DATE(${qq(m.date)})) m, SUM(${qq(m.amount)}) v FROM ${T} ${W} GROUP BY m ORDER BY m`),
       bq(`SELECT CAST(${qq(m.cat)} AS STRING) k, SUM(${qq(m.amount)}) v FROM ${T} ${W} GROUP BY k ORDER BY v DESC`),
       bq(`SELECT CAST(${qq(m.sku)} AS STRING) sku, ANY_VALUE(${qq(m.prodName)}) pn, ANY_VALUE(CAST(${qq(m.cat)} AS STRING)) cat, SUM(${qq(m.qty)}) qty, SUM(${qq(m.amount)}) v, COUNT(DISTINCT ${qq(m.order)}) ords FROM ${T} ${W} GROUP BY sku ORDER BY v DESC LIMIT 200`),
-      bq(`SELECT CAST(${qq(m.cust)} AS STRING) code, ANY_VALUE(${qq(m.custName)}) name, SUM(${qq(m.amount)}) v, COUNT(DISTINCT ${qq(m.order)}) ords FROM ${T} ${W} GROUP BY code ORDER BY v DESC LIMIT 300`),
+      bq(`SELECT CAST(${qq(m.cust)} AS STRING) code, ANY_VALUE(${qq(m.custName)}) name, ANY_VALUE(CAST(${qq(m.custType)} AS STRING)) type, SUM(${qq(m.amount)}) v, COUNT(DISTINCT ${qq(m.order)}) ords FROM ${T} ${W} GROUP BY code ORDER BY v DESC LIMIT 300`),
       bq(`SELECT CAST(${qq(m.custType)} AS STRING) k, COUNT(DISTINCT ${qq(m.cust)}) n FROM ${T} ${W} GROUP BY k ORDER BY n DESC`),
     ];
     const[yr,yo,mon,catr,prod,cust,ctype]=await Promise.all(Q);
@@ -284,7 +284,7 @@ async function loadLive(){
       cat:catr.rows.map(r=>({k:r.k||"(ว่าง)",v:Number(r.v)||0})),
       custType:ctype.rows.map(r=>({k:r.k||"(ว่าง)",n:Number(r.n)||0})),
       prods:prod.rows.map(r=>({sku:r.sku,pn:r.pn||r.sku,cat:r.cat||"",qty:Number(r.qty)||0,v:Number(r.v)||0,ords:Number(r.ords)||0})),
-      custs2:cust.rows.map(r=>({code:r.code,name:r.name||r.code,v:Number(r.v)||0,ords:Number(r.ords)||0}))};
+      custs2:cust.rows.map(r=>({code:r.code,name:r.name||r.code,type:r.type||"",v:Number(r.v)||0,ords:Number(r.ords)||0}))};
     status(`${S.L.custs2.length} ลูกค้า`);
     render();
     if(S.sel) loadBuysLive(S.sel);
@@ -368,9 +368,11 @@ function renderCusts(){
   let cs=S.L.custs2; if(q)cs=cs.filter(c=>(c.name||"").toLowerCase().includes(q)||(c.code||"").toLowerCase().includes(q));
   const pages=Math.max(1,Math.ceil(cs.length/CUST_PP)); S.custPage=Math.min(S.custPage,pages-1);
   const sl=cs.slice(S.custPage*CUST_PP,S.custPage*CUST_PP+CUST_PP);
-  $("#custTable thead").innerHTML="<tr><th>รหัส</th><th>ชื่อลูกค้า</th><th class='num'>ยอดซื้อ</th><th class='num'>ออเดอร์</th></tr>";
+  $("#custTable thead").innerHTML="<tr><th>รหัส</th><th>ชื่อลูกค้า</th><th>ประเภท</th><th class='num'>ยอดซื้อ</th><th class='num'>ออเดอร์</th></tr>";
   $("#custTable tbody").innerHTML=sl.map(c=>`<tr class="click ${S.sel===c.code?'sel':''}" data-code="${c.code}">
-    <td>${c.code}</td><td title="${c.name}">${c.name}</td><td class="num">${baht(c.v)}</td><td class="num">${num(c.ords)}</td></tr>`).join("")||`<tr><td colspan="4" class="drill-hint">ไม่มีข้อมูล</td></tr>`;
+    <td>${c.code}</td><td title="${c.name}">${c.name}</td>
+    <td><span style="font-size:11px;background:#eef1f4;color:#3c4043;padding:2px 7px;border-radius:999px;white-space:nowrap">${c.type||"-"}</span></td>
+    <td class="num">${baht(c.v)}</td><td class="num">${num(c.ords)}</td></tr>`).join("")||`<tr><td colspan="5" class="drill-hint">ไม่มีข้อมูล</td></tr>`;
   $("#custTable tbody").querySelectorAll("tr[data-code]").forEach(tr=>tr.onclick=()=>selectCust(tr.dataset.code));
   $("#custPager").innerHTML=`<span>${cs.length?(S.custPage*CUST_PP+1):0} - ${Math.min((S.custPage+1)*CUST_PP,cs.length)} / ${cs.length}</span>
     <button ${S.custPage<=0?"disabled":""} id="cPrev">‹</button><button ${S.custPage>=pages-1?"disabled":""} id="cNext">›</button>`;
