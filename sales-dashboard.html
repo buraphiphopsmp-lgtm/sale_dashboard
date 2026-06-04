@@ -240,8 +240,8 @@ function demoCompute(){
   rows.forEach(r=>{ const y=+r.date.slice(0,4),mo=+r.date.slice(5,7);
     total+=r.product_price_amount; qtyTot+=r.qty; ords.add(r.order_number); custs.add(r.customer_id);
     mon.set(r.date.slice(0,7),(mon.get(r.date.slice(0,7))||0)+r.product_price_amount);
-    if(!prodM.has(r.product_sku))prodM.set(r.product_sku,{sku:r.product_sku,pn:r.product_name,cat:r.category,qty:0,v:0,ords:new Set()});
-    const p=prodM.get(r.product_sku); p.qty+=r.qty;p.v+=r.product_price_amount;p.ords.add(r.order_number);
+    if(!prodM.has(r.product_sku))prodM.set(r.product_sku,{sku:r.product_sku,pn:r.product_name,cat:r.category,qty:0,v:0,ords:new Set(),custs:new Set()});
+    const p=prodM.get(r.product_sku); p.qty+=r.qty;p.v+=r.product_price_amount;p.ords.add(r.order_number);p.custs.add(r.customer_id);
     if(!custM.has(r.customer_id))custM.set(r.customer_id,{code:r.customer_id,name:r.customer_name,v:0,ords:new Set()});
     const cu=custM.get(r.customer_id); cu.v+=r.product_price_amount;cu.ords.add(r.order_number);
     if(y===cy&&mo===maxMo)curM+=r.product_price_amount; if(y===py&&mo===maxMo)prevM+=r.product_price_amount;
@@ -254,7 +254,7 @@ function demoCompute(){
     custType:[...typeCusts.entries()].map(([k,s])=>({k,n:s.size})).sort((a,b)=>b.n-a.n),
     mon:[...mon.entries()].sort((a,b)=>a[0]<b[0]?-1:1).map(([m,v])=>({m,v})),
     cat:[...catM.entries()].sort((a,b)=>b[1]-a[1]).map(([k,v])=>({k,v})),
-    prods:[...prodM.values()].map(p=>({sku:p.sku,pn:p.pn,cat:p.cat,qty:p.qty,v:p.v,ords:p.ords.size})),
+    prods:[...prodM.values()].map(p=>({sku:p.sku,pn:p.pn,cat:p.cat,qty:p.qty,v:p.v,ords:p.ords.size,custs:p.custs.size})),
     custs2:[...custM.values()].map(c=>({code:c.code,name:c.name,type:typeByCode[c.code]||"",v:c.v,ords:c.ords.size})).sort((a,b)=>b.v-a.v),
     buys:(code)=>{const m=new Map();S.demoRows.filter(r=>r.customer_id===code&&inDate(r)&&(!cat||r.category===cat)).forEach(r=>{const k=r.date+"|"+r.product_sku;if(!m.has(k))m.set(k,{d:r.date,cat:r.category,sku:r.product_sku,pn:r.product_name,qty:0,v:0});const o=m.get(k);o.qty+=r.qty;o.v+=r.product_price_amount;});return [...m.values()].sort((a,b)=>a.d<b.d?1:a.d>b.d?-1:b.v-a.v);}};
   render();
@@ -282,7 +282,7 @@ async function loadLive(){
       m.dflag?bq(`SELECT SUM(CASE WHEN ${qq(m.dflag)}='Latest_MonthYear' THEN ${qq(m.amount)} END) latest, SUM(CASE WHEN ${qq(m.dflag)}='Previous_MonthYear' THEN ${qq(m.amount)} END) prevm FROM ${T} ${wAll}`):Promise.resolve({rows:[]}),
       bq(`SELECT FORMAT_DATE('%Y-%m',DATE(${qq(m.date)})) m, SUM(${qq(m.amount)}) v FROM ${T} ${wAll} GROUP BY m ORDER BY m`),
       bq(`SELECT CAST(${qq(m.cat)} AS STRING) k, SUM(${qq(m.amount)}) v FROM ${T} ${wCat} GROUP BY k ORDER BY v DESC`),
-      bq(`SELECT CAST(${qq(m.sku)} AS STRING) sku, ANY_VALUE(${qq(m.prodName)}) pn, ANY_VALUE(CAST(${qq(m.cat)} AS STRING)) cat, SUM(${qq(m.qty)}) qty, SUM(${qq(m.amount)}) v, COUNT(DISTINCT ${qq(m.order)}) ords FROM ${T} ${wAll} GROUP BY sku ORDER BY v DESC LIMIT 200`),
+      bq(`SELECT CAST(${qq(m.sku)} AS STRING) sku, ANY_VALUE(${qq(m.prodName)}) pn, ANY_VALUE(CAST(${qq(m.cat)} AS STRING)) cat, SUM(${qq(m.qty)}) qty, SUM(${qq(m.amount)}) v, COUNT(DISTINCT ${qq(m.order)}) ords, COUNT(DISTINCT ${qq(m.cust)}) custs FROM ${T} ${wAll} GROUP BY sku ORDER BY v DESC LIMIT 200`),
       bq(`SELECT CAST(${qq(m.cust)} AS STRING) code, ANY_VALUE(${qq(m.custName)}) name, ANY_VALUE(CAST(${qq(m.custType)} AS STRING)) type, SUM(${qq(m.amount)}) v, COUNT(DISTINCT ${qq(m.order)}) ords FROM ${T} ${wAll} GROUP BY code ORDER BY v DESC LIMIT 300`),
       bq(`SELECT CAST(${qq(m.custType)} AS STRING) k, COUNT(DISTINCT ${qq(m.cust)}) n FROM ${T} ${wType} GROUP BY k ORDER BY n DESC`),
     ];
@@ -296,7 +296,7 @@ async function loadLive(){
       mon:mon.rows.map(r=>({m:r.m,v:Number(r.v)||0})),
       cat:catr.rows.map(r=>({k:r.k||"(ว่าง)",v:Number(r.v)||0})),
       custType:ctype.rows.map(r=>({k:r.k||"(ว่าง)",n:Number(r.n)||0})),
-      prods:prod.rows.map(r=>({sku:r.sku,pn:r.pn||r.sku,cat:r.cat||"",qty:Number(r.qty)||0,v:Number(r.v)||0,ords:Number(r.ords)||0})),
+      prods:prod.rows.map(r=>({sku:r.sku,pn:r.pn||r.sku,cat:r.cat||"",qty:Number(r.qty)||0,v:Number(r.v)||0,ords:Number(r.ords)||0,custs:Number(r.custs)||0})),
       custs2:cust.rows.map(r=>({code:r.code,name:r.name||r.code,type:r.type||"",v:Number(r.v)||0,ords:Number(r.ords)||0}))};
     status(`${S.L.custs2.length} ลูกค้า`);
     render();
@@ -316,7 +316,8 @@ async function loadBuysLive(code){
    ========================================================================= */
 function applyData(){ if(S.mode==="live")loadLive(); else demoCompute(); }
 function render(){ if(!S.L)return; renderKPIs(); renderTrend(); renderCat(); renderCustType(); renderProds(); renderCusts();
-  if(S.mode==="demo"){ if(S.sel)renderBuys(S.L.buys(S.sel)); else renderBuysEmpty(); } }
+  if(S.sel){ if(S.mode==="demo")renderBuys(S.L.buys(S.sel)); /* live: loadBuysLive runs after render */ }
+  else renderBuysEmpty(); }
 function renderKPIs(){
   const L=S.L; const cards=[
     {l:`ยอดขายปี ${be(L.cy)}`,v:baht(L.total),a:PAL[0],d:L.yoy},
@@ -399,8 +400,31 @@ function selectCust(code){ S.sel=(S.sel===code)?"":code; S.buyPage=0; renderCust
   if(!S.sel){ renderBuysEmpty(); return; }
   if(S.mode==="live") loadBuysLive(S.sel); else renderBuys(S.L.buys(S.sel));
 }
-function renderBuysEmpty(){ $("#buySub").textContent=""; $("#buyTable thead").innerHTML=""; $("#buyTable tbody").innerHTML=`<tr><td class="drill-hint">เลือกลูกค้าทางซ้ายเพื่อดูสินค้าที่ซื้อ</td></tr>`; $("#buyPager").innerHTML="";
-  $("#crossSub").textContent="สินค้าขายดีที่ลูกค้ายังไม่เคยซื้อ"; $("#crossTable thead").innerHTML=""; $("#crossTable tbody").innerHTML=`<tr><td class="drill-hint">เลือกลูกค้าเพื่อดูโอกาสขายเพิ่ม</td></tr>`; }
+function renderBuysEmpty(){
+  // ===== ภาพรวม (ยังไม่ได้เลือกลูกค้า) =====
+  const totalCust=S.L.custs2.length;
+  // Buy panel: Top สินค้าที่ลูกค้าทั้งหมดซื้อ
+  const top=S.L.prods.slice().sort((a,b)=>b.v-a.v).slice(0,60);
+  $("#buySub").textContent=`ภาพรวมทุกลูกค้า · ${num(totalCust)} ราย · Top ${top.length} สินค้าที่ถูกซื้อ`;
+  $("#buyTable thead").innerHTML="<tr><th style='width:34px'>#</th><th>ชื่อสินค้า</th><th>กลุ่ม</th><th class='num'>จำนวนรวม</th><th class='num'>ยอดขายรวม</th><th class='num'>ลูกค้าที่ซื้อ</th></tr>";
+  const mx=Math.max(1,...top.map(x=>x.v));
+  $("#buyTable tbody").innerHTML=top.map((p,i)=>`<tr>
+    <td><span class="rank ${i<3?'r'+(i+1):''}">${i+1}</span></td>
+    <td class="prod" title="${p.pn}">${p.pn}</td><td>${p.cat}</td>
+    <td class="num">${num(p.qty)}</td>
+    <td class="num" style="background:linear-gradient(90deg,#e8f0fe ${(p.v/mx*100).toFixed(0)}%,transparent 0)">${baht(p.v)}</td>
+    <td class="num">${num(p.custs||0)}</td></tr>`).join("")||`<tr><td colspan="6" class="drill-hint">ไม่มีข้อมูล</td></tr>`;
+  $("#buyPager").innerHTML="";
+  // Cross-sell panel: สินค้าขายดี + จำนวนลูกค้าที่ยังไม่เคยซื้อ (โอกาสขยายฐาน)
+  const opp=S.L.prods.slice().sort((a,b)=>b.v-a.v).slice(0,20).map(p=>({...p,nb:Math.max(0,totalCust-(p.custs||0))}));
+  $("#crossSub").textContent=`ภาพรวม · สินค้าขายดีที่ยังมีลูกค้าไม่เคยซื้ออีกมาก (โอกาสขยายฐาน)`;
+  $("#crossTable thead").innerHTML="<tr><th style='width:34px'>#</th><th>สินค้าแนะนำ</th><th>กลุ่ม</th><th class='num'>ยอดขายรวม (ตลาด)</th><th class='num'>ลูกค้าที่ซื้อแล้ว</th><th class='num'>ลูกค้าที่ยังไม่ซื้อ</th></tr>";
+  $("#crossTable tbody").innerHTML=opp.map((p,i)=>`<tr>
+    <td><span class="rank ${i<3?'r'+(i+1):''}">${i+1}</span></td>
+    <td class="prod" title="${p.pn}">${p.pn}</td><td>${p.cat}</td>
+    <td class="num">${baht(p.v)}</td><td class="num">${num(p.custs||0)}</td>
+    <td class="num" style="color:var(--brand);font-weight:600">${num(p.nb)}</td></tr>`).join("")||`<tr><td colspan="6" class="drill-hint">ไม่มีข้อมูล</td></tr>`;
+}
 let _buys=[];
 function renderBuys(arr){
   const cust=S.L.custs2.find(c=>c.code===S.sel); $("#buySub").textContent=cust?`${cust.name} (${cust.code}) · ${arr.length} รายการ`:"";
