@@ -203,11 +203,11 @@ function M(){ // resolve column names
     date: hasCol(s,"date")||"date", amount: hasCol(s,"product_price_amount")||"product_price_amount",
     cust: hasCol(s,"customer_id")||"customer_id", order: hasCol(s,"order_number")||hasCol(s,"invoice_number")||"order_number",
     dflag: hasCol(s,"date_flag"),
+    cType: hasCol(s,"customer_type_2")||"customer_type_2",
     mSeller: hasCol(ms,"best_seller_name")||"best_seller_name", mCust: hasCol(ms,"customer_id")||"customer_id",
     mName: hasCol(ms,"best_customer_name")||hasCol(ms,"customer_name")||"best_customer_name",
     mSeg: hasCol(ms,"segment_rfm_25_fixed")||hasCol(ms,"DBsegment_final")||"segment_rfm_25_fixed",
     mS25: hasCol(ms,"sales_2025"), mLast: hasCol(ms,"last_purchase")||hasCol(ms,"Last_Purchase"),
-    mType: hasCol(ms,"customer_type_2")||hasCol(ms,"customer_type_1"),
   };
 }
 
@@ -304,16 +304,23 @@ async function loadLive(){
   }catch(e){status("");toast("คำนวณไม่สำเร็จ: "+e.message,1);console.error(e);}
 }
 async function loadDrillLive(seller){
-  const c=readCfg(),m=M(); const A=`\`${c.project}.${c.dataset}.${c.aggTable}\``;
+  const c=readCfg(),m=M(); const A=`\`${c.project}.${c.dataset}.${c.aggTable}\``; const T=`\`${c.project}.${c.dataset}.${c.table}\``;
   if(!c.aggTable||!S.mSchema.length){ renderDrillData([], []); return; }
   const conds=[`${qq(m.mCust)} IS NOT NULL`,`${qq(m.mSeg)} IS NOT NULL AND TRIM(CAST(${qq(m.mSeg)} AS STRING))<>''`];
   if(seller) conds.unshift(`${qq(m.mSeller)}='${seller.replace(/'/g,"\\'")}'`);
   const w="WHERE "+conds.join(" AND ");
   try{
     const segP=bq(`SELECT CAST(${qq(m.mSeg)} AS STRING) k, COUNT(DISTINCT ${qq(m.mCust)}) n FROM ${A} ${w} GROUP BY k ORDER BY k`);
-    const cuP=bq(`SELECT CAST(${qq(m.mCust)} AS STRING) code, ANY_VALUE(${qq(m.mName)}) name, CAST(MAX(CAST(${qq(m.mSeg)} AS STRING)) AS STRING) seg${m.mType?`, ANY_VALUE(CAST(${qq(m.mType)} AS STRING)) type`:", CAST(NULL AS STRING) type"}${m.mS25?`, ANY_VALUE(${qq(m.mS25)}) v`:", 0 v"}${m.mLast?`, MAX(${qq(m.mLast)}) last`:", CAST(NULL AS STRING) last"} FROM ${A} ${w} GROUP BY code ORDER BY v DESC LIMIT 300`);
+    const cuP=bq(`SELECT CAST(${qq(m.mCust)} AS STRING) code, ANY_VALUE(${qq(m.mName)}) name, CAST(MAX(CAST(${qq(m.mSeg)} AS STRING)) AS STRING) seg${m.mS25?`, ANY_VALUE(${qq(m.mS25)}) v`:", 0 v"}${m.mLast?`, MAX(${qq(m.mLast)}) last`:", CAST(NULL AS STRING) last"} FROM ${A} ${w} GROUP BY code ORDER BY v DESC LIMIT 300`);
     const[seg,cu]=await Promise.all([segP,cuP]);
-    renderDrillData(seg.rows.map(r=>({k:r.k,n:Number(r.n)||0})), cu.rows.map(r=>({code:r.code,name:r.name||r.code,seg:r.seg||"",type:r.type||"",v:Number(r.v)||0,last:r.last?String(r.last).slice(0,10):""})));
+    const cuRows=cu.rows.map(r=>({code:r.code,name:r.name||r.code,seg:r.seg||"",type:"",v:Number(r.v)||0,last:r.last?String(r.last).slice(0,10):""}));
+    // customer type (customer_type_2) comes from the transaction table → merge by customer_id
+    if(cuRows.length){ try{
+      const codes=cuRows.map(r=>`'${String(r.code).replace(/'/g,"\\'")}'`).join(",");
+      const{rows:ty}=await bq(`SELECT CAST(${qq(m.cust)} AS STRING) code, ANY_VALUE(CAST(${qq(m.cType)} AS STRING)) type FROM ${T} WHERE ${qq(m.cust)} IN (${codes}) GROUP BY code`);
+      const tm={}; ty.forEach(r=>{tm[r.code]=r.type||"";}); cuRows.forEach(r=>{r.type=tm[r.code]||"";});
+    }catch(e){console.warn("customer_type_2 fetch failed",e);} }
+    renderDrillData(seg.rows.map(r=>({k:r.k,n:Number(r.n)||0})), cuRows);
   }catch(e){toast("โหลดพอร์ตลูกค้าไม่สำเร็จ: "+e.message,1);console.error(e);}
 }
 
