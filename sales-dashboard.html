@@ -61,6 +61,7 @@
   .rank{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;font-size:11px;font-weight:700;background:#eef1f4;color:#5f6368}
   .rank.r1{background:#f9ab00;color:#fff}.rank.r2{background:#9aa0a6;color:#fff}.rank.r3{background:#cd7f32;color:#fff}
   .drill-hint{color:var(--muted);text-align:center;padding:34px;font-size:13px}
+  .fcnote{font-size:11px;color:var(--muted);margin-top:8px;line-height:1.5}
   .pager{display:flex;justify-content:flex-end;align-items:center;gap:6px;font-size:11px;color:var(--muted);margin-top:7px}
   .pager button{padding:2px 8px}
   .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#202124;color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;box-shadow:0 4px 12px rgba(0,0,0,.3);z-index:50;opacity:0;pointer-events:none;transition:.25s;max-width:90vw}
@@ -79,13 +80,11 @@
   <a href="all-segment-monitor.html" class="tab">All Segment Monitor</a>
   <a href="sales-performance.html" class="tab">Sales Performance</a>
   <a href="product-intelligence.html" class="tab">Product &amp; Basket</a>
-  <a href="churn-winback.html" class="tab">Churn &amp; Win-back</a>
-  <a href="sales-forecast.html" class="tab">Sales Forecast</a>
-</nav>
+  <a href="churn-winback.html" class="tab">Churn &amp; Win-back</a></nav>
 
 <div class="topbar">
   <h1>FUTURETECH <span class="lite">SALES</span> DASHBOARD</h1>
-  <span class="tag">Smart Fitting, Smart Living · ภาพรวมการขาย สินค้า และลูกค้า</span>
+  <span class="tag">Smart Fitting, Smart Living · ภาพรวมการขาย แนวโน้ม พยากรณ์ สินค้า และลูกค้า</span>
   <span class="spacer"></span>
   <span class="badge demo" id="modeBadge">DEMO MODE</span>
   <span id="status"></span>
@@ -110,6 +109,7 @@
     <label>ถึงวันที่<input type="date" id="dTo"></label>
     <label>กลุ่มสินค้า<select id="fCat"><option value="">— ทุกกลุ่ม —</option></select></label>
     <label>ประเภทลูกค้า<select id="fType"><option value="">— ทุกประเภท —</option></select></label>
+    <label>พยากรณ์<select id="fHorizon"><option value="3" selected>3 เดือน</option><option value="6">6 เดือน</option></select></label>
     <button id="applyBtn" class="primary">ใช้ตัวกรอง</button>
     <button id="clearBtn">ล้างตัวกรอง</button>
     <span class="spacer" style="flex:1"></span>
@@ -118,9 +118,17 @@
   <div class="kpis" id="kpis"></div>
 
   <div class="grid">
-    <div class="s6 card"><h3>เทรนด์ยอดขายรายเดือน <span class="sub" id="trendSub"></span></h3><div class="chart-box"><canvas id="chartTrend"></canvas></div></div>
-    <div class="s3 card"><h3>สัดส่วนตามกลุ่มสินค้า <span class="sub">ตามยอดขาย</span></h3><div class="chart-box"><canvas id="chartCat"></canvas></div></div>
-    <div class="s3 card"><h3>สัดส่วนลูกค้า (ประเภท) <span class="sub">จำนวนราย</span></h3><div class="chart-box"><canvas id="chartCustType"></canvas></div></div>
+    <div class="s12 card">
+      <h3>📈 ยอดขายรายเดือน · แนวโน้ม · พยากรณ์ <span class="sub" id="trendSub"></span></h3>
+      <div class="chart-box" style="height:320px"><canvas id="chartTrend"></canvas></div>
+      <div class="fcnote" id="fcNote"></div>
+    </div>
+
+    <div class="s7 card"><h3>เทียบรายเดือน ปีนี้ vs ปีก่อน <span class="sub" id="cmpSub"></span></h3><div class="chart-box sm"><canvas id="chartCompare"></canvas></div></div>
+    <div class="s5 card"><h3>ฤดูกาล — ยอดขายเฉลี่ยรายเดือน <span class="sub">เฉลี่ยทุกปี</span></h3><div class="chart-box sm"><canvas id="chartSeason"></canvas></div></div>
+
+    <div class="s6 card"><h3>สัดส่วนตามกลุ่มสินค้า <span class="sub">ตามยอดขาย</span></h3><div class="chart-box"><canvas id="chartCat"></canvas></div></div>
+    <div class="s6 card"><h3>สัดส่วนลูกค้า (ประเภท) <span class="sub">จำนวนราย</span></h3><div class="chart-box"><canvas id="chartCustType"></canvas></div></div>
 
     <div class="s12 card">
       <h3><span>สินค้าขายดี (Top Products)</span>
@@ -318,26 +326,77 @@ async function loadBuysLive(code){
    Render
    ========================================================================= */
 function applyData(){ if(S.mode==="live")loadLive(); else demoCompute(); }
-function render(){ if(!S.L)return; renderKPIs(); renderTrend(); renderCat(); renderCustType(); renderProds(); renderCusts();
+function render(){ if(!S.L)return; buildForecast(S.L); renderKPIs(); renderTrend(); renderCompare(); renderSeason(); renderCat(); renderCustType(); renderProds(); renderCusts();
   if(S.sel){ if(S.mode==="demo")renderBuys(S.L.buys(S.sel)); /* live: loadBuysLive runs after render */ }
   else renderBuysEmpty(); }
+/* ---- forecast / trend derivation from the monthly series ---- */
+function linreg(ys){const n=ys.length;if(n<2)return{a:ys[0]||0,b:0};let sx=0,sy=0,sxx=0,sxy=0;for(let i=0;i<n;i++){sx+=i;sy+=ys[i];sxx+=i*i;sxy+=i*ys[i];}const d=n*sxx-sx*sx;const b=d?(n*sxy-sx*sy)/d:0;return{a:(sy-b*sx)/n,b};}
+function movingAvg(ys,w){return ys.map((_,i)=>{const lo=Math.max(0,i-w+1);let s=0,c=0;for(let j=lo;j<=i;j++){s+=ys[j];c++;}return c?s/c:0;});}
+function nextYM(ym,k){let[y,m]=ym.split("-").map(Number);m+=k;y+=Math.floor((m-1)/12);m=((m-1)%12+12)%12+1;return y+"-"+String(m).padStart(2,"0");}
+function buildForecast(L){
+  const mon=L.mon||[]; const ys=mon.map(x=>x.v); const n=mon.length;
+  L.ma=movingAvg(ys,3); const{a,b}=linreg(ys); L.slope=b;
+  const horizon=+($("#fHorizon")?.value||3); L.horizon=horizon;
+  L.fc=[]; for(let i=0;i<horizon;i++){const idx=ys.length+i;L.fc.push({m:nextYM(n?mon[n-1].m:(L.cy+"-01"),i+1),v:Math.max(0,a+b*idx)});}
+  L.fcTotal=L.fc.reduce((s,x)=>s+x.v,0);
+  L.curMon=n?mon[n-1]:{m:"",v:0}; const prevM=n>1?mon[n-2]:{v:0};
+  L.mom=prevM.v?((L.curMon.v-prevM.v)/prevM.v*100):null;
+  const cy=n?+L.curMon.m.slice(0,4):L.cy, py=cy-1, upTo=n?+L.curMon.m.slice(5,7):0;
+  const byYM={}; mon.forEach(x=>byYM[x.m]=x.v);
+  let ytd=0,ytdPrev=0; for(let mo=1;mo<=upTo;mo++){const k=String(mo).padStart(2,"0");ytd+=byYM[cy+"-"+k]||0;ytdPrev+=byYM[py+"-"+k]||0;}
+  L.ytd=ytd; L.ytdPrev=ytdPrev; L.ytdYoy=ytdPrev?((ytd-ytdPrev)/ytdPrev*100):null;
+  const ss=Array(12).fill(0),sc=Array(12).fill(0); mon.forEach(x=>{const mi=+x.m.slice(5,7)-1;ss[mi]+=x.v;sc[mi]++;});
+  L.season=ss.map((s,i)=>sc[i]?s/sc[i]:0);
+  L.cmpCur=[];L.cmpPrev=[]; for(let mo=1;mo<=12;mo++){const k=String(mo).padStart(2,"0");L.cmpCur.push(byYM[cy+"-"+k]||0);L.cmpPrev.push(byYM[py+"-"+k]||0);}
+  L.fcCy=cy; L.fcPy=py;
+}
 function renderKPIs(){
   const L=S.L; const cards=[
-    {l:`ยอดขายปี ${be(L.cy)}`,v:baht(L.total),a:PAL[0],d:L.yoy},
-    {l:"จำนวน Order",v:num(L.orders),a:PAL[1]},
-    {l:"จำนวนลูกค้า",v:num(L.custs),a:PAL[3]},
-    {l:"ยอดเฉลี่ย/Order",v:baht(L.orders?L.total/L.orders:0),a:PAL[2]},
-    {l:"จำนวนหน่วยขาย",v:num(L.qty),a:PAL[4]},
+    {l:`ยอดขายปี ${be(L.cy)}`,v:baht(L.total),a:PAL[0],d:L.yoy,dl:"YoY (เดือนล่าสุด)"},
+    {l:`เดือนล่าสุด${L.curMon&&L.curMon.m?" ("+thM(L.curMon.m)+")":""}`,v:baht(L.curMon?L.curMon.v:0),a:PAL[1],d:L.mom,dl:"MoM"},
+    {l:"เติบโต YTD (เทียบช่วงเดียวกันปีก่อน)",v:L.ytdYoy==null?"–":(L.ytdYoy>=0?"+":"")+L.ytdYoy.toFixed(1)+"%",a:PAL[4],sub:`${baht(L.ytd)} vs ${baht(L.ytdPrev)}`},
+    {l:`พยากรณ์ ${L.horizon} เดือนข้างหน้า`,v:baht(L.fcTotal),a:PAL[2],sub:(L.slope>=0?"▲ แนวโน้มขึ้น ":"▼ แนวโน้มลง ")+baht(Math.abs(L.slope))+"/เดือน"},
+    {l:"จำนวน Order",v:num(L.orders),a:PAL[3]},
+    {l:"จำนวนลูกค้า",v:num(L.custs),a:PAL[5]},
   ];
   $("#kpis").innerHTML=cards.map(c=>`<div class="kpi"><div class="accent" style="background:${c.a}"></div>
     <div class="label">${c.l}</div><div class="value">${c.v}</div>
-    ${c.d!=null?`<div class="delta ${c.d>=0?'up':'down'}">${c.d>=0?'▲':'▼'} ${Math.abs(c.d).toFixed(2)}% YoY (เดือนล่าสุด)</div>`:`<div class="delta">&nbsp;</div>`}</div>`).join("");
+    ${c.d!=null?`<div class="delta ${c.d>=0?'up':'down'}">${c.d>=0?'▲':'▼'} ${Math.abs(c.d).toFixed(1)}% ${c.dl||""}</div>`:(c.sub?`<div class="delta" style="color:var(--muted);font-weight:500">${c.sub}</div>`:`<div class="delta">&nbsp;</div>`)}</div>`).join("");
 }
-function renderTrend(){ const d=S.L.mon; $("#trendSub").textContent=d.length?`${thM(d[0].m)} - ${thM(d[d.length-1].m)}`:"";
+function renderTrend(){ const L=S.L, d=L.mon;
+  const labels=d.map(x=>thM(x.m)).concat(L.fc.map(x=>thM(x.m)+" *"));
+  const actual=d.map(x=>x.v).concat(L.fc.map(()=>null));
+  const ma=(L.ma||[]).concat(L.fc.map(()=>null));
+  const fcLine=d.map(()=>null); if(d.length)fcLine[d.length-1]=d[d.length-1].v; L.fc.forEach(x=>fcLine.push(x.v));
+  $("#trendSub").textContent=d.length?`${thM(d[0].m)} - ${thM(d[d.length-1].m)} · * = พยากรณ์`:"";
   if(S.charts.trend)S.charts.trend.destroy();
-  S.charts.trend=new Chart($("#chartTrend"),{type:"line",data:{labels:d.map(x=>thM(x.m)),datasets:[{data:d.map(x=>x.v),borderColor:"#1a73e8",backgroundColor:"rgba(26,115,232,.12)",fill:true,tension:.3,pointRadius:0,borderWidth:2}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>" "+baht(c.raw)}}},
-      scales:{x:{grid:{display:false},ticks:{maxRotation:0,autoSkip:true,maxTicksLimit:10,font:{size:9}}},y:{ticks:{callback:v=>v>=1e6?(v/1e6)+"M":v/1e3+"K"},grid:{color:"#f1f3f4"},beginAtZero:true}}}});
+  S.charts.trend=new Chart($("#chartTrend"),{type:"line",data:{labels,datasets:[
+    {label:"ยอดขายจริง",data:actual,borderColor:"#1a73e8",backgroundColor:"rgba(26,115,232,.12)",fill:true,tension:.3,pointRadius:0,borderWidth:2},
+    {label:"ค่าเฉลี่ยเคลื่อนที่ 3 เดือน",data:ma,borderColor:"#f9ab00",backgroundColor:"transparent",tension:.3,pointRadius:0,borderWidth:2,borderDash:[2,2]},
+    {label:"พยากรณ์",data:fcLine,borderColor:"#c5221f",backgroundColor:"transparent",tension:.2,pointRadius:2,borderWidth:2,borderDash:[6,4]},
+  ]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"bottom",labels:{boxWidth:12,padding:8,font:{size:10}}},tooltip:{callbacks:{label:c=>c.raw==null?null:` ${c.dataset.label}: ${baht(c.raw)}`}}},
+      scales:{x:{grid:{display:false},ticks:{maxRotation:0,autoSkip:true,maxTicksLimit:12,font:{size:9}}},y:{ticks:{callback:v=>v>=1e6?(v/1e6)+"M":v/1e3+"K"},grid:{color:"#f1f3f4"},beginAtZero:true}}}});
+  const nf=L.fc.map(x=>`${thM(x.m)} ≈ ${baht(x.v)}`).join(" · ");
+  const note=$("#fcNote"); if(note)note.innerHTML=`พยากรณ์แบบเส้นตรงจากแนวโน้มในอดีต — <b>${nf}</b> · ใช้ประกอบการวางแผน ไม่รวมปัจจัยฤดูกาล/โปรโมชัน`;
+}
+function renderCompare(){ const L=S.L;
+  $("#cmpSub").textContent=`${be(L.fcCy)} vs ${be(L.fcPy)}`;
+  if(S.charts.cmp)S.charts.cmp.destroy();
+  S.charts.cmp=new Chart($("#chartCompare"),{type:"bar",
+    data:{labels:MONTHS,datasets:[
+      {label:`ปี ${be(L.fcPy)}`,data:L.cmpPrev,backgroundColor:"#c6dafc",borderRadius:3},
+      {label:`ปี ${be(L.fcCy)}`,data:L.cmpCur,backgroundColor:"#1a73e8",borderRadius:3},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"bottom",labels:{boxWidth:12,padding:8,font:{size:10}}},tooltip:{callbacks:{label:c=>` ${c.dataset.label}: ${baht(c.raw)}`}}},
+      scales:{x:{grid:{display:false},ticks:{font:{size:9}}},y:{ticks:{callback:v=>v>=1e6?(v/1e6)+"M":v/1e3+"K"},grid:{color:"#f1f3f4"},beginAtZero:true}}}});
+}
+function renderSeason(){ const L=S.L; const mx=Math.max(1,...L.season);
+  if(S.charts.season)S.charts.season.destroy();
+  S.charts.season=new Chart($("#chartSeason"),{type:"bar",
+    data:{labels:MONTHS,datasets:[{data:L.season,backgroundColor:L.season.map(v=>v>=mx*0.85?"#188038":v>=mx*0.6?"#1a73e8":"#c6dafc"),borderRadius:3}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>" เฉลี่ย "+baht(c.raw)}}},
+      scales:{x:{grid:{display:false},ticks:{font:{size:9}}},y:{ticks:{callback:v=>v>=1e6?(v/1e6)+"M":v/1e3+"K"},grid:{color:"#f1f3f4"},beginAtZero:true}}}});
 }
 const pctPlugin={id:"pct",afterDatasetsDraw(chart){
   const ctx=chart.ctx,meta=chart.getDatasetMeta(0),data=chart.data.datasets[0].data;
@@ -463,6 +522,7 @@ $("#applyBtn").onclick=()=>applyData();
 $("#clearBtn").onclick=()=>{$("#dFrom").value="2023-12-01";$("#dTo").value="2025-12-31";$("#fCat").value="";$("#fType").value="";S.sel="";applyData();};
 $("#fCat").addEventListener("change",()=>applyData());
 $("#fType").addEventListener("change",()=>applyData());
+$("#fHorizon").addEventListener("change",()=>{if(S.L)render();});
 $("#prodSearch").addEventListener("input",()=>renderProds());
 $("#prodMetric").addEventListener("change",()=>{S.prodSort.c=$("#prodMetric").value;S.prodSort.d=-1;renderProds();});
 $("#custSearch").addEventListener("input",()=>{S.custPage=0;renderCusts();});
