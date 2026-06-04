@@ -60,6 +60,11 @@
   tbody tr.sel{background:#e8f0fe!important}
   .rank{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;font-size:11px;font-weight:700;background:#eef1f4;color:#5f6368}
   .rank.r1{background:#f9ab00;color:#fff}.rank.r2{background:#9aa0a6;color:#fff}.rank.r3{background:#cd7f32;color:#fff}
+  .pill{font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;white-space:nowrap}
+  .up{color:var(--green)} .down{color:var(--red)}
+  .secnote{font-size:11px;color:var(--muted);margin:18px 0 -2px;font-weight:600;letter-spacing:.3px;text-transform:uppercase;grid-column:1/-1;display:flex;align-items:center;gap:8px}
+  .secnote::before{content:"";flex:0 0 4px;height:15px;border-radius:2px;background:var(--brand)}
+  .secnote .nrm{text-transform:none;font-weight:400;color:#9aa0a6;letter-spacing:0}
   .drill-hint{color:var(--muted);text-align:center;padding:34px;font-size:13px}
   .fcnote{font-size:11px;color:var(--muted);margin-top:8px;line-height:1.5}
   .pager{display:flex;justify-content:flex-end;align-items:center;gap:6px;font-size:11px;color:var(--muted);margin-top:7px}
@@ -79,12 +84,11 @@
   <a href="high-value-monitor.html" class="tab">High Value Monitor</a>
   <a href="all-segment-monitor.html" class="tab">All Segment Monitor</a>
   <a href="sales-performance.html" class="tab">Sales Performance</a>
-  <a href="product-intelligence.html" class="tab">Product &amp; Basket</a>
   <a href="churn-winback.html" class="tab">Churn &amp; Win-back</a></nav>
 
 <div class="topbar">
   <h1>FUTURETECH <span class="lite">SALES</span> DASHBOARD</h1>
-  <span class="tag">Smart Fitting, Smart Living · ภาพรวมการขาย แนวโน้ม พยากรณ์ สินค้า และลูกค้า</span>
+  <span class="tag">Smart Fitting, Smart Living · ภาพรวมการขาย แนวโน้ม พยากรณ์ · สินค้า ตะกร้าสินค้า (Market Basket) และลูกค้า</span>
   <span class="spacer"></span>
   <span class="badge demo" id="modeBadge">DEMO MODE</span>
   <span id="status"></span>
@@ -118,6 +122,7 @@
   <div class="kpis" id="kpis"></div>
 
   <div class="grid">
+    <div class="secnote">① ทิศทางธุรกิจ <span class="nrm">— เรากำลังไปทางไหน และจะไปถึงไหน</span></div>
     <div class="s12 card">
       <h3>📈 ยอดขายรายเดือน · แนวโน้ม · พยากรณ์ <span class="sub" id="trendSub"></span></h3>
       <div class="chart-box" style="height:320px"><canvas id="chartTrend"></canvas></div>
@@ -127,11 +132,23 @@
     <div class="s7 card"><h3>เทียบรายเดือน ปีนี้ vs ปีก่อน <span class="sub" id="cmpSub"></span></h3><div class="chart-box sm"><canvas id="chartCompare"></canvas></div></div>
     <div class="s5 card"><h3>ฤดูกาล — ยอดขายเฉลี่ยรายเดือน <span class="sub">เฉลี่ยทุกปี</span></h3><div class="chart-box sm"><canvas id="chartSeason"></canvas></div></div>
 
+    <div class="secnote">② โครงสร้างยอดขาย <span class="nrm">— อะไรและใครคือสัดส่วนหลักของรายได้ (คลิกวงเพื่อกรองทั้งหน้า)</span></div>
     <div class="s6 card"><h3>สัดส่วนตามกลุ่มสินค้า <span class="sub">ตามยอดขาย</span></h3><div class="chart-box"><canvas id="chartCat"></canvas></div></div>
     <div class="s6 card"><h3>สัดส่วนลูกค้า (ประเภท) <span class="sub">จำนวนราย</span></h3><div class="chart-box"><canvas id="chartCustType"></canvas></div></div>
 
+    <div class="secnote">③ โมเมนตัมกลุ่มสินค้า <span class="nrm">— กลุ่มไหนกำลังโต กลุ่มไหนกำลังหด</span></div>
+    <div class="s7 card">
+      <h3>กลุ่มสินค้า — การเติบโต (YoY) <span class="sub" id="catMomSub">ปีล่าสุด · ▲ โต ▼ หด เทียบปีก่อน</span></h3>
+      <div class="chart-box"><canvas id="chartCatMom"></canvas></div>
+    </div>
+    <div class="s5 card">
+      <h3>เทรนด์กลุ่มสินค้า (Top 5) <span class="sub">รายเดือน</span></h3>
+      <div class="chart-box"><canvas id="chartCatTrend"></canvas></div>
+    </div>
+
+    <div class="secnote">④ สินค้า &amp; ตะกร้าสินค้า <span class="nrm">— สินค้าตัวไหนขับเคลื่อนยอด และลูกค้าซื้ออะไรคู่กัน</span></div>
     <div class="s12 card">
-      <h3><span>สินค้าขายดี (Top Products)</span>
+      <h3><span>สินค้าขายดี + โมเมนตัม (Top Products) <span class="sub">YoY = เทียบยอดปีก่อน · ▲ โต ▼ หด</span></span>
         <span style="display:flex;gap:8px;align-items:center;font-weight:400">
           <input id="prodSearch" placeholder="ค้นหาสินค้า…" style="font:inherit;padding:5px 9px;border:1px solid var(--line);border-radius:6px;min-width:170px">
           <select id="prodMetric" style="font:inherit;padding:5px 9px;border:1px solid var(--line);border-radius:6px"><option value="v">เรียงตามยอดขาย</option><option value="qty">เรียงตามจำนวนหน่วย</option><option value="ords">เรียงตามออเดอร์</option></select>
@@ -139,6 +156,12 @@
       <div class="tbl-scroll"><table id="prodTable"><thead></thead><tbody></tbody></table></div>
     </div>
 
+    <div class="s12 card">
+      <h3>🧺 ตะกร้าสินค้า (Market Basket) — สินค้าที่ลูกค้ามักซื้อคู่กัน <span class="sub" id="basketSub">Lift &gt; 1 = ซื้อคู่กันบ่อยกว่าโอกาสปกติ</span></h3>
+      <div class="tbl-scroll" style="max-height:380px"><table id="basketTable"><thead></thead><tbody></tbody></table></div>
+    </div>
+
+    <div class="secnote">⑤ ลูกค้า &amp; โอกาสขายเพิ่ม <span class="nrm">— ใครซื้ออะไร และเราจะขายเพิ่มได้อย่างไร</span></div>
     <div class="s5 card">
       <h3><span>ลูกค้า <span class="sub">คลิกเพื่อดูสินค้าที่ซื้อ</span></span>
         <input id="custSearch" placeholder="ค้นหาลูกค้า…" style="font:inherit;padding:5px 9px;border:1px solid var(--line);border-radius:6px;min-width:140px;font-weight:400"></h3>
@@ -259,26 +282,46 @@ function demoCompute(){
   const rows=S.demoRows.filter(r=>inDate(r)&&(!cat||r.category===cat)&&(!type||typeByCode[r.customer_id]===type));
   const years=new Set(); rows.forEach(r=>years.add(+r.date.slice(0,4)));
   const cy=years.size?Math.max(...years):new Date().getFullYear(),py=cy-1;
-  let total=0,qtyTot=0; const ords=new Set(),custs=new Set(),mon=new Map(),prodM=new Map(),custM=new Map();
+  let total=0,qtyTot=0; const ords=new Set(),custs=new Set(),skus=new Set(),mon=new Map(),prodM=new Map(),custM=new Map();
   let curM=0,prevM=0; let maxMo=0; rows.forEach(r=>{if(+r.date.slice(0,4)===cy)maxMo=Math.max(maxMo,+r.date.slice(5,7));});
-  rows.forEach(r=>{ const y=+r.date.slice(0,4),mo=+r.date.slice(5,7);
-    total+=r.product_price_amount; qtyTot+=r.qty; ords.add(r.order_number); custs.add(r.customer_id);
-    mon.set(r.date.slice(0,7),(mon.get(r.date.slice(0,7))||0)+r.product_price_amount);
-    if(!prodM.has(r.product_sku))prodM.set(r.product_sku,{sku:r.product_sku,pn:r.product_name,cat:r.category,model:r.product_model||"",color:r.product_color||"",size:r.product_size||"",qty:0,v:0,ords:new Set(),custs:new Set()});
+  rows.forEach(r=>{ const y=+r.date.slice(0,4),mo=+r.date.slice(5,7),ym=r.date.slice(0,7);
+    total+=r.product_price_amount; qtyTot+=r.qty; ords.add(r.order_number); custs.add(r.customer_id); skus.add(r.product_sku);
+    mon.set(ym,(mon.get(ym)||0)+r.product_price_amount);
+    if(!prodM.has(r.product_sku))prodM.set(r.product_sku,{sku:r.product_sku,pn:r.product_name,cat:r.category,model:r.product_model||"",color:r.product_color||"",size:r.product_size||"",qty:0,v:0,cy:0,py:0,ords:new Set(),custs:new Set()});
     const p=prodM.get(r.product_sku); p.qty+=r.qty;p.v+=r.product_price_amount;p.ords.add(r.order_number);p.custs.add(r.customer_id);
+    if(y===cy)p.cy+=r.product_price_amount; if(y===py)p.py+=r.product_price_amount;
     if(!custM.has(r.customer_id))custM.set(r.customer_id,{code:r.customer_id,name:r.customer_name,v:0,ords:new Set()});
     const cu=custM.get(r.customer_id); cu.v+=r.product_price_amount;cu.ords.add(r.order_number);
     if(y===cy&&mo===maxMo)curM+=r.product_price_amount; if(y===py&&mo===maxMo)prevM+=r.product_price_amount;
   });
-  // category doughnut: apply date+type (NOT cat) so it stays clickable
-  const catM=new Map(); S.demoRows.filter(r=>inDate(r)&&(!type||typeByCode[r.customer_id]===type)).forEach(r=>catM.set(r.category,(catM.get(r.category)||0)+r.product_price_amount));
+  // market basket: group order → set of SKUs, then count co-purchased pairs (support/confidence/lift)
+  const ordSkus=new Map(); rows.forEach(r=>{if(!ordSkus.has(r.order_number))ordSkus.set(r.order_number,new Map());ordSkus.get(r.order_number).set(r.product_sku,r.product_name);});
+  const skuOrders=new Map(),pairM=new Map(); let basketOrders=0;
+  ordSkus.forEach(mp=>{ const arr=[...mp.entries()]; if(arr.length>=1)basketOrders++;
+    arr.forEach(([s])=>skuOrders.set(s,(skuOrders.get(s)||0)+1));
+    for(let i=0;i<arr.length;i++)for(let j=i+1;j<arr.length;j++){const a=arr[i],b=arr[j];const k=a[0]<b[0]?a[0]+"||"+b[0]:b[0]+"||"+a[0];
+      if(!pairM.has(k))pairM.set(k,{s1:a[0],n1:a[1],s2:b[0],n2:b[1],cnt:0}); pairM.get(k).cnt++;} });
+  const pairs=[...pairM.values()].map(p=>{const sup=p.cnt/Math.max(1,basketOrders);
+    const lift=sup/((skuOrders.get(p.s1)/basketOrders)*(skuOrders.get(p.s2)/basketOrders));
+    return{...p,sup,lift,conf:p.cnt/Math.max(1,skuOrders.get(p.s1))};}).sort((a,b)=>b.cnt-a.cnt).slice(0,60);
+  // category momentum (YoY) + monthly trend + doughnut: all ignore the cat filter (date+type only) so they show the full category landscape
+  const catFull=new Map(),monCat=new Map(),catM=new Map();
+  S.demoRows.filter(r=>inDate(r)&&(!type||typeByCode[r.customer_id]===type)).forEach(r=>{const y=+r.date.slice(0,4),ym=r.date.slice(0,7);
+    catM.set(r.category,(catM.get(r.category)||0)+r.product_price_amount);
+    if(!catFull.has(r.category))catFull.set(r.category,{k:r.category,v:0,cy:0,py:0,qty:0});
+    const cf=catFull.get(r.category); cf.v+=r.product_price_amount; cf.qty+=r.qty; if(y===cy)cf.cy+=r.product_price_amount; if(y===py)cf.py+=r.product_price_amount;
+    monCat.set(r.category+"|"+ym,(monCat.get(r.category+"|"+ym)||0)+r.product_price_amount);});
+  const catArr=[...catFull.values()].map(c=>({k:c.k,v:c.v,cy:c.cy,py:c.py,qty:c.qty,yoy:c.py>0?((c.cy-c.py)/c.py*100):null})).sort((a,b)=>b.v-a.v);
+  const catMonths=[...monCat.keys()].map(k=>k.split("|")[1]).filter((v,i,a)=>a.indexOf(v)===i).sort(); const catTop5=catArr.slice(0,5).map(c=>c.k);
   // type doughnut: apply date+cat (NOT type); distinct customers per type
   const typeCusts=new Map(); S.demoRows.filter(r=>inDate(r)&&(!cat||r.category===cat)).forEach(r=>{const ty=typeByCode[r.customer_id];if(!ty)return;if(!typeCusts.has(ty))typeCusts.set(ty,new Set());typeCusts.get(ty).add(r.customer_id);});
-  S.L={cy,py,total,orders:ords.size,custs:custs.size,qty:qtyTot,yoy:prevM?((curM-prevM)/prevM*100):null,
+  S.L={cy,py,total,orders:ords.size,custs:custs.size,qty:qtyTot,skus:skus.size,avgLines:ords.size?rows.length/ords.size:0,yoy:prevM?((curM-prevM)/prevM*100):null,
     custType:[...typeCusts.entries()].map(([k,s])=>({k,n:s.size})).sort((a,b)=>b.n-a.n),
     mon:[...mon.entries()].sort((a,b)=>a[0]<b[0]?-1:1).map(([m,v])=>({m,v})),
     cat:[...catM.entries()].sort((a,b)=>b[1]-a[1]).map(([k,v])=>({k,v})),
-    prods:[...prodM.values()].map(p=>({sku:p.sku,pn:p.pn,cat:p.cat,model:p.model,color:p.color,size:p.size,qty:p.qty,v:p.v,ords:p.ords.size,custs:p.custs.size})),
+    catMom:catArr, catMonths, catTop5, monCat:(c)=>catMonths.map(mm=>monCat.get(c+"|"+mm)||0),
+    pairs, basketOrders,
+    prods:[...prodM.values()].map(p=>({sku:p.sku,pn:p.pn,cat:p.cat,model:p.model,color:p.color,size:p.size,qty:p.qty,v:p.v,ords:p.ords.size,custs:p.custs.size,cy:p.cy,py:p.py,yoy:p.py>0?((p.cy-p.py)/p.py*100):null})),
     custs2:[...custM.values()].map(c=>({code:c.code,name:c.name,type:typeByCode[c.code]||"",v:c.v,ords:c.ords.size})).sort((a,b)=>b.v-a.v),
     buys:(code)=>{const m=new Map();S.demoRows.filter(r=>r.customer_id===code&&inDate(r)&&(!cat||r.category===cat)).forEach(r=>{const k=r.date+"|"+r.product_sku;if(!m.has(k))m.set(k,{d:r.date,cat:r.category,sku:r.product_sku,pn:r.product_name,model:r.product_model||"",color:r.product_color||"",size:r.product_size||"",qty:0,v:0});const o=m.get(k);o.qty+=r.qty;o.v+=r.product_price_amount;});return [...m.values()].sort((a,b)=>a.d<b.d?1:a.d>b.d?-1:b.v-a.v);}};
   render();
@@ -301,26 +344,45 @@ async function loadLive(){
   const wCat=W([...base,typeCond]);           // category doughnut (ignores its own filter so it stays clickable)
   const wType=W([...base,catCond]);           // customer-type doughnut (ignores its own filter)
   try{
+    const cyMax=`(SELECT MAX(EXTRACT(YEAR FROM DATE(${qq(m.date)}))) FROM ${T} ${wAll})`;
+    const cyMaxC=`(SELECT MAX(EXTRACT(YEAR FROM DATE(${qq(m.date)}))) FROM ${T} ${wCat})`;
     const Q=[
-      bq(`SELECT EXTRACT(YEAR FROM DATE(${qq(m.date)})) y, SUM(${qq(m.amount)}) v, COUNT(DISTINCT ${qq(m.order)}) o, COUNT(DISTINCT ${qq(m.cust)}) c, SUM(${qq(m.qty)}) q FROM ${T} ${wAll} GROUP BY y`),
+      bq(`SELECT EXTRACT(YEAR FROM DATE(${qq(m.date)})) y, SUM(${qq(m.amount)}) v, COUNT(DISTINCT ${qq(m.order)}) o, COUNT(DISTINCT ${qq(m.cust)}) c, SUM(${qq(m.qty)}) q, COUNT(DISTINCT ${qq(m.sku)}) sk, COUNT(*) lines FROM ${T} ${wAll} GROUP BY y`),
       m.dflag?bq(`SELECT SUM(CASE WHEN ${qq(m.dflag)}='Latest_MonthYear' THEN ${qq(m.amount)} END) latest, SUM(CASE WHEN ${qq(m.dflag)}='Previous_MonthYear' THEN ${qq(m.amount)} END) prevm FROM ${T} ${wAll}`):Promise.resolve({rows:[]}),
       bq(`SELECT FORMAT_DATE('%Y-%m',DATE(${qq(m.date)})) m, SUM(${qq(m.amount)}) v FROM ${T} ${wAll} GROUP BY m ORDER BY m`),
-      bq(`SELECT CAST(${qq(m.cat)} AS STRING) k, SUM(${qq(m.amount)}) v FROM ${T} ${wCat} GROUP BY k ORDER BY v DESC`),
-      bq(`SELECT CAST(${qq(m.sku)} AS STRING) sku, ANY_VALUE(${qq(m.prodName)}) pn, ANY_VALUE(CAST(${qq(m.cat)} AS STRING)) cat${m.model?`, ANY_VALUE(CAST(${qq(m.model)} AS STRING)) model`:", CAST(NULL AS STRING) model"}${m.color?`, ANY_VALUE(CAST(${qq(m.color)} AS STRING)) color`:", CAST(NULL AS STRING) color"}, SUM(${qq(m.qty)}) qty, SUM(${qq(m.amount)}) v, COUNT(DISTINCT ${qq(m.order)}) ords, COUNT(DISTINCT ${qq(m.cust)}) custs FROM ${T} ${wAll} GROUP BY sku ORDER BY v DESC LIMIT 200`),
+      bq(`SELECT CAST(${qq(m.cat)} AS STRING) k, SUM(${qq(m.amount)}) v, SUM(${qq(m.qty)}) qty, SUM(CASE WHEN EXTRACT(YEAR FROM DATE(${qq(m.date)}))=${cyMaxC} THEN ${qq(m.amount)} END) cyv, SUM(CASE WHEN EXTRACT(YEAR FROM DATE(${qq(m.date)}))=${cyMaxC}-1 THEN ${qq(m.amount)} END) pyv FROM ${T} ${wCat} GROUP BY k ORDER BY v DESC`),
+      bq(`SELECT CAST(${qq(m.sku)} AS STRING) sku, ANY_VALUE(${qq(m.prodName)}) pn, ANY_VALUE(CAST(${qq(m.cat)} AS STRING)) cat${m.model?`, ANY_VALUE(CAST(${qq(m.model)} AS STRING)) model`:", CAST(NULL AS STRING) model"}${m.color?`, ANY_VALUE(CAST(${qq(m.color)} AS STRING)) color`:", CAST(NULL AS STRING) color"}, SUM(${qq(m.qty)}) qty, SUM(${qq(m.amount)}) v, COUNT(DISTINCT ${qq(m.order)}) ords, COUNT(DISTINCT ${qq(m.cust)}) custs, SUM(CASE WHEN EXTRACT(YEAR FROM DATE(${qq(m.date)}))=${cyMax} THEN ${qq(m.amount)} END) cyv, SUM(CASE WHEN EXTRACT(YEAR FROM DATE(${qq(m.date)}))=${cyMax}-1 THEN ${qq(m.amount)} END) pyv FROM ${T} ${wAll} GROUP BY sku ORDER BY v DESC LIMIT 200`),
       bq(`SELECT CAST(${qq(m.cust)} AS STRING) code, ANY_VALUE(${qq(m.custName)}) name, ANY_VALUE(CAST(${qq(m.custType)} AS STRING)) type, SUM(${qq(m.amount)}) v, COUNT(DISTINCT ${qq(m.order)}) ords FROM ${T} ${wAll} GROUP BY code ORDER BY v DESC LIMIT 300`),
       bq(`SELECT CAST(${qq(m.custType)} AS STRING) k, COUNT(DISTINCT ${qq(m.cust)}) n FROM ${T} ${wType} GROUP BY k ORDER BY n DESC`),
+      bq(`SELECT FORMAT_DATE('%Y-%m',DATE(${qq(m.date)})) m, CAST(${qq(m.cat)} AS STRING) k, SUM(${qq(m.amount)}) v FROM ${T} ${wCat} GROUP BY m,k ORDER BY m`),
+      bq(`WITH ord AS (SELECT ${qq(m.order)} o, CAST(${qq(m.sku)} AS STRING) sku, ANY_VALUE(${qq(m.prodName)}) pn FROM ${T} ${wAll} GROUP BY o, sku),
+           tot AS (SELECT COUNT(DISTINCT o) n FROM ord),
+           cnt AS (SELECT sku, COUNT(*) c FROM ord GROUP BY sku)
+         SELECT a.sku s1, b.sku s2, ANY_VALUE(a.pn) n1, ANY_VALUE(b.pn) n2, COUNT(*) cnt,
+           (SELECT n FROM tot) totord, ANY_VALUE(ca.c) c1, ANY_VALUE(cb.c) c2
+         FROM ord a JOIN ord b ON a.o=b.o AND a.sku<b.sku
+         JOIN cnt ca ON ca.sku=a.sku JOIN cnt cb ON cb.sku=b.sku
+         GROUP BY s1,s2 ORDER BY cnt DESC LIMIT 60`),
     ];
-    const[yr,yo,mon,catr,prod,cust,ctype]=await Promise.all(Q);
+    const[yr,yo,mon,catr,prod,cust,ctype,monc,pairr]=await Promise.all(Q);
     if(!S._optsInit){ fillOpts("#fCat",catr.rows.map(r=>r.k)); fillOpts("#fType",ctype.rows.map(r=>r.k)); S._optsInit=true; }
-    const byY={}; yr.rows.forEach(r=>byY[Number(r.y)]={v:Number(r.v)||0,o:Number(r.o)||0,c:Number(r.c)||0,q:Number(r.q)||0});
+    const byY={}; yr.rows.forEach(r=>byY[Number(r.y)]={v:Number(r.v)||0,o:Number(r.o)||0,c:Number(r.c)||0,q:Number(r.q)||0,sk:Number(r.sk)||0,lines:Number(r.lines)||0});
     const yrs=Object.keys(byY).map(Number); const cy=yrs.length?Math.max(...yrs):new Date().getFullYear(),py=cy-1;
     const k=yo.rows[0]||{}; const latest=Number(k.latest)||0,prevm=Number(k.prevm)||0;
-    const cur=byY[cy]||{v:0,o:0,c:0,q:0};
-    S.L={cy,py,total:cur.v,orders:cur.o,custs:cur.c,qty:cur.q,yoy:prevm?((latest-prevm)/prevm*100):null,
+    const cur=byY[cy]||{v:0,o:0,c:0,q:0,sk:0,lines:0};
+    const catMonths=[...new Set(monc.rows.map(r=>r.m))].sort();
+    const monMap=new Map(); monc.rows.forEach(r=>monMap.set((r.k||"(ว่าง)")+"|"+r.m,(monMap.get((r.k||"(ว่าง)")+"|"+r.m)||0)+(Number(r.v)||0)));
+    const catMomArr=catr.rows.map(r=>({k:r.k||"(ว่าง)",v:Number(r.v)||0,cy:Number(r.cyv)||0,py:Number(r.pyv)||0,qty:Number(r.qty)||0,yoy:Number(r.pyv)>0?((Number(r.cyv)-Number(r.pyv))/Number(r.pyv)*100):null}));
+    S.L={cy,py,total:cur.v,orders:cur.o,custs:cur.c,qty:cur.q,skus:cur.sk,avgLines:cur.o?cur.lines/cur.o:0,yoy:prevm?((latest-prevm)/prevm*100):null,
       mon:mon.rows.map(r=>({m:r.m,v:Number(r.v)||0})),
       cat:catr.rows.map(r=>({k:r.k||"(ว่าง)",v:Number(r.v)||0})),
+      catMom:catMomArr, catMonths, catTop5:catMomArr.slice(0,5).map(c=>c.k), monCat:(c)=>catMonths.map(mm=>monMap.get(c+"|"+mm)||0),
+      basketOrders:Number(pairr.rows[0]?.totord)||cur.o||1,
+      pairs:pairr.rows.map(r=>{const cnt=Number(r.cnt)||0,c1=Number(r.c1)||1,c2=Number(r.c2)||1,n=Number(r.totord)||1;
+        const sup=cnt/n; const lift=sup/((c1/n)*(c2/n));
+        return{s1:r.s1,s2:r.s2,n1:r.n1||r.s1,n2:r.n2||r.s2,cnt,sup,lift,conf:cnt/c1};}),
       custType:ctype.rows.map(r=>({k:r.k||"(ว่าง)",n:Number(r.n)||0})),
-      prods:prod.rows.map(r=>{const det=parseDetail(r.pn);return{sku:r.sku,pn:r.pn||r.sku,cat:r.cat||"",model:r.model||det.model||"",color:r.color||det.color||"",size:"",qty:Number(r.qty)||0,v:Number(r.v)||0,ords:Number(r.ords)||0,custs:Number(r.custs)||0};}),
+      prods:prod.rows.map(r=>{const det=parseDetail(r.pn);return{sku:r.sku,pn:r.pn||r.sku,cat:r.cat||"",model:r.model||det.model||"",color:r.color||det.color||"",size:"",qty:Number(r.qty)||0,v:Number(r.v)||0,ords:Number(r.ords)||0,custs:Number(r.custs)||0,cy:Number(r.cyv)||0,py:Number(r.pyv)||0,yoy:Number(r.pyv)>0?((Number(r.cyv)-Number(r.pyv))/Number(r.pyv)*100):null};}),
       custs2:cust.rows.map(r=>({code:r.code,name:r.name||r.code,type:r.type||"",v:Number(r.v)||0,ords:Number(r.ords)||0}))};
     status(`${S.L.custs2.length} ลูกค้า`);
     render();
@@ -339,7 +401,7 @@ async function loadBuysLive(code){
    Render
    ========================================================================= */
 function applyData(){ if(S.mode==="live")loadLive(); else demoCompute(); }
-function render(){ if(!S.L)return; buildForecast(S.L); renderKPIs(); renderTrend(); renderCompare(); renderSeason(); renderCat(); renderCustType(); renderProds(); renderCusts();
+function render(){ if(!S.L)return; buildForecast(S.L); renderKPIs(); renderTrend(); renderCompare(); renderSeason(); renderCat(); renderCustType(); renderCatMom(); renderCatTrend(); renderProds(); renderBasket(); renderCusts();
   if(S.sel){ if(S.mode==="demo")renderBuys(S.L.buys(S.sel)); /* live: loadBuysLive runs after render */ }
   else renderBuysEmpty(); }
 /* ---- forecast / trend derivation from the monthly series ---- */
@@ -371,6 +433,8 @@ function renderKPIs(){
     {l:`พยากรณ์ ${L.horizon} เดือนข้างหน้า`,v:baht(L.fcTotal),a:PAL[2],sub:(L.slope>=0?"▲ แนวโน้มขึ้น ":"▼ แนวโน้มลง ")+baht(Math.abs(L.slope))+"/เดือน"},
     {l:"จำนวน Order",v:num(L.orders),a:PAL[3]},
     {l:"จำนวนลูกค้า",v:num(L.custs),a:PAL[5]},
+    {l:"จำนวน SKU ที่ขายได้",v:num(L.skus||0),a:PAL[1]},
+    {l:"เฉลี่ยรายการ/ออเดอร์ (Basket size)",v:(L.avgLines||0).toFixed(1),a:PAL[6]},
   ];
   $("#kpis").innerHTML=cards.map(c=>`<div class="kpi"><div class="accent" style="background:${c.a}"></div>
     <div class="label">${c.l}</div><div class="value">${c.v}</div>
@@ -438,6 +502,35 @@ function renderCustType(){ const d=(S.L.custType||[]).slice(0,8); const labels=d
 }
 function thM(ym){const[y,m]=ym.split("-");return MONTHS[(+m)-1]+" "+be(+y).toString().slice(2);}
 
+function renderCatMom(){ const d=(S.L.catMom||[]).slice(0,10);
+  if(S.charts.catMom)S.charts.catMom.destroy();
+  S.charts.catMom=new Chart($("#chartCatMom"),{type:"bar",
+    data:{labels:d.map(x=>x.k),datasets:[{label:`ปี ${be(S.L.cy)}`,data:d.map(x=>x.cy||x.v),backgroundColor:d.map((x,i)=>PAL[i%PAL.length]),borderRadius:4}]},
+    options:{indexAxis:"y",responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>{const x=d[c.dataIndex];return [` ยอดขาย: ${baht(x.cy||x.v)}`,` YoY: ${x.yoy==null?"–":(x.yoy>=0?"▲ ":"▼ ")+Math.abs(x.yoy).toFixed(1)+"%"}`];}}}},
+      scales:{x:{ticks:{callback:v=>v>=1e6?(v/1e6)+"M":v/1e3+"K"},grid:{color:"#f1f3f4"}},y:{grid:{display:false},ticks:{font:{size:10}}}}}});
+}
+function renderCatTrend(){ const top=S.L.catTop5||[]; const labels=(S.L.catMonths||[]).map(thM);
+  if(S.charts.ctrend)S.charts.ctrend.destroy();
+  S.charts.ctrend=new Chart($("#chartCatTrend"),{type:"line",
+    data:{labels,datasets:top.map((c,i)=>({label:c,data:S.L.monCat(c),borderColor:PAL[i%PAL.length],backgroundColor:"transparent",tension:.3,pointRadius:0,borderWidth:2}))},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"bottom",labels:{boxWidth:9,padding:5,font:{size:9}}},tooltip:{callbacks:{label:c=>` ${c.dataset.label}: ${baht(c.raw)}`}}},
+      scales:{x:{grid:{display:false},ticks:{maxRotation:0,autoSkip:true,maxTicksLimit:8,font:{size:9}}},y:{ticks:{callback:v=>v>=1e6?(v/1e6)+"M":v/1e3+"K"},grid:{color:"#f1f3f4"},beginAtZero:true}}}});
+}
+function renderBasket(){
+  const d=(S.L.pairs||[]).slice(0,50);
+  $("#basketSub").textContent=`จาก ${num(S.L.basketOrders||0)} ออเดอร์ · Lift > 1 = ซื้อคู่กันบ่อยกว่าโอกาสปกติ`;
+  $("#basketTable thead").innerHTML="<tr><th style='width:34px'>#</th><th>สินค้า A</th><th>สินค้า B</th><th class='num'>ซื้อคู่กัน (ออเดอร์)</th><th class='num'>Support</th><th class='num'>Confidence</th><th class='num'>Lift</th></tr>";
+  $("#basketTable tbody").innerHTML=d.map((p,i)=>`<tr>
+    <td><span class="rank ${i<3?'r'+(i+1):''}">${i+1}</span></td>
+    <td class="prod" title="${p.n1}">${p.n1}</td>
+    <td class="prod" title="${p.n2}">${p.n2}</td>
+    <td class="num">${num(p.cnt)}</td>
+    <td class="num">${(p.sup*100).toFixed(1)}%</td>
+    <td class="num">${(p.conf*100).toFixed(0)}%</td>
+    <td class="num"><span class="pill" style="background:${p.lift>=1.2?'#e6f4ea':(p.lift>=1?'#e8f0fe':'#fce8e6')};color:${p.lift>=1.2?'#188038':(p.lift>=1?'#1a73e8':'#c5221f')}">${p.lift.toFixed(2)}×</span></td></tr>`).join("")||`<tr><td colspan="7" class="drill-hint">ไม่มีคู่สินค้าที่ซื้อด้วยกัน</td></tr>`;
+}
+
 function renderProds(){
   const q=($("#prodSearch")?.value||"").trim().toLowerCase();
   let r=S.L.prods.slice();
@@ -446,17 +539,18 @@ function renderProds(){
   const sc=S.prodSort.c,sd=S.prodSort.d;
   r.sort((a,b)=>STR.includes(sc)?(((a[sc]||"")<(b[sc]||"")?-1:1)*sd):(((a[sc]||0)-(b[sc]||0))*sd));
   r=r.slice(0,100); const mx=Math.max(1,...r.map(x=>x.v));
-  const cols=[{c:"rank",t:"#"},{c:"pn",t:"สินค้า"},{c:"cat",t:"กลุ่ม"},{c:"model",t:"รุ่น"},{c:"color",t:"สี"},{c:"qty",t:"จำนวน",num:1},{c:"v",t:"ยอดขาย",num:1},{c:"ords",t:"ออเดอร์",num:1}];
+  const cols=[{c:"rank",t:"#"},{c:"pn",t:"สินค้า"},{c:"cat",t:"กลุ่ม"},{c:"model",t:"รุ่น"},{c:"color",t:"สี"},{c:"qty",t:"จำนวน",num:1},{c:"v",t:"ยอดขาย",num:1},{c:"ords",t:"ออเดอร์",num:1},{c:"yoy",t:"YoY",num:1}];
   $("#prodTable thead").innerHTML="<tr>"+cols.map(c=>{const ar=S.prodSort.c===c.c?(sd>0?" ▲":" ▼"):"";return `<th class="${c.num?'num':''}" data-c="${c.c}">${c.t}${ar}</th>`;}).join("")+"</tr>";
   $("#prodTable tbody").innerHTML=r.map((x,i)=>`<tr>
     <td><span class="rank ${i<3?'r'+(i+1):''}">${i+1}</span></td>
     <td class="prod" title="${x.pn}">${x.pn}<div style="font-size:10px;color:#9aa0a6">SKU: ${x.sku||"–"}${x.size?" · "+x.size:""}</div></td>
     <td>${x.cat}</td>
-    <td>${x.model?`<span class="pill" style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;background:#eef1f4;color:#3c4043;white-space:nowrap">${x.model}</span>`:"–"}</td>
+    <td>${x.model?`<span class="pill" style="background:#eef1f4;color:#3c4043">${x.model}</span>`:"–"}</td>
     <td>${x.color||"–"}</td>
     <td class="num">${num(x.qty)}</td>
     <td class="num" style="background:linear-gradient(90deg,#e8f0fe ${(x.v/mx*100).toFixed(0)}%,transparent 0)">${baht(x.v)}</td>
-    <td class="num">${num(x.ords)}</td></tr>`).join("")||`<tr><td colspan="8" class="drill-hint">ไม่มีข้อมูล</td></tr>`;
+    <td class="num">${num(x.ords)}</td>
+    <td class="num ${x.yoy==null?"":(x.yoy>=0?"up":"down")}">${x.yoy==null?"–":(x.yoy>=0?"▲":"▼")+" "+Math.abs(x.yoy).toFixed(0)+"%"}</td></tr>`).join("")||`<tr><td colspan="9" class="drill-hint">ไม่มีข้อมูล</td></tr>`;
   $("#prodTable thead").querySelectorAll("th").forEach(th=>th.onclick=()=>{const c=th.dataset.c;if(c==="rank")return;if(S.prodSort.c===c)S.prodSort.d*=-1;else{S.prodSort.c=c;S.prodSort.d=STR.includes(c)?1:-1;}renderProds();});
 }
 let CUST_PP=10;
