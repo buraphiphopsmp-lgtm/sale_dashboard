@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Sales Trend & Forecast · Futuretech</title>
+<link rel="icon" href="data:," />
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+  :root{--bg:#eef1f4;--panel:#fff;--ink:#1f2933;--muted:#5f6368;--line:#e2e5e9;
+    --brand:#1a73e8;--gold:#f9ab00;--green:#188038;--red:#c5221f;--teal:#12b5cb;--purple:#9334e6;
+    --shadow:0 1px 2px rgba(60,64,67,.1),0 1px 3px rgba(60,64,67,.08);--radius:10px;}
+  *{box-sizing:border-box} html,body{margin:0;padding:0}
+  body{font-family:"Google Sans","Segoe UI",Roboto,Arial,"Noto Sans Thai",sans-serif;background:var(--bg);color:var(--ink);font-size:13px}
+  .appnav{display:flex;align-items:center;gap:2px;background:#202124;padding:0 16px;height:46px;overflow-x:auto}
+  .appnav .brand{color:#fff;font-weight:600;font-size:14px;margin-right:18px;display:flex;align-items:center;gap:8px;white-space:nowrap}
+  .appnav a.tab{color:#bdc1c6;text-decoration:none;font-size:13px;padding:0 16px;height:46px;display:flex;align-items:center;border-bottom:3px solid transparent;white-space:nowrap}
+  .appnav a.tab:hover{color:#fff;background:rgba(255,255,255,.06)}
+  .appnav a.tab.active{color:#fff;border-bottom-color:var(--brand)}
+  button{font:inherit;cursor:pointer;border:1px solid var(--line);background:#fff;color:var(--ink);padding:6px 12px;border-radius:6px;display:inline-flex;align-items:center;gap:6px}
+  button:hover{background:#f5f6f7} button.primary{background:var(--brand);color:#fff;border-color:var(--brand)} button.primary:hover{background:#1765cc}
+  .topbar{display:flex;align-items:center;gap:12px;padding:12px 22px;flex-wrap:wrap}
+  .topbar h1{font-size:20px;font-weight:700;margin:0} .topbar h1 .lite{color:var(--brand)}
+  .topbar .tag{font-size:12px;color:var(--muted)} .topbar .spacer{flex:1}
+  .badge{font-size:11px;padding:3px 9px;border-radius:999px;font-weight:500;white-space:nowrap}
+  .badge.demo{background:var(--gold);color:#fff} .badge.live{background:var(--green);color:#fff}
+  .wrap{max-width:1380px;margin:0 auto;padding:4px 18px 60px}
+  details.cfg{background:#fff;border:1px solid var(--line);border-radius:8px;margin-bottom:14px}
+  details.cfg>summary{cursor:pointer;padding:10px 14px;font-weight:500;font-size:12px;color:var(--muted);list-style:none}
+  details.cfg>summary::-webkit-details-marker{display:none} details.cfg>summary::before{content:"⚙ "}
+  .cfg-body{padding:0 14px 14px;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+  .field{display:flex;flex-direction:column;gap:3px} .field label{font-size:11px;color:var(--muted);font-weight:500}
+  .field input{font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:6px} .full{grid-column:1/-1}
+  .toolbar{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-bottom:16px}
+  .toolbar label{font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:3px}
+  .toolbar input,.toolbar select{font:inherit;padding:7px 10px;border:1px solid var(--line);border-radius:6px;background:#fff;min-width:150px}
+  #status{font-size:12px;color:var(--muted)}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:16px}
+  .kpi{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+  .kpi .accent{position:absolute;left:0;top:0;bottom:0;width:4px}
+  .kpi .label{font-size:12px;color:var(--muted);font-weight:500}
+  .kpi .value{font-size:23px;font-weight:700;margin:5px 0 2px;letter-spacing:-.4px}
+  .kpi .delta{font-size:12px;font-weight:600} .kpi .delta.up{color:var(--green)} .kpi .delta.down{color:var(--red)}
+  .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:14px}
+  .s8{grid-column:span 8}.s4{grid-column:span 4}.s12{grid-column:span 12}.s5{grid-column:span 5}.s7{grid-column:span 7}.s6{grid-column:span 6}
+  @media(max-width:1000px){.grid>div{grid-column:span 12 !important}}
+  .card{background:#fff;border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px}
+  .card h3{margin:0 0 12px;font-size:14px;font-weight:600;display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .card h3 .sub{font-size:11px;color:var(--muted);font-weight:400}
+  .chart-box{position:relative;height:330px} .chart-box.sm{height:280px}
+  .note{font-size:11px;color:var(--muted);margin-top:8px;line-height:1.5}
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#202124;color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;box-shadow:0 4px 12px rgba(0,0,0,.3);z-index:50;opacity:0;pointer-events:none;transition:.25s;max-width:90vw}
+  .toast.show{opacity:1} .toast.err{background:var(--red)}
+  .spinner{width:14px;height:14px;border:2px solid currentColor;border-top-color:transparent;border-radius:50%;animation:spin .7s linear infinite;display:inline-block;vertical-align:-2px}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .foot{font-size:10px;color:#9aa0a6;margin-top:16px}
+</style>
+</head>
+<body>
+
+<nav class="appnav">
+  <div class="brand">📊 Futuretech Dashboards</div>
+  <a href="sales-dashboard.html" class="tab">Sales Dashboard</a>
+  <a href="high-value-monitor.html" class="tab">High Value Monitor</a>
+  <a href="all-segment-monitor.html" class="tab">All Segment Monitor</a>
+  <a href="sales-performance.html" class="tab">Sales Performance</a>
+  <a href="product-intelligence.html" class="tab">Product &amp; Basket</a>
+  <a href="churn-winback.html" class="tab">Churn &amp; Win-back</a>
+  <a href="sales-forecast.html" class="tab active">Sales Forecast</a>
+</nav>
+
+<div class="topbar">
+  <h1>FUTURETECH <span class="lite">TREND</span> &amp; FORECAST</h1>
+  <span class="tag">Smart Fitting, Smart Living · แนวโน้มยอดขาย ฤดูกาล และพยากรณ์</span>
+  <span class="spacer"></span>
+  <span class="badge demo" id="modeBadge">DEMO MODE</span>
+  <span id="status"></span>
+  <button id="signinBtn" class="primary">เข้าสู่ระบบ Google</button>
+  <button id="refreshBtn">↻</button>
+</div>
+
+<div class="wrap">
+  <details class="cfg" id="cfgPanel" style="display:none">
+    <summary>การตั้งค่าการเชื่อมต่อ BigQuery</summary>
+    <div class="cfg-body">
+      <div class="field"><label>Project ID</label><input id="cfgProject" value="futuretech-468203" /></div>
+      <div class="field"><label>Dataset</label><input id="cfgDataset" value="sales_data" /></div>
+      <div class="field"><label>Table (ธุรกรรม)</label><input id="cfgTable" value="sale_transaction" /></div>
+      <div class="field full"><label>OAuth Client ID</label><input id="cfgClientId" value="860556755032-m7itkb5ljeiddlb1iii02kdv9l3f6j7g.apps.googleusercontent.com" /></div>
+      <div class="field" style="justify-content:flex-end"><button id="connectBtn" class="primary">บันทึก &amp; โหลด</button></div>
+    </div>
+  </details>
+
+  <div class="toolbar">
+    <label>กลุ่มสินค้า<select id="fCat"><option value="">— ทุกกลุ่ม —</option></select></label>
+    <label>เซลล์ผู้ดูแล<select id="fSeller"><option value="">— ทุกคน —</option></select></label>
+    <label>พยากรณ์ล่วงหน้า<select id="fHorizon">
+      <option value="3" selected>3 เดือน</option><option value="6">6 เดือน</option></select></label>
+    <button id="applyBtn" class="primary">ใช้ตัวกรอง</button>
+    <button id="clearBtn">ล้างตัวกรอง</button>
+    <span class="spacer" style="flex:1"></span>
+  </div>
+
+  <div class="kpis" id="kpis"></div>
+
+  <div class="grid">
+    <div class="s12 card">
+      <h3>ยอดขายรายเดือน + เส้นแนวโน้ม + พยากรณ์ <span class="sub" id="trendSub"></span></h3>
+      <div class="chart-box"><canvas id="chartTrend"></canvas></div>
+      <div class="note" id="fcNote"></div>
+    </div>
+
+    <div class="s7 card">
+      <h3>เทียบยอดขายรายเดือน ปีนี้ vs ปีก่อน <span class="sub" id="cmpSub"></span></h3>
+      <div class="chart-box sm"><canvas id="chartCompare"></canvas></div>
+    </div>
+    <div class="s5 card">
+      <h3>ฤดูกาล — ยอดขายเฉลี่ยตามเดือน <span class="sub">เฉลี่ยทุกปี</span></h3>
+      <div class="chart-box sm"><canvas id="chartSeason"></canvas></div>
+    </div>
+  </div>
+
+  <div class="foot" id="foot">Data source: futuretech-468203 · sales_data · sale_transaction</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+const $=s=>document.querySelector(s);
+const baht=n=>"฿"+Math.round(n||0).toLocaleString("en-US");
+const num=n=>Math.round(n||0).toLocaleString("en-US");
+const NUMERIC=["INTEGER","INT64","FLOAT","FLOAT64","NUMERIC","BIGNUMERIC"];
+const MONTHS=["ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."];
+const PAL=["#1a73e8","#12b5cb","#e8710a","#9334e6","#188038","#d01884","#f9ab00","#5f6368"];
+const LS="salesFc.cfg";
+Chart.defaults.font.family=getComputedStyle(document.body).fontFamily; Chart.defaults.color="#5f6368"; Chart.defaults.font.size=11;
+
+const S={mode:"demo",token:null,schema:[],L:null,charts:{},demoRows:[]};
+
+let tt; function toast(m,e){const t=$("#toast");t.textContent=m;t.className="toast show"+(e?" err":"");clearTimeout(tt);tt=setTimeout(()=>t.className="toast",4500);}
+function status(m,b){$("#status").innerHTML=(b?'<span class="spinner"></span> ':'')+(m||"");}
+function badge(){const b=$("#modeBadge");if(S.mode==="live"){b.className="badge live";b.textContent="LIVE · BigQuery";}else{b.className="badge demo";b.textContent="DEMO MODE";}}
+const be=y=>y+543;
+
+/* ---------- config / auth / bq ---------- */
+function readCfg(){return{project:$("#cfgProject").value.trim(),dataset:$("#cfgDataset").value.trim(),table:$("#cfgTable").value.trim(),clientId:$("#cfgClientId").value.trim(),billing:$("#cfgProject").value.trim()};}
+function saveCfg(){localStorage.setItem(LS,JSON.stringify(readCfg()));}
+function loadCfg(){try{const c=JSON.parse(localStorage.getItem(LS)||"{}");if(c.project)$("#cfgProject").value=c.project;if(c.dataset)$("#cfgDataset").value=c.dataset;if(c.table)$("#cfgTable").value=c.table;if(c.clientId)$("#cfgClientId").value=c.clientId;}catch(e){}}
+let tc=null;
+function initAuth(id){if(!window.google||!google.accounts){toast("Google SDK ยังไม่พร้อม",1);return false;}
+  tc=google.accounts.oauth2.initTokenClient({client_id:id,scope:"https://www.googleapis.com/auth/bigquery.readonly https://www.googleapis.com/auth/cloud-platform.read-only",
+    callback:r=>{if(r.error){toast("ล็อกอินไม่สำเร็จ: "+r.error,1);return;}S.token=r.access_token;try{sessionStorage.setItem("bqToken",r.access_token);}catch(e){}S.mode="live";badge();toast("เชื่อมต่อสำเร็จ");bootLive();}});return true;}
+function signIn(){const c=readCfg();if(!c.clientId){$("#cfgPanel").open=true;toast("ใส่ OAuth Client ID ก่อน",1);return;}if(!tc&&!initAuth(c.clientId))return;tc.requestAccessToken({prompt:S.token?"":"consent"});}
+async function bq(sql){const c=readCfg();
+  const res=await fetch(`https://bigquery.googleapis.com/bigquery/v2/projects/${c.billing}/queries`,{method:"POST",headers:{Authorization:"Bearer "+S.token,"Content-Type":"application/json"},body:JSON.stringify({query:sql,useLegacySql:false,timeoutMs:60000,maxResults:2000})});
+  const d=await res.json();
+  if(!res.ok){if(res.status===401){try{sessionStorage.removeItem("bqToken");}catch(e){}S.token=null;}throw new Error(d.error?.message||("HTTP "+res.status));}
+  if(d.jobComplete===false)throw new Error("Query นานเกินไป");
+  const f=(d.schema?.fields)||[];
+  return{fields:f.map(x=>({name:x.name,type:x.type})),rows:(d.rows||[]).map(r=>{const o={};r.f.forEach((c,i)=>o[f[i].name]=NUMERIC.includes((f[i].type||"").toUpperCase())?Number(c.v):c.v);return o;})};}
+function qq(c){return "`"+String(c).replace(/`/g,"")+"`";}
+const esc=s=>String(s).replace(/'/g,"\\'");
+async function fetchSchema(t){const c=readCfg();const{rows}=await bq(`SELECT column_name name FROM \`${c.project}.${c.dataset}.INFORMATION_SCHEMA.COLUMNS\` WHERE table_name='${t}' ORDER BY ordinal_position`);return rows.map(r=>r.name);}
+const hasCol=(a,n)=>a.includes(n)?n:"";
+function M(){const s=S.schema;return{
+  date:hasCol(s,"date")||"date", amount:hasCol(s,"product_price_amount")||"product_price_amount",
+  cat:hasCol(s,"final_category")||hasCol(s,"category")||"final_category",
+  seller:hasCol(s,"best_seller_name")||hasCol(s,"sale_name_new")||"best_seller_name"};}
+function tbl(){const c=readCfg();return `\`${c.project}.${c.dataset}.${c.table}\``;}
+function fillOpts(sel,vals){const el=$(sel);if(!el)return;const cur=el.value;el.querySelectorAll("option:not([value=''])").forEach(o=>o.remove());[...new Set(vals.filter(Boolean))].forEach(v=>{const o=document.createElement("option");o.value=v;o.textContent=v;if(v===cur)o.selected=true;el.appendChild(o);});}
+
+/* ---------- forecast helpers ---------- */
+function linreg(ys){ const n=ys.length; if(n<2)return{a:ys[0]||0,b:0};
+  let sx=0,sy=0,sxx=0,sxy=0; for(let i=0;i<n;i++){sx+=i;sy+=ys[i];sxx+=i*i;sxy+=i*ys[i];}
+  const d=n*sxx-sx*sx; const b=d?(n*sxy-sx*sy)/d:0; const a=(sy-b*sx)/n; return{a,b};}
+function movingAvg(ys,w){ return ys.map((_,i)=>{const lo=Math.max(0,i-w+1);let s=0,c=0;for(let j=lo;j<=i;j++){s+=ys[j];c++;}return c?s/c:0;}); }
+function nextYM(ym,k){ let[y,m]=ym.split("-").map(Number); m+=k; y+=Math.floor((m-1)/12); m=((m-1)%12+12)%12+1; return y+"-"+String(m).padStart(2,"0"); }
+
+/* =========================================================================
+   DEMO
+   ========================================================================= */
+function buildDemo(){
+  const cats=["เฟรมอลูมิเนียม","บานพับถ้วย","รางลิ้นชัก","มือจับเฟอร์นิเจอร์","อุปกรณ์จัดเก็บ","unknown"];
+  const sellers=["ศุภชัย (คุณชุบ)","สุวรรณี (นก)","ชนิสา (มุก)","อิษฎา (จี๋)","เจนทร (แอน)","พิชัย (กุ้ง)"];
+  const rows=[]; const today=new Date(); const start=new Date(today); start.setFullYear(start.getFullYear()-2); start.setMonth(0); start.setDate(1);
+  let trend=1;
+  for(let mm=0;;mm++){ const day=new Date(start); day.setMonth(start.getMonth()+mm); if(day>today)break;
+    const moIdx=day.getMonth(); const season=1+0.5*Math.sin((moIdx-3)/12*2*Math.PI)+((moIdx===6||moIdx===7)?0.5:0);
+    trend*=1.012; // ~1.2% monthly growth
+    const noise=0.85+Math.random()*0.3;
+    const monthBase=2200000*trend*season*noise;
+    cats.forEach((cat,ci)=>{ const catShare=[0.28,0.2,0.18,0.16,0.12,0.06][ci];
+      sellers.forEach((sl,si)=>{ const n=2+((Math.random()*4)|0);
+        for(let k=0;k<n;k++){ const d=new Date(day); d.setDate(1+((Math.random()*27)|0));
+          rows.push({date:d.toISOString().slice(0,10),product_price_amount:Math.round(monthBase*catShare/sellers.length/n*(0.7+Math.random()*0.6)),category:cat,seller:sl}); }
+      }); }); }
+  S.demoRows=rows; S.mode="demo"; badge();
+  fillOpts("#fCat",cats); fillOpts("#fSeller",sellers);
+  $("#foot").textContent="DEMO data — ข้อมูลจำลอง · "+rows.length.toLocaleString()+" รายการ";
+}
+function demoCompute(){
+  const cat=$("#fCat").value, seller=$("#fSeller").value;
+  const rows=S.demoRows.filter(r=>(!cat||r.category===cat)&&(!seller||r.seller===seller));
+  const monMap=new Map();
+  rows.forEach(r=>{const k=r.date.slice(0,7);monMap.set(k,(monMap.get(k)||0)+r.product_price_amount);});
+  const mon=[...monMap.entries()].sort((a,b)=>a[0]<b[0]?-1:1).map(([m,v])=>({m,v}));
+  buildL(mon); render();
+}
+function buildL(mon){
+  const horizon=+$("#fHorizon").value;
+  const ys=mon.map(x=>x.v); const ma=movingAvg(ys,3); const{a,b}=linreg(ys);
+  const fc=[]; for(let i=0;i<horizon;i++){const idx=ys.length+i; fc.push({m:nextYM(mon.length?mon[mon.length-1].m:"2025-01",i+1),v:Math.max(0,a+b*idx)});}
+  // KPIs
+  const n=mon.length; const cur=n?mon[n-1]:{m:"",v:0}; const prevM=n>1?mon[n-2]:{v:0};
+  const mom=prevM.v?((cur.v-prevM.v)/prevM.v*100):null;
+  // YTD vs last year same months
+  const cy=n?+cur.m.slice(0,4):0, py=cy-1; const upTo=n?+cur.m.slice(5,7):0;
+  let ytd=0,ytdPrev=0; const byYM={}; mon.forEach(x=>byYM[x.m]=x.v);
+  for(let mo=1;mo<=upTo;mo++){const k=String(mo).padStart(2,"0"); ytd+=byYM[cy+"-"+k]||0; ytdPrev+=byYM[py+"-"+k]||0;}
+  const ytdYoy=ytdPrev?((ytd-ytdPrev)/ytdPrev*100):null;
+  // seasonality: avg by calendar month
+  const seasonSum=Array(12).fill(0),seasonCnt=Array(12).fill(0);
+  mon.forEach(x=>{const mi=+x.m.slice(5,7)-1;seasonSum[mi]+=x.v;seasonCnt[mi]++;});
+  const season=seasonSum.map((s,i)=>seasonCnt[i]?s/seasonCnt[i]:0);
+  // compare current vs prev year by month
+  const cmpCur=[],cmpPrev=[]; for(let mo=1;mo<=12;mo++){const k=String(mo).padStart(2,"0");cmpCur.push(byYM[cy+"-"+k]||0);cmpPrev.push(byYM[py+"-"+k]||0);}
+  // forecast total
+  const fcTotal=fc.reduce((s,x)=>s+x.v,0);
+  S.L={mon,ma,fc,cur,mom,cy,py,upTo,ytd,ytdPrev,ytdYoy,season,cmpCur,cmpPrev,slope:b,horizon,fcTotal,
+    avgRecent:n>=3?(ys.slice(-3).reduce((s,v)=>s+v,0)/3):cur.v};
+}
+
+/* =========================================================================
+   LIVE
+   ========================================================================= */
+async function bootLive(){ try{ status("กำลังอ่าน schema…",true); S.schema=await fetchSchema(readCfg().table);
+    if(!S.schema.length)throw new Error("ไม่พบคอลัมน์"); await loadLive(); }
+  catch(e){status("");toast("โหลดไม่สำเร็จ: "+e.message,1);console.error(e);} }
+async function loadLive(){
+  const m=M(),T=tbl(); status("กำลังคำนวณ…",true);
+  const cat=$("#fCat").value, seller=$("#fSeller").value; const c=[];
+  if(cat)c.push(`${qq(m.cat)}='${esc(cat)}'`); if(seller)c.push(`${qq(m.seller)}='${esc(seller)}'`);
+  const W=c.length?("WHERE "+c.join(" AND ")):"";
+  try{
+    const Q=[
+      bq(`SELECT FORMAT_DATE('%Y-%m',DATE(${qq(m.date)})) m, SUM(${qq(m.amount)}) v FROM ${T} ${W} GROUP BY m ORDER BY m`),
+      bq(`SELECT DISTINCT CAST(${qq(m.cat)} AS STRING) v FROM ${T} WHERE ${qq(m.cat)} IS NOT NULL LIMIT 100`),
+      bq(`SELECT DISTINCT CAST(${qq(m.seller)} AS STRING) v FROM ${T} WHERE ${qq(m.seller)} IS NOT NULL LIMIT 500`),
+    ];
+    const[monq,catq,selq]=await Promise.all(Q);
+    if(!S._optsInit){ fillOpts("#fCat",catq.rows.map(r=>r.v)); fillOpts("#fSeller",selq.rows.map(r=>r.v)); S._optsInit=true; }
+    const mon=monq.rows.map(r=>({m:r.m,v:Number(r.v)||0}));
+    buildL(mon); status(`${mon.length} เดือน`); render();
+  }catch(e){status("");toast("คำนวณไม่สำเร็จ: "+e.message,1);console.error(e);}
+}
+
+/* =========================================================================
+   Render
+   ========================================================================= */
+function applyData(){ if(S.mode==="live")loadLive(); else demoCompute(); }
+function render(){ if(!S.L)return; renderKPIs(); renderTrend(); renderCompare(); renderSeason(); }
+function thM(ym){const[y,m]=ym.split("-");return MONTHS[(+m)-1]+" "+be(+y).toString().slice(2);}
+function renderKPIs(){
+  const L=S.L; const cards=[
+    {l:`ยอดเดือนล่าสุด${L.cur.m?" ("+thM(L.cur.m)+")":""}`,v:baht(L.cur.v),a:PAL[0],d:L.mom,dl:"MoM"},
+    {l:`YTD ปี ${be(L.cy)}`,v:baht(L.ytd),a:PAL[4],d:L.ytdYoy,dl:"YoY"},
+    {l:`YTD ปี ${be(L.py)} (ช่วงเดียวกัน)`,v:baht(L.ytdPrev),a:PAL[7]},
+    {l:"แนวโน้ม (ต่อเดือน)",v:(L.slope>=0?"▲ ":"▼ ")+baht(Math.abs(L.slope)),a:L.slope>=0?PAL[4]:PAL[5]},
+    {l:`พยากรณ์รวม ${L.horizon} เดือนข้างหน้า`,v:baht(L.fcTotal),a:PAL[2]},
+  ];
+  $("#kpis").innerHTML=cards.map(c=>`<div class="kpi"><div class="accent" style="background:${c.a}"></div>
+    <div class="label">${c.l}</div><div class="value">${c.v}</div>
+    ${c.d!=null?`<div class="delta ${c.d>=0?'up':'down'}">${c.d>=0?'▲':'▼'} ${Math.abs(c.d).toFixed(1)}% ${c.dl}</div>`:`<div class="delta">&nbsp;</div>`}</div>`).join("");
+}
+function renderTrend(){
+  const L=S.L; const labels=L.mon.map(x=>thM(x.m)).concat(L.fc.map(x=>thM(x.m)+" *"));
+  const actual=L.mon.map(x=>x.v).concat(L.fc.map(()=>null));
+  const ma=L.ma.concat(L.fc.map(()=>null));
+  // forecast line connects from last actual point
+  const fcLine=L.mon.map(()=>null); if(L.mon.length){fcLine[L.mon.length-1]=L.mon[L.mon.length-1].v;}
+  L.fc.forEach(x=>fcLine.push(x.v));
+  $("#trendSub").textContent=L.mon.length?`${thM(L.mon[0].m)} - ${thM(L.mon[L.mon.length-1].m)} · * = พยากรณ์`:"";
+  if(S.charts.trend)S.charts.trend.destroy();
+  S.charts.trend=new Chart($("#chartTrend"),{type:"line",
+    data:{labels,datasets:[
+      {label:"ยอดขายจริง",data:actual,borderColor:"#1a73e8",backgroundColor:"rgba(26,115,232,.10)",fill:true,tension:.3,pointRadius:0,borderWidth:2},
+      {label:"ค่าเฉลี่ยเคลื่อนที่ 3 เดือน",data:ma,borderColor:"#f9ab00",backgroundColor:"transparent",tension:.3,pointRadius:0,borderWidth:2,borderDash:[2,2]},
+      {label:"พยากรณ์",data:fcLine,borderColor:"#c5221f",backgroundColor:"transparent",tension:.2,pointRadius:2,borderWidth:2,borderDash:[6,4]},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"bottom",labels:{boxWidth:12,padding:8,font:{size:10}}},
+      tooltip:{callbacks:{label:c=>c.raw==null?null:` ${c.dataset.label}: ${baht(c.raw)}`}}},
+      scales:{x:{grid:{display:false},ticks:{maxRotation:0,autoSkip:true,maxTicksLimit:12,font:{size:9}}},
+        y:{ticks:{callback:v=>v>=1e6?(v/1e6)+"M":v/1e3+"K"},grid:{color:"#f1f3f4"},beginAtZero:true}}}});
+  const nf=L.fc.map(x=>`${thM(x.m)} ≈ ${baht(x.v)}`).join(" · ");
+  $("#fcNote").innerHTML=`พยากรณ์แบบเส้นตรง (linear trend) จากข้อมูลในอดีต — <b>${nf}</b>. ใช้ประกอบการวางแผน ไม่ใช่ตัวเลขรับประกัน เพราะไม่รวมปัจจัยฤดูกาล/โปรโมชัน`;
+}
+function renderCompare(){
+  const L=S.L;
+  $("#cmpSub").textContent=`${be(L.cy)} vs ${be(L.py)}`;
+  if(S.charts.cmp)S.charts.cmp.destroy();
+  S.charts.cmp=new Chart($("#chartCompare"),{type:"bar",
+    data:{labels:MONTHS,datasets:[
+      {label:`ปี ${be(L.py)}`,data:L.cmpPrev,backgroundColor:"#c6dafc",borderRadius:3},
+      {label:`ปี ${be(L.cy)}`,data:L.cmpCur,backgroundColor:"#1a73e8",borderRadius:3},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"bottom",labels:{boxWidth:12,padding:8,font:{size:10}}},
+      tooltip:{callbacks:{label:c=>` ${c.dataset.label}: ${baht(c.raw)}`}}},
+      scales:{x:{grid:{display:false},ticks:{font:{size:9}}},y:{ticks:{callback:v=>v>=1e6?(v/1e6)+"M":v/1e3+"K"},grid:{color:"#f1f3f4"},beginAtZero:true}}}});
+}
+function renderSeason(){
+  const L=S.L; const mx=Math.max(1,...L.season);
+  if(S.charts.season)S.charts.season.destroy();
+  S.charts.season=new Chart($("#chartSeason"),{type:"bar",
+    data:{labels:MONTHS,datasets:[{data:L.season,backgroundColor:L.season.map(v=>v>=mx*0.85?"#188038":v>=mx*0.6?"#1a73e8":"#c6dafc"),borderRadius:3}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>" เฉลี่ย "+baht(c.raw)}}},
+      scales:{x:{grid:{display:false},ticks:{font:{size:9}}},y:{ticks:{callback:v=>v>=1e6?(v/1e6)+"M":v/1e3+"K"},grid:{color:"#f1f3f4"},beginAtZero:true}}}});
+}
+
+/* ---------- events / boot ---------- */
+$("#signinBtn").onclick=signIn;
+$("#connectBtn").onclick=()=>{saveCfg();$("#cfgPanel").open=false;if(S.token){S.mode="live";loadLive();}else signIn();};
+$("#refreshBtn").onclick=()=>{if(S.mode==="live")loadLive();else{buildDemo();demoCompute();}};
+$("#applyBtn").onclick=()=>applyData();
+$("#clearBtn").onclick=()=>{$("#fCat").value="";$("#fSeller").value="";$("#fHorizon").value="3";applyData();};
+$("#fCat").addEventListener("change",()=>applyData());
+$("#fSeller").addEventListener("change",()=>applyData());
+$("#fHorizon").addEventListener("change",()=>applyData());
+
+loadCfg(); buildDemo(); demoCompute();
+(function(){let tok=null;try{tok=sessionStorage.getItem("bqToken");}catch(e){}if(tok){S.token=tok;S.mode="live";badge();bootLive();}})();
+</script>
+</body>
+</html>

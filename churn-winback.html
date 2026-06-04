@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Churn & Win-back · Futuretech</title>
+<link rel="icon" href="data:," />
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+  :root{--bg:#eef1f4;--panel:#fff;--ink:#1f2933;--muted:#5f6368;--line:#e2e5e9;
+    --brand:#1a73e8;--gold:#f9ab00;--green:#188038;--red:#c5221f;--teal:#12b5cb;--purple:#9334e6;
+    --shadow:0 1px 2px rgba(60,64,67,.1),0 1px 3px rgba(60,64,67,.08);--radius:10px;}
+  *{box-sizing:border-box} html,body{margin:0;padding:0}
+  body{font-family:"Google Sans","Segoe UI",Roboto,Arial,"Noto Sans Thai",sans-serif;background:var(--bg);color:var(--ink);font-size:13px}
+  .appnav{display:flex;align-items:center;gap:2px;background:#202124;padding:0 16px;height:46px;overflow-x:auto}
+  .appnav .brand{color:#fff;font-weight:600;font-size:14px;margin-right:18px;display:flex;align-items:center;gap:8px;white-space:nowrap}
+  .appnav a.tab{color:#bdc1c6;text-decoration:none;font-size:13px;padding:0 16px;height:46px;display:flex;align-items:center;border-bottom:3px solid transparent;white-space:nowrap}
+  .appnav a.tab:hover{color:#fff;background:rgba(255,255,255,.06)}
+  .appnav a.tab.active{color:#fff;border-bottom-color:var(--brand)}
+  button{font:inherit;cursor:pointer;border:1px solid var(--line);background:#fff;color:var(--ink);padding:6px 12px;border-radius:6px;display:inline-flex;align-items:center;gap:6px}
+  button:hover{background:#f5f6f7} button.primary{background:var(--brand);color:#fff;border-color:var(--brand)} button.primary:hover{background:#1765cc}
+  .topbar{display:flex;align-items:center;gap:12px;padding:12px 22px;flex-wrap:wrap}
+  .topbar h1{font-size:20px;font-weight:700;margin:0} .topbar h1 .lite{color:var(--red)}
+  .topbar .tag{font-size:12px;color:var(--muted)} .topbar .spacer{flex:1}
+  .badge{font-size:11px;padding:3px 9px;border-radius:999px;font-weight:500;white-space:nowrap}
+  .badge.demo{background:var(--gold);color:#fff} .badge.live{background:var(--green);color:#fff}
+  .wrap{max-width:1380px;margin:0 auto;padding:4px 18px 60px}
+  details.cfg{background:#fff;border:1px solid var(--line);border-radius:8px;margin-bottom:14px}
+  details.cfg>summary{cursor:pointer;padding:10px 14px;font-weight:500;font-size:12px;color:var(--muted);list-style:none}
+  details.cfg>summary::-webkit-details-marker{display:none} details.cfg>summary::before{content:"⚙ "}
+  .cfg-body{padding:0 14px 14px;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+  .field{display:flex;flex-direction:column;gap:3px} .field label{font-size:11px;color:var(--muted);font-weight:500}
+  .field input{font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:6px} .full{grid-column:1/-1}
+  .toolbar{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-bottom:16px}
+  .toolbar label{font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:3px}
+  .toolbar input,.toolbar select{font:inherit;padding:7px 10px;border:1px solid var(--line);border-radius:6px;background:#fff;min-width:150px}
+  #status{font-size:12px;color:var(--muted)}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:16px}
+  .kpi{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+  .kpi .accent{position:absolute;left:0;top:0;bottom:0;width:4px}
+  .kpi .label{font-size:12px;color:var(--muted);font-weight:500}
+  .kpi .value{font-size:24px;font-weight:700;margin:5px 0 2px;letter-spacing:-.4px}
+  .kpi .delta{font-size:12px;font-weight:600}
+  .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:14px}
+  .s8{grid-column:span 8}.s4{grid-column:span 4}.s12{grid-column:span 12}.s5{grid-column:span 5}.s7{grid-column:span 7}.s6{grid-column:span 6}
+  @media(max-width:1000px){.grid>div{grid-column:span 12 !important}}
+  .card{background:#fff;border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px}
+  .card h3{margin:0 0 12px;font-size:14px;font-weight:600;display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .card h3 .sub{font-size:11px;color:var(--muted);font-weight:400}
+  .chart-box{position:relative;height:280px}
+  .tbl-scroll{overflow:auto;max-height:460px;border:1px solid var(--line);border-radius:8px}
+  table{border-collapse:collapse;width:100%;font-size:12.5px}
+  th,td{padding:9px 12px;border-bottom:1px solid #eef0f2;text-align:left;white-space:nowrap}
+  th{background:#f6f8fa;color:#5f6368;font-weight:600;position:sticky;top:0;cursor:pointer;user-select:none}
+  th:hover{background:#eef1f4}
+  td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+  tbody tr:nth-child(even){background:#fafbfc} tbody tr:hover{background:#fff4e0}
+  .rank{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;font-size:11px;font-weight:700;background:#eef1f4;color:#5f6368}
+  .rank.r1{background:#f9ab00;color:#fff}.rank.r2{background:#9aa0a6;color:#fff}.rank.r3{background:#cd7f32;color:#fff}
+  .pill{font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;white-space:nowrap}
+  .drill-hint{color:var(--muted);text-align:center;padding:30px;font-size:13px}
+  .pager{display:flex;justify-content:flex-end;align-items:center;gap:6px;font-size:11px;color:var(--muted);margin-top:7px}
+  .pager button{padding:2px 8px}
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#202124;color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;box-shadow:0 4px 12px rgba(0,0,0,.3);z-index:50;opacity:0;pointer-events:none;transition:.25s;max-width:90vw}
+  .toast.show{opacity:1} .toast.err{background:var(--red)}
+  .spinner{width:14px;height:14px;border:2px solid currentColor;border-top-color:transparent;border-radius:50%;animation:spin .7s linear infinite;display:inline-block;vertical-align:-2px}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .foot{font-size:10px;color:#9aa0a6;margin-top:16px}
+</style>
+</head>
+<body>
+
+<nav class="appnav">
+  <div class="brand">📊 Futuretech Dashboards</div>
+  <a href="sales-dashboard.html" class="tab">Sales Dashboard</a>
+  <a href="high-value-monitor.html" class="tab">High Value Monitor</a>
+  <a href="all-segment-monitor.html" class="tab">All Segment Monitor</a>
+  <a href="sales-performance.html" class="tab">Sales Performance</a>
+  <a href="product-intelligence.html" class="tab">Product &amp; Basket</a>
+  <a href="churn-winback.html" class="tab active">Churn &amp; Win-back</a>
+  <a href="sales-forecast.html" class="tab">Sales Forecast</a>
+</nav>
+
+<div class="topbar">
+  <h1>FUTURETECH <span class="lite">CHURN</span> &amp; WIN-BACK</h1>
+  <span class="tag">Smart Fitting, Smart Living · ความเสี่ยงลูกค้าหลุด และเป้าหมายดึงกลับ</span>
+  <span class="spacer"></span>
+  <span class="badge demo" id="modeBadge">DEMO MODE</span>
+  <span id="status"></span>
+  <button id="signinBtn" class="primary">เข้าสู่ระบบ Google</button>
+  <button id="refreshBtn">↻</button>
+</div>
+
+<div class="wrap">
+  <details class="cfg" id="cfgPanel" style="display:none">
+    <summary>การตั้งค่าการเชื่อมต่อ BigQuery</summary>
+    <div class="cfg-body">
+      <div class="field"><label>Project ID</label><input id="cfgProject" value="futuretech-468203" /></div>
+      <div class="field"><label>Dataset</label><input id="cfgDataset" value="sales_data" /></div>
+      <div class="field"><label>Table (สรุปลูกค้า)</label><input id="cfgAgg" value="customer_dashboard_final_table" /></div>
+      <div class="field full"><label>OAuth Client ID</label><input id="cfgClientId" value="860556755032-m7itkb5ljeiddlb1iii02kdv9l3f6j7g.apps.googleusercontent.com" /></div>
+      <div class="field" style="justify-content:flex-end"><button id="connectBtn" class="primary">บันทึก &amp; โหลด</button></div>
+    </div>
+  </details>
+
+  <div class="toolbar">
+    <label>เซลล์ผู้ดูแล<select id="fSeller"><option value="">— ทุกคน —</option></select></label>
+    <label>กลุ่มลูกค้า (segment)<select id="fSeg"><option value="">— ทุกกลุ่ม —</option></select></label>
+    <label>เกณฑ์เสี่ยงหลุด (วัน)<select id="fThresh">
+      <option value="90">ไม่ซื้อเกิน 90 วัน</option>
+      <option value="180" selected>ไม่ซื้อเกิน 180 วัน</option>
+      <option value="365">ไม่ซื้อเกิน 365 วัน</option></select></label>
+    <button id="applyBtn" class="primary">ใช้ตัวกรอง</button>
+    <button id="clearBtn">ล้างตัวกรอง</button>
+    <span class="spacer" style="flex:1"></span>
+  </div>
+
+  <div class="kpis" id="kpis"></div>
+
+  <div class="grid">
+    <div class="s5 card">
+      <h3>สถานะการซื้อของลูกค้า <span class="sub" id="statusSub">ตามวันที่ซื้อล่าสุด</span></h3>
+      <div class="chart-box"><canvas id="chartStatus"></canvas></div>
+    </div>
+    <div class="s7 card">
+      <h3>การกระจายตัวตามระยะเวลาที่หายไป (Recency) <span class="sub">จำนวนลูกค้า</span></h3>
+      <div class="chart-box"><canvas id="chartRecency"></canvas></div>
+    </div>
+
+    <div class="s12 card">
+      <h3><span>🎯 เป้าหมายดึงกลับ (Win-back) <span class="sub" id="wbSub">ลูกค้ามูลค่าสูงที่กำลังหายไป · เรียงตามมูลค่า</span></span>
+        <input id="wbSearch" placeholder="ค้นหาลูกค้า…" style="font:inherit;padding:5px 9px;border:1px solid var(--line);border-radius:6px;min-width:170px;font-weight:400"></h3>
+      <div class="tbl-scroll"><table id="wbTable"><thead></thead><tbody></tbody></table></div>
+      <div class="pager" id="wbPager"></div>
+    </div>
+  </div>
+
+  <div class="foot" id="foot">Data source: futuretech-468203 · sales_data · customer_dashboard_final_table</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+const $=s=>document.querySelector(s);
+const baht=n=>"฿"+Math.round(n||0).toLocaleString("en-US");
+const num=n=>Math.round(n||0).toLocaleString("en-US");
+const NUMERIC=["INTEGER","INT64","FLOAT","FLOAT64","NUMERIC","BIGNUMERIC"];
+const PAL=["#188038","#1a73e8","#f9ab00","#c5221f","#9334e6","#12b5cb"];
+const LS="churnWB.cfg";
+Chart.defaults.font.family=getComputedStyle(document.body).fontFamily; Chart.defaults.color="#5f6368"; Chart.defaults.font.size=11;
+// status buckets (days since last purchase)
+const STATUS=[{k:"Active (≤90 วัน)",max:90,c:"#188038"},{k:"เฝ้าระวัง (91-180)",max:180,c:"#1a73e8"},{k:"เสี่ยงหลุด (181-365)",max:365,c:"#f9ab00"},{k:"หลุดแล้ว (>365)",max:1e9,c:"#c5221f"}];
+const RBUCKETS=[{k:"0-30",lo:0,hi:30},{k:"31-60",lo:31,hi:60},{k:"61-90",lo:61,hi:90},{k:"91-180",lo:91,hi:180},{k:"181-365",lo:181,hi:365},{k:">365",lo:366,hi:1e9}];
+
+const S={mode:"demo",token:null,aggSchema:[],amap:{},wbSort:{c:"v",d:-1},wbPage:0,L:null,charts:{},demoCust:[]};
+
+let tt; function toast(m,e){const t=$("#toast");t.textContent=m;t.className="toast show"+(e?" err":"");clearTimeout(tt);tt=setTimeout(()=>t.className="toast",4500);}
+function status(m,b){$("#status").innerHTML=(b?'<span class="spinner"></span> ':'')+(m||"");}
+function badge(){const b=$("#modeBadge");if(S.mode==="live"){b.className="badge live";b.textContent="LIVE · BigQuery";}else{b.className="badge demo";b.textContent="DEMO MODE";}}
+
+/* ---------- config / auth / bq ---------- */
+function readCfg(){return{project:$("#cfgProject").value.trim(),dataset:$("#cfgDataset").value.trim(),aggTable:$("#cfgAgg").value.trim(),clientId:$("#cfgClientId").value.trim(),billing:$("#cfgProject").value.trim()};}
+function saveCfg(){localStorage.setItem(LS,JSON.stringify(readCfg()));}
+function loadCfg(){try{const c=JSON.parse(localStorage.getItem(LS)||"{}");if(c.project)$("#cfgProject").value=c.project;if(c.dataset)$("#cfgDataset").value=c.dataset;if(c.aggTable)$("#cfgAgg").value=c.aggTable;if(c.clientId)$("#cfgClientId").value=c.clientId;}catch(e){}}
+let tc=null;
+function initAuth(id){if(!window.google||!google.accounts){toast("Google SDK ยังไม่พร้อม",1);return false;}
+  tc=google.accounts.oauth2.initTokenClient({client_id:id,scope:"https://www.googleapis.com/auth/bigquery.readonly https://www.googleapis.com/auth/cloud-platform.read-only",
+    callback:r=>{if(r.error){toast("ล็อกอินไม่สำเร็จ: "+r.error,1);return;}S.token=r.access_token;try{sessionStorage.setItem("bqToken",r.access_token);}catch(e){}S.mode="live";badge();toast("เชื่อมต่อสำเร็จ");bootLive();}});return true;}
+function signIn(){const c=readCfg();if(!c.clientId){$("#cfgPanel").open=true;toast("ใส่ OAuth Client ID ก่อน",1);return;}if(!tc&&!initAuth(c.clientId))return;tc.requestAccessToken({prompt:S.token?"":"consent"});}
+async function bq(sql){const c=readCfg();
+  const res=await fetch(`https://bigquery.googleapis.com/bigquery/v2/projects/${c.billing}/queries`,{method:"POST",headers:{Authorization:"Bearer "+S.token,"Content-Type":"application/json"},body:JSON.stringify({query:sql,useLegacySql:false,timeoutMs:60000,maxResults:2000})});
+  const d=await res.json();
+  if(!res.ok){if(res.status===401){try{sessionStorage.removeItem("bqToken");}catch(e){}S.token=null;}throw new Error(d.error?.message||("HTTP "+res.status));}
+  if(d.jobComplete===false)throw new Error("Query นานเกินไป");
+  const f=(d.schema?.fields)||[];
+  return{fields:f.map(x=>({name:x.name,type:x.type})),rows:(d.rows||[]).map(r=>{const o={};r.f.forEach((c,i)=>o[f[i].name]=NUMERIC.includes((f[i].type||"").toUpperCase())?Number(c.v):c.v);return o;})};}
+function qq(c){return "`"+String(c).replace(/`/g,"")+"`";}
+const esc=s=>String(s).replace(/'/g,"\\'");
+async function fetchSchema(t){const c=readCfg();const{rows}=await bq(`SELECT column_name name FROM \`${c.project}.${c.dataset}.INFORMATION_SCHEMA.COLUMNS\` WHERE table_name='${t}' ORDER BY ordinal_position`);return rows.map(r=>r.name);}
+const hasCol=(a,n)=>a.includes(n)?n:"";
+function AM(){const s=S.aggSchema;return{
+  cust:hasCol(s,"customer_id")||"customer_id",
+  name:hasCol(s,"best_customer_name")||hasCol(s,"customer_name")||"best_customer_name",
+  seller:hasCol(s,"best_seller_name")||hasCol(s,"sale_name_new")||"best_seller_name",
+  seg:hasCol(s,"segment_rfm_25_fixed")||hasCol(s,"DBsegment_final")||hasCol(s,"segment_rfm_25")||"segment_rfm_25_fixed",
+  mon:hasCol(s,"monetary")||hasCol(s,"sales_2025")||"monetary",
+  freq:hasCol(s,"frequency")||hasCol(s,"total_orders"),
+  last:hasCol(s,"last_purchase")||hasCol(s,"Last_Purchase")||"last_purchase"};}
+function aggT(){const c=readCfg();return `\`${c.project}.${c.dataset}.${c.aggTable}\``;}
+function fillOpts(sel,vals){const el=$(sel);if(!el)return;const cur=el.value;el.querySelectorAll("option:not([value=''])").forEach(o=>o.remove());[...new Set(vals.filter(Boolean))].forEach(v=>{const o=document.createElement("option");o.value=v;o.textContent=v;if(v===cur)o.selected=true;el.appendChild(o);});}
+const dayDiff=(a,b)=>Math.round((a-b)/86400000);
+
+/* =========================================================================
+   DEMO
+   ========================================================================= */
+function buildDemo(){
+  const sellers=["ศุภชัย (คุณชุบ)","สุวรรณี (นก)","ชนิสา (มุก)","อิษฎา (จี๋)","เจนทร (แอน)","พิชัย (กุ้ง)"];
+  const segs=["1.High Value","2.High Potential","3.Potential","4.At Risk","5.New Customer","6.Non Focus","7.Lost"];
+  const segW=[0.05,0.06,0.16,0.30,0.05,0.33,0.05];
+  const names=["วุ่นเทคเฟอร์นิช","พี.เอส.พีเฟอร์นิเจอร์","ชัคริชบุญมีลีค","วอร์มเบอร์บิวด์","ทองไทยเฟอร์นิเชอร์","สยามดีไซน์","ลัคกี้สโตนกรุ๊ป","เอเชียโปรดักส์","บ้านสวยวัสดุ","กรีนโฮมดีไซน์","เอ็มเจครีเอชั่น","ไอพลัสดีไซน์","เดอะวู้ดเวิร์ค","ครัวสวยสตูดิโอ"];
+  const today=new Date(); const cust=[];
+  for(let i=0;i<200;i++){ let r=Math.random(),seg=segs[0],acc=0; for(let s=0;s<segs.length;s++){acc+=segW[s];if(r<=acc){seg=segs[s];break;}}
+    // recency by segment
+    let lastDays; if(/Lost/.test(seg))lastDays=370+((Math.random()*300)|0);
+      else if(/At Risk/.test(seg))lastDays=190+((Math.random()*160)|0);
+      else if(/Non Focus/.test(seg))lastDays=120+((Math.random()*260)|0);
+      else if(/New/.test(seg))lastDays=((Math.random()*60)|0);
+      else lastDays=((Math.random()*110)|0);
+    const last=new Date(today); last.setDate(last.getDate()-lastDays);
+    const tier=/High Value/.test(seg)?1:/High Potential/.test(seg)?0.7:/Potential/.test(seg)?0.45:0.25;
+    const mon=Math.round((300000+Math.random()*4500000)*tier*(/Lost/.test(seg)?0.6:1));
+    cust.push({code:("กพชวอตศมบ"[i%9]||"ก")+String(100+i).slice(-3),name:names[i%names.length]+(i>13?" "+i:""),
+      seller:sellers[i%sellers.length],seg,mon,freq:1+((Math.random()*40)|0),last:last.toISOString().slice(0,10)});
+  }
+  S.demoCust=cust; S.mode="demo"; badge();
+  fillOpts("#fSeller",sellers); fillOpts("#fSeg",segs);
+  $("#foot").textContent="DEMO data — ข้อมูลจำลอง · "+cust.length+" ลูกค้า";
+}
+function demoCompute(){
+  const seller=$("#fSeller").value, seg=$("#fSeg").value;
+  const cust=S.demoCust.filter(c=>(!seller||c.seller===seller)&&(!seg||c.seg===seg));
+  const asOf=new Date(); // today
+  const enriched=cust.map(c=>({...c,rec:dayDiff(asOf,new Date(c.last))}));
+  buildL(enriched,asOf.toISOString().slice(0,10));
+  render();
+}
+function buildL(enriched,asOf){
+  const thresh=+$("#fThresh").value;
+  const statusCnt=STATUS.map(s=>({k:s.k,c:s.c,n:0,v:0}));
+  const recCnt=RBUCKETS.map(b=>({k:b.k,n:0}));
+  let total=0,valAtRisk=0,riskN=0;
+  enriched.forEach(c=>{ total++;
+    for(let i=0;i<STATUS.length;i++){if(c.rec<=STATUS[i].max){statusCnt[i].n++;statusCnt[i].v+=c.mon;break;}}
+    for(let i=0;i<RBUCKETS.length;i++){if(c.rec>=RBUCKETS[i].lo&&c.rec<=RBUCKETS[i].hi){recCnt[i].n++;break;}}
+    if(c.rec>thresh){valAtRisk+=c.mon;riskN++;}
+  });
+  const wb=enriched.filter(c=>c.rec>thresh).sort((a,b)=>b.mon-a.mon);
+  S.L={total,statusCnt,recCnt,valAtRisk,riskN,thresh,asOf,wb};
+}
+
+/* =========================================================================
+   LIVE
+   ========================================================================= */
+async function bootLive(){ try{ status("กำลังอ่าน schema…",true); const c=readCfg();
+    S.aggSchema=await fetchSchema(c.aggTable); if(!S.aggSchema.length)throw new Error("ไม่พบคอลัมน์ในตารางสรุปลูกค้า"); await loadLive(); }
+  catch(e){status("");toast("โหลดไม่สำเร็จ: "+e.message,1);console.error(e);} }
+async function loadLive(){
+  const a=AM(),A=aggT(); status("กำลังคำนวณ…",true);
+  const seller=$("#fSeller").value, seg=$("#fSeg").value, thresh=+$("#fThresh").value;
+  const conds=[`${qq(a.cust)} IS NOT NULL`,`${qq(a.last)} IS NOT NULL`];
+  if(seller)conds.push(`${qq(a.seller)}='${esc(seller)}'`);
+  if(seg)conds.push(`CAST(${qq(a.seg)} AS STRING)='${esc(seg)}'`);
+  const W="WHERE "+conds.join(" AND ");
+  const REC=`DATE_DIFF(CURRENT_DATE(),DATE(${qq(a.last)}),DAY)`;
+  try{
+    const Q=[
+      // per-customer dedup → status + recency buckets + totals
+      bq(`WITH base AS (SELECT CAST(${qq(a.cust)} AS STRING) code, MAX(${REC}) rec, MAX(${qq(a.mon)}) v FROM ${A} ${W} GROUP BY code)
+          SELECT CASE WHEN rec<=90 THEN 0 WHEN rec<=180 THEN 1 WHEN rec<=365 THEN 2 ELSE 3 END st,
+                 CASE WHEN rec<=30 THEN 0 WHEN rec<=60 THEN 1 WHEN rec<=90 THEN 2 WHEN rec<=180 THEN 3 WHEN rec<=365 THEN 4 ELSE 5 END rb,
+                 COUNT(*) n, SUM(v) v FROM base GROUP BY st, rb`),
+      // selectable filter options
+      bq(`SELECT DISTINCT CAST(${qq(a.seller)} AS STRING) v FROM ${A} WHERE ${qq(a.seller)} IS NOT NULL LIMIT 500`),
+      bq(`SELECT DISTINCT CAST(${qq(a.seg)} AS STRING) v FROM ${A} WHERE ${qq(a.seg)} IS NOT NULL LIMIT 100`),
+      // win-back targets
+      bq(`SELECT CAST(${qq(a.cust)} AS STRING) code, ANY_VALUE(${qq(a.name)}) name, ANY_VALUE(CAST(${qq(a.seller)} AS STRING)) seller, MAX(CAST(${qq(a.seg)} AS STRING)) seg, MAX(${qq(a.mon)}) v, MAX(${REC}) rec, MAX(DATE(${qq(a.last)})) last FROM ${A} ${W} GROUP BY code HAVING rec>${thresh} ORDER BY v DESC LIMIT 500`),
+    ];
+    const[g,sl,sg,wb]=await Promise.all(Q);
+    if(!S._optsInit){ fillOpts("#fSeller",sl.rows.map(r=>r.v)); fillOpts("#fSeg",sg.rows.map(r=>r.v)); S._optsInit=true; }
+    const statusCnt=STATUS.map(s=>({k:s.k,c:s.c,n:0,v:0}));
+    const recCnt=RBUCKETS.map(b=>({k:b.k,n:0}));
+    let total=0,valAtRisk=0,riskN=0;
+    g.rows.forEach(r=>{const st=Number(r.st),rb=Number(r.rb),n=Number(r.n)||0,v=Number(r.v)||0;
+      statusCnt[st].n+=n; statusCnt[st].v+=v; recCnt[rb].n+=n; total+=n;
+      // recency bucket > thresh mapping handled below via wb totals
+    });
+    // value at risk from win-back rows (rec>thresh)
+    wb.rows.forEach(r=>{valAtRisk+=Number(r.v)||0;riskN++;});
+    S.L={total,statusCnt,recCnt,valAtRisk,riskN,thresh,asOf:"วันนี้",
+      wb:wb.rows.map(r=>({code:r.code,name:r.name||r.code,seller:r.seller||"",seg:r.seg||"",mon:Number(r.v)||0,rec:Number(r.rec)||0,last:r.last?String(r.last).slice(0,10):""}))};
+    status(`${num(total)} ลูกค้า`);
+    render();
+  }catch(e){status("");toast("คำนวณไม่สำเร็จ: "+e.message,1);console.error(e);}
+}
+
+/* =========================================================================
+   Render
+   ========================================================================= */
+function applyData(){ if(S.mode==="live")loadLive(); else demoCompute(); }
+function render(){ if(!S.L)return; renderKPIs(); renderStatus(); renderRecency(); renderWB(); }
+function renderKPIs(){
+  const L=S.L; const active=L.statusCnt[0].n, lost=L.statusCnt[3].n;
+  const riskShare=L.total?(L.riskN/L.total*100):0;
+  const cards=[
+    {l:"ลูกค้าทั้งหมด",v:num(L.total),a:PAL[1]},
+    {l:"ยัง Active (≤90 วัน)",v:num(active),a:PAL[0]},
+    {l:`กำลังหายไป (>${L.thresh} วัน)`,v:num(L.riskN),a:PAL[2]},
+    {l:"หลุดแล้ว (>365 วัน)",v:num(lost),a:PAL[3]},
+    {l:"มูลค่าเสี่ยงสูญเสีย",v:baht(L.valAtRisk),a:PAL[3]},
+    {l:"สัดส่วนเสี่ยงหลุด",v:riskShare.toFixed(1)+"%",a:PAL[2]},
+  ];
+  $("#kpis").innerHTML=cards.map(c=>`<div class="kpi"><div class="accent" style="background:${c.a}"></div>
+    <div class="label">${c.l}</div><div class="value">${c.v}</div><div class="delta">&nbsp;</div></div>`).join("");
+}
+function renderStatus(){ const d=S.L.statusCnt;
+  $("#statusSub").textContent=`รวม ${num(S.L.total)} ลูกค้า`;
+  if(S.charts.status)S.charts.status.destroy();
+  S.charts.status=new Chart($("#chartStatus"),{type:"doughnut",
+    data:{labels:d.map(x=>x.k),datasets:[{data:d.map(x=>x.n),backgroundColor:d.map(x=>x.c),borderWidth:2,borderColor:"#fff"}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:"56%",
+      plugins:{legend:{position:"bottom",labels:{boxWidth:10,padding:6,font:{size:10}}},
+        tooltip:{callbacks:{label:c=>{const t=c.dataset.data.reduce((s,x)=>s+x,0);return ` ${c.label}: ${num(c.raw)} ราย (${t?(c.raw/t*100).toFixed(1):0}%)`;}}}}}});
+}
+function renderRecency(){ const d=S.L.recCnt;
+  if(S.charts.rec)S.charts.rec.destroy();
+  const colors=["#188038","#34a853","#1a73e8","#f9ab00","#e8710a","#c5221f"];
+  S.charts.rec=new Chart($("#chartRecency"),{type:"bar",
+    data:{labels:d.map(x=>x.k+" วัน"),datasets:[{data:d.map(x=>x.n),backgroundColor:colors,borderRadius:4}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>" "+num(c.raw)+" ราย"}}},
+      scales:{x:{grid:{display:false},ticks:{font:{size:10}}},y:{grid:{color:"#f1f3f4"},beginAtZero:true,ticks:{precision:0}}}}});
+}
+let WB_PP=12;
+function renderWB(){
+  const q=($("#wbSearch")?.value||"").trim().toLowerCase();
+  let r=S.L.wb.slice(); if(q)r=r.filter(c=>(c.name||"").toLowerCase().includes(q)||(c.code||"").toLowerCase().includes(q)||(c.seller||"").toLowerCase().includes(q));
+  const sc=S.wbSort.c,sd=S.wbSort.d;
+  r.sort((a,b)=>{if(sc==="name"||sc==="seller"||sc==="seg")return((a[sc]||"")<(b[sc]||"")?-1:1)*sd;return((a[sc]||0)-(b[sc]||0))*sd;});
+  $("#wbSub").textContent=`${num(r.length)} ลูกค้าที่ไม่ซื้อเกิน ${S.L.thresh} วัน · มูลค่ารวม ${baht(r.reduce((s,x)=>s+x.mon,0))}`;
+  const pages=Math.max(1,Math.ceil(r.length/WB_PP)); S.wbPage=Math.min(S.wbPage,pages-1);
+  const sl=r.slice(S.wbPage*WB_PP,S.wbPage*WB_PP+WB_PP);
+  const cols=[{c:"rank",t:"#"},{c:"code",t:"รหัส"},{c:"name",t:"ชื่อลูกค้า"},{c:"seller",t:"เซลล์"},{c:"seg",t:"กลุ่ม"},{c:"rec",t:"หายไป (วัน)",num:1},{c:"mon",t:"มูลค่าลูกค้า",num:1},{c:"last",t:"ซื้อล่าสุด"}];
+  $("#wbTable thead").innerHTML="<tr>"+cols.map(c=>{const ar=S.wbSort.c===c.c?(sd>0?" ▲":" ▼"):"";return `<th class="${c.num?'num':''}" data-c="${c.c}">${c.t}${ar}</th>`;}).join("")+"</tr>";
+  const RISKY=/At Risk|Lost|Non.?Focus|เสี่ยง|หลุด/i;
+  $("#wbTable tbody").innerHTML=sl.map((c,i)=>{const rk=S.wbPage*WB_PP+i+1;
+    return `<tr>
+    <td><span class="rank ${rk<=3?'r'+rk:''}">${rk}</span></td>
+    <td>${c.code}</td><td title="${c.name}">${c.name}</td><td>${c.seller||"-"}</td>
+    <td><span class="pill" style="background:${RISKY.test(c.seg)?'#fce8e6':'#e8f0fe'};color:${RISKY.test(c.seg)?'#c5221f':'#1a73e8'}">${c.seg||"-"}</span></td>
+    <td class="num" style="color:${c.rec>365?'#c5221f':c.rec>180?'#e8710a':'#5f6368'};font-weight:600">${num(c.rec)}</td>
+    <td class="num">${baht(c.mon)}</td><td>${c.last||"–"}</td></tr>`;}).join("")||`<tr><td colspan="8" class="drill-hint">ไม่มีลูกค้าในเกณฑ์นี้ 🎉</td></tr>`;
+  $("#wbTable thead").querySelectorAll("th").forEach(th=>th.onclick=()=>{const c=th.dataset.c;if(c==="rank")return;if(S.wbSort.c===c)S.wbSort.d*=-1;else{S.wbSort.c=c;S.wbSort.d=(c==="name"||c==="seller"||c==="seg")?1:-1;}renderWB();});
+  $("#wbPager").innerHTML=`<span>${r.length?(S.wbPage*WB_PP+1):0} - ${Math.min((S.wbPage+1)*WB_PP,r.length)} / ${r.length}</span>
+    <button ${S.wbPage<=0?"disabled":""} id="wbPrev">‹</button><button ${S.wbPage>=pages-1?"disabled":""} id="wbNext">›</button>`;
+  $("#wbPrev")&&($("#wbPrev").onclick=()=>{S.wbPage--;renderWB();}); $("#wbNext")&&($("#wbNext").onclick=()=>{S.wbPage++;renderWB();});
+}
+
+/* ---------- events / boot ---------- */
+$("#signinBtn").onclick=signIn;
+$("#connectBtn").onclick=()=>{saveCfg();$("#cfgPanel").open=false;if(S.token){S.mode="live";loadLive();}else signIn();};
+$("#refreshBtn").onclick=()=>{if(S.mode==="live")loadLive();else{buildDemo();demoCompute();}};
+$("#applyBtn").onclick=()=>{S.wbPage=0;applyData();};
+$("#clearBtn").onclick=()=>{$("#fSeller").value="";$("#fSeg").value="";$("#fThresh").value="180";S.wbPage=0;applyData();};
+$("#fSeller").addEventListener("change",()=>{S.wbPage=0;applyData();});
+$("#fSeg").addEventListener("change",()=>{S.wbPage=0;applyData();});
+$("#fThresh").addEventListener("change",()=>{S.wbPage=0;applyData();});
+$("#wbSearch").addEventListener("input",()=>{S.wbPage=0;renderWB();});
+
+loadCfg(); buildDemo(); demoCompute();
+(function(){let tok=null;try{tok=sessionStorage.getItem("bqToken");}catch(e){}if(tok){S.token=tok;S.mode="live";badge();bootLive();}})();
+</script>
+</body>
+</html>
