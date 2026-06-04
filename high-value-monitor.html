@@ -57,6 +57,14 @@
   .segrow .bar{flex:1;background:#f1f3f4;border-radius:3px;height:26px;position:relative;overflow:hidden}
   .segrow .bar i{position:absolute;left:0;top:0;bottom:0;background:#5f6368;border-radius:3px}
   .segrow .val{width:54px;text-align:right;font-weight:600;font-size:12px}
+  .segrow.clickable{cursor:pointer;border-radius:5px;padding:2px 5px;transition:transform .15s ease,opacity .15s ease,box-shadow .15s ease}
+  .segrow.clickable:hover{background:#f6f8fa}
+  .segrow.dim{opacity:.34}
+  .segrow.on{transform:scale(1.03);box-shadow:0 3px 12px rgba(0,0,0,.14);background:#fffdf5}
+  .segrow.on .lbl{font-weight:700;color:#202124}
+  .segrow.on .val{font-weight:800}
+  .segrow.on .bar{height:30px}
+  .segrow.on .bar i{filter:brightness(.82)}
   table{border-collapse:collapse;width:100%;font-size:12px}
   th,td{padding:6px 9px;border-bottom:1px solid #eee;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   th{background:#b71c1c;color:#fff;font-weight:500;position:sticky;top:0}
@@ -328,12 +336,12 @@ function yearOf(name){const m=(name||"").match(/(20\d\d)/);return m?+m[1]:0;}
 function aggT(){const c=readCfg();return `\`${c.project}.${c.dataset}.${c.aggTable}\``;}
 function txnT(){const c=readCfg();return `\`${c.project}.${c.dataset}.${c.table}\``;}
 // WHERE on the customer-aggregate table: High Value scope + active filters
-function aggWhere(px){const a=S.amap;const p=px?px+".":"";const c=[];
+function aggWhere(px,opts){opts=opts||{};const a=S.amap;const p=px?px+".":"";const c=[];
   if(a.seg)c.push(`${p}${qq(a.seg)} IS NOT NULL AND TRIM(CAST(${p}${qq(a.seg)} AS STRING))<>''`);
   if(a.seg)c.push(`CAST(${p}${qq(a.seg)} AS STRING) NOT LIKE '%5.%'`); // exclude the "5." group
-  if(S.filt.segment&&a.seg)c.push(`${p}${qq(a.seg)}='${esc(S.filt.segment)}'`);
+  if(!opts.allSeg&&S.filt.segment&&a.seg)c.push(`${p}${qq(a.seg)}='${esc(S.filt.segment)}'`);
   if(S.filt.custCode&&a.cust)c.push(`${p}${qq(a.cust)}='${esc(S.filt.custCode)}'`);
-  if(S.selCust&&a.cust)c.push(`${p}${qq(a.cust)}='${esc(S.selCust)}'`);
+  if(!opts.allSeg&&S.selCust&&a.cust)c.push(`${p}${qq(a.cust)}='${esc(S.selCust)}'`);
   if(S._codes&&S._codes.length&&a.cust)c.push(`${p}${qq(a.cust)} IN (${S._codes.map(x=>`'${esc(x)}'`).join(",")})`);
   return c.length?("WHERE "+c.join(" AND ")):"";}
 // transaction-table scope: customers in the filtered HV set (+ date range)
@@ -358,14 +366,14 @@ async function loadLive(){
   readMapSelects(); const a=S.amap,m=S.map;
   if(!a.seg||!a.cust){toast("ไม่พบคอลัมน์ segment/customer ในตารางสรุปลูกค้า — ตรวจชื่อตารางใน ⚙",1);$("#cfgPanel").open=true;return;}
   status("กำลังคำนวณ…",true);
-  const AGG=aggT(), aw=aggWhere();
+  const AGG=aggT(), aw=aggWhere(); const awSeg=aggWhere(null,{allSeg:true});
   const ordCol=S.schema.some(c=>c.name==="order_number")?"order_number":(m.bill||""); // bills = distinct order_number
   const dflag=S.schema.some(c=>c.name==="date_flag")?"date_flag":""; // Looker %YOY uses Latest/Previous_MonthYear
   try{
     const Q=[];
     // 0 segment breakdown — one segment per customer (MAX) then count, so a customer
     //   whose duplicate rows disagree (e.g. "2." and "4.") lands in just one group
-    Q.push(bq(`SELECT seg k, COUNT(*) n FROM (SELECT ${qq(a.cust)} cid, MAX(CAST(${qq(a.seg)} AS STRING)) seg FROM ${AGG} ${aw} GROUP BY cid) GROUP BY seg ORDER BY seg`));
+    Q.push(bq(`SELECT seg k, COUNT(*) n FROM (SELECT ${qq(a.cust)} cid, MAX(CAST(${qq(a.seg)} AS STRING)) seg FROM ${AGG} ${awSeg} GROUP BY cid) GROUP BY seg ORDER BY seg`));
     // 1 distinct High Value customers
     Q.push(bq(`SELECT COUNT(DISTINCT ${qq(a.cust)}) custn FROM ${AGG} ${aw}`));
     // 2 customer list — sorted by per-customer SUM(product_price_amount) from transactions (dedup-safe)
@@ -409,21 +417,24 @@ async function loadLive(){
 /* =========================================================================
    Aggregation (DEMO) — compute from S.rows + filters
    ========================================================================= */
-function filtered(){const m=S.map;return S.rows.filter(r=>{
-  if(S.filt.segment&&r[m.segment]!==S.filt.segment)return false;
+function filtered(ignoreSeg){const m=S.map;return S.rows.filter(r=>{
+  if(!ignoreSeg&&S.filt.segment&&r[m.segment]!==S.filt.segment)return false;
   if(S.filt.custCode&&r[m.custCode]!==S.filt.custCode)return false;
   if(S.filt.custName&&r[m.custName]!==S.filt.custName)return false;
   if(S.filt.sales&&r[m.sales]!==S.filt.sales)return false;
   if(S.filt.from||S.filt.to){const d=(r[m.date]||"").slice(0,10);
     if(S.filt.from&&d<S.filt.from)return false; if(S.filt.to&&d>S.filt.to)return false;}
-  if(S.selCust&&r[m.custCode]!==S.selCust)return false;
+  if(!ignoreSeg&&S.selCust&&r[m.custCode]!==S.selCust)return false;
   return true;});}
 function computeDemo(){
   const m=S.map,rows=filtered();
-  const segMap=new Map(),monMap=new Map(),yrMap=new Map(),custMap=new Map();
+  // segment breakdown ignores the segment selection so the bar chart stays full (clickable filter)
+  const segMap=new Map();
+  filtered(true).forEach(r=>{const seg=r[m.segment]??"(ว่าง)";
+    if(!segMap.has(seg))segMap.set(seg,new Set()); segMap.get(seg).add(r[m.custCode]);});
+  const monMap=new Map(),yrMap=new Map(),custMap=new Map();
   let last=null;
-  rows.forEach(r=>{const seg=r[m.segment]??"(ว่าง)";
-    if(!segMap.has(seg))segMap.set(seg,new Set()); segMap.get(seg).add(r[m.custCode]);
+  rows.forEach(r=>{
     const d=(r[m.date]||"").slice(0,10); const mo=d.slice(0,7);
     monMap.set(mo,(monMap.get(mo)||0)+(Number(r[m.amount])||0));
     const y=d.slice(0,4); if(!yrMap.has(y))yrMap.set(y,{v:0,bills:new Set(),mo:new Set()});
@@ -474,12 +485,17 @@ function renderSeg(){
   const segNo=k=>{const m=(k||"").match(/(\d+)/);return m?+m[1]:999;};
   const segs=(S.live.seg||[]).slice().sort((a,b)=>segNo(a.k)-segNo(b.k));
   const total=segs.reduce((s,x)=>s+x.n,0); const max=Math.max(1,...segs.map(s=>s.n));
-  $("#segSub").textContent=`${total} คน (เฉพาะกลุ่ม High Value และ High Potential)`;
-  $("#segBars").innerHTML=segs.map((s,i)=>`<div class="segrow">
+  const sel=S.filt.segment;
+  $("#segSub").textContent=`${total} คน (เฉพาะกลุ่ม High Value และ High Potential)`+(sel?` · กรอง: ${sel}`:` · คลิกแถบเพื่อกรอง`);
+  const PALSEG=["#3c4043","#1a73e8","#12b5cb","#e8710a","#9334e6"];
+  $("#segBars").innerHTML=segs.map((s,i)=>{const on=sel===s.k,dim=sel&&!on;
+    return `<div class="segrow clickable ${on?'on':''} ${dim?'dim':''}" data-seg="${s.k}" title="คลิกเพื่อกรองกลุ่ม ${s.k} (คลิกซ้ำเพื่อล้าง)">
     <div class="lbl">${s.k}</div>
-    <div class="bar"><i style="width:${(s.n/max*100).toFixed(1)}%;background:${["#3c4043","#1a73e8","#12b5cb","#e8710a","#9334e6"][i%5]}"></i></div>
-    <div class="val">${s.n} คน</div></div>`).join("")||'<div class="hint">ไม่มีข้อมูล</div>';
+    <div class="bar"><i style="width:${(s.n/max*100).toFixed(1)}%;background:${PALSEG[i%5]}"></i></div>
+    <div class="val">${s.n} คน</div></div>`;}).join("")||'<div class="hint">ไม่มีข้อมูล</div>';
+  $("#segBars").querySelectorAll(".segrow[data-seg]").forEach(el=>el.onclick=()=>selectSeg(el.dataset.seg));
 }
+function selectSeg(seg){ S.filt.segment=(S.filt.segment===seg)?"":seg; S.selCust=null; S._codes=null; S.custPage=0; S.prodPage=0; reCompute(); }
 function renderTrend(){
   const mon=S.live.mon||[];
   $("#trendSub").textContent=mon.length?`(${thMonth(mon[0].m)} - ปัจจุบัน)`:"";
