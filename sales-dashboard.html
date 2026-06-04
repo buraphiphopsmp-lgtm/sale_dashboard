@@ -106,6 +106,7 @@
     <label>ตั้งแต่วันที่<input type="date" id="dFrom"></label>
     <label>ถึงวันที่<input type="date" id="dTo"></label>
     <label>กลุ่มสินค้า<select id="fCat"><option value="">— ทุกกลุ่ม —</option></select></label>
+    <label>ประเภทลูกค้า<select id="fType"><option value="">— ทุกประเภท —</option></select></label>
     <button id="applyBtn" class="primary">ใช้ตัวกรอง</button>
     <button id="clearBtn">ล้างตัวกรอง</button>
     <span class="spacer" style="flex:1"></span>
@@ -197,6 +198,8 @@ function M(){const s=S.schema;return{
   custType:hasCol(s,"customer_type_2")||hasCol(s,"customer_type_1")||"customer_type_2"};}
 function tbl(){const c=readCfg();return `\`${c.project}.${c.dataset}.${c.table}\``;}
 function dWhere(col){const f=$("#dFrom").value,t=$("#dTo").value;const c=[];if(f)c.push(`DATE(${qq(col)})>='${f}'`);if(t)c.push(`DATE(${qq(col)})<='${t}'`);return c;}
+const esc=s=>String(s).replace(/'/g,"\\'");
+function fillOpts(sel,vals){const el=$(sel);if(!el)return;const cur=el.value;el.querySelectorAll("option:not([value=''])").forEach(o=>o.remove());[...new Set(vals.filter(Boolean))].forEach(v=>{const o=document.createElement("option");o.value=v;o.textContent=v;if(v===cur)o.selected=true;el.appendChild(o);});}
 
 /* =========================================================================
    DEMO
@@ -222,35 +225,38 @@ function buildDemo(){
   S.demoRows=rows; S.demoCust=cust; S.mode="demo"; badge();
   $("#dTo").value="2025-12-31"; $("#dFrom").value="2023-12-01";
   // category dropdown
-  const sel=$("#fCat"); sel.querySelectorAll("option:not([value=''])").forEach(o=>o.remove());
-  cats.forEach(c=>{const o=document.createElement("option");o.value=c;o.textContent=c;sel.appendChild(o);});
+  fillOpts("#fCat",cats); fillOpts("#fType",types);
   $("#foot").textContent="DEMO data — ข้อมูลจำลอง · "+cust.length+" ลูกค้า · "+rows.length.toLocaleString()+" รายการ";
 }
 function demoCompute(){
-  const f=$("#dFrom").value,t=$("#dTo").value,cat=$("#fCat").value;
-  const rows=S.demoRows.filter(r=>(!f||r.date>=f)&&(!t||r.date<=t)&&(!cat||r.category===cat));
+  const f=$("#dFrom").value,t=$("#dTo").value,cat=$("#fCat").value,type=$("#fType").value;
+  const typeByCode={}; S.demoCust.forEach(c=>typeByCode[c.code]=c.type);
+  const inDate=r=>(!f||r.date>=f)&&(!t||r.date<=t);
+  const rows=S.demoRows.filter(r=>inDate(r)&&(!cat||r.category===cat)&&(!type||typeByCode[r.customer_id]===type));
   const years=new Set(); rows.forEach(r=>years.add(+r.date.slice(0,4)));
   const cy=years.size?Math.max(...years):new Date().getFullYear(),py=cy-1;
-  let total=0,qtyTot=0; const ords=new Set(),custs=new Set(),mon=new Map(),catM=new Map(),prodM=new Map(),custM=new Map();
+  let total=0,qtyTot=0; const ords=new Set(),custs=new Set(),mon=new Map(),prodM=new Map(),custM=new Map();
   let curM=0,prevM=0; let maxMo=0; rows.forEach(r=>{if(+r.date.slice(0,4)===cy)maxMo=Math.max(maxMo,+r.date.slice(5,7));});
   rows.forEach(r=>{ const y=+r.date.slice(0,4),mo=+r.date.slice(5,7);
     total+=r.product_price_amount; qtyTot+=r.qty; ords.add(r.order_number); custs.add(r.customer_id);
     mon.set(r.date.slice(0,7),(mon.get(r.date.slice(0,7))||0)+r.product_price_amount);
-    catM.set(r.category,(catM.get(r.category)||0)+r.product_price_amount);
     if(!prodM.has(r.product_sku))prodM.set(r.product_sku,{sku:r.product_sku,pn:r.product_name,cat:r.category,qty:0,v:0,ords:new Set()});
     const p=prodM.get(r.product_sku); p.qty+=r.qty;p.v+=r.product_price_amount;p.ords.add(r.order_number);
     if(!custM.has(r.customer_id))custM.set(r.customer_id,{code:r.customer_id,name:r.customer_name,v:0,ords:new Set()});
     const cu=custM.get(r.customer_id); cu.v+=r.product_price_amount;cu.ords.add(r.order_number);
     if(y===cy&&mo===maxMo)curM+=r.product_price_amount; if(y===py&&mo===maxMo)prevM+=r.product_price_amount;
   });
-  const typeM=new Map(),typeByCode={}; S.demoCust.forEach(c=>{typeByCode[c.code]=c.type;if(custs.has(c.code))typeM.set(c.type,(typeM.get(c.type)||0)+1);});
+  // category doughnut: apply date+type (NOT cat) so it stays clickable
+  const catM=new Map(); S.demoRows.filter(r=>inDate(r)&&(!type||typeByCode[r.customer_id]===type)).forEach(r=>catM.set(r.category,(catM.get(r.category)||0)+r.product_price_amount));
+  // type doughnut: apply date+cat (NOT type); distinct customers per type
+  const typeCusts=new Map(); S.demoRows.filter(r=>inDate(r)&&(!cat||r.category===cat)).forEach(r=>{const ty=typeByCode[r.customer_id];if(!ty)return;if(!typeCusts.has(ty))typeCusts.set(ty,new Set());typeCusts.get(ty).add(r.customer_id);});
   S.L={cy,py,total,orders:ords.size,custs:custs.size,qty:qtyTot,yoy:prevM?((curM-prevM)/prevM*100):null,
-    custType:[...typeM.entries()].sort((a,b)=>b[1]-a[1]).map(([k,n])=>({k,n})),
+    custType:[...typeCusts.entries()].map(([k,s])=>({k,n:s.size})).sort((a,b)=>b.n-a.n),
     mon:[...mon.entries()].sort((a,b)=>a[0]<b[0]?-1:1).map(([m,v])=>({m,v})),
     cat:[...catM.entries()].sort((a,b)=>b[1]-a[1]).map(([k,v])=>({k,v})),
     prods:[...prodM.values()].map(p=>({sku:p.sku,pn:p.pn,cat:p.cat,qty:p.qty,v:p.v,ords:p.ords.size})),
     custs2:[...custM.values()].map(c=>({code:c.code,name:c.name,type:typeByCode[c.code]||"",v:c.v,ords:c.ords.size})).sort((a,b)=>b.v-a.v),
-    buys:(code)=>{const m=new Map();S.demoRows.filter(r=>r.customer_id===code&&(!f||r.date>=f)&&(!t||r.date<=t)&&(!cat||r.category===cat)).forEach(r=>{const k=r.date+"|"+r.product_sku;if(!m.has(k))m.set(k,{d:r.date,cat:r.category,sku:r.product_sku,pn:r.product_name,qty:0,v:0});const o=m.get(k);o.qty+=r.qty;o.v+=r.product_price_amount;});return [...m.values()].sort((a,b)=>a.d<b.d?1:a.d>b.d?-1:b.v-a.v);}};
+    buys:(code)=>{const m=new Map();S.demoRows.filter(r=>r.customer_id===code&&inDate(r)&&(!cat||r.category===cat)).forEach(r=>{const k=r.date+"|"+r.product_sku;if(!m.has(k))m.set(k,{d:r.date,cat:r.category,sku:r.product_sku,pn:r.product_name,qty:0,v:0});const o=m.get(k);o.qty+=r.qty;o.v+=r.product_price_amount;});return [...m.values()].sort((a,b)=>a.d<b.d?1:a.d>b.d?-1:b.v-a.v);}};
   render();
 }
 
@@ -262,19 +268,26 @@ async function bootLive(){ try{ status("กำลังอ่าน schema…",t
   catch(e){status("");toast("โหลดไม่สำเร็จ: "+e.message,1);console.error(e);} }
 async function loadLive(){
   const m=M(),T=tbl(); status("กำลังคำนวณ…",true);
-  const conds=[...dWhere(m.date)]; const cat=$("#fCat").value; if(cat)conds.push(`${qq(m.cat)}='${cat.replace(/'/g,"\\'")}'`);
-  const W=conds.length?("WHERE "+conds.join(" AND ")):"";
+  const base=[...dWhere(m.date)];
+  const catSel=$("#fCat").value, typeSel=$("#fType").value;
+  const catCond=catSel?`${qq(m.cat)}='${esc(catSel)}'`:null;
+  const typeCond=typeSel?`${qq(m.custType)}='${esc(typeSel)}'`:null;
+  const W=a=>{const c=a.filter(Boolean);return c.length?("WHERE "+c.join(" AND ")):"";};
+  const wAll=W([...base,catCond,typeCond]);   // KPIs / trend / products / customers
+  const wCat=W([...base,typeCond]);           // category doughnut (ignores its own filter so it stays clickable)
+  const wType=W([...base,catCond]);           // customer-type doughnut (ignores its own filter)
   try{
     const Q=[
-      bq(`SELECT EXTRACT(YEAR FROM DATE(${qq(m.date)})) y, SUM(${qq(m.amount)}) v, COUNT(DISTINCT ${qq(m.order)}) o, COUNT(DISTINCT ${qq(m.cust)}) c, SUM(${qq(m.qty)}) q FROM ${T} ${W} GROUP BY y`),
-      m.dflag?bq(`SELECT SUM(CASE WHEN ${qq(m.dflag)}='Latest_MonthYear' THEN ${qq(m.amount)} END) latest, SUM(CASE WHEN ${qq(m.dflag)}='Previous_MonthYear' THEN ${qq(m.amount)} END) prevm FROM ${T} ${W}`):Promise.resolve({rows:[]}),
-      bq(`SELECT FORMAT_DATE('%Y-%m',DATE(${qq(m.date)})) m, SUM(${qq(m.amount)}) v FROM ${T} ${W} GROUP BY m ORDER BY m`),
-      bq(`SELECT CAST(${qq(m.cat)} AS STRING) k, SUM(${qq(m.amount)}) v FROM ${T} ${W} GROUP BY k ORDER BY v DESC`),
-      bq(`SELECT CAST(${qq(m.sku)} AS STRING) sku, ANY_VALUE(${qq(m.prodName)}) pn, ANY_VALUE(CAST(${qq(m.cat)} AS STRING)) cat, SUM(${qq(m.qty)}) qty, SUM(${qq(m.amount)}) v, COUNT(DISTINCT ${qq(m.order)}) ords FROM ${T} ${W} GROUP BY sku ORDER BY v DESC LIMIT 200`),
-      bq(`SELECT CAST(${qq(m.cust)} AS STRING) code, ANY_VALUE(${qq(m.custName)}) name, ANY_VALUE(CAST(${qq(m.custType)} AS STRING)) type, SUM(${qq(m.amount)}) v, COUNT(DISTINCT ${qq(m.order)}) ords FROM ${T} ${W} GROUP BY code ORDER BY v DESC LIMIT 300`),
-      bq(`SELECT CAST(${qq(m.custType)} AS STRING) k, COUNT(DISTINCT ${qq(m.cust)}) n FROM ${T} ${W} GROUP BY k ORDER BY n DESC`),
+      bq(`SELECT EXTRACT(YEAR FROM DATE(${qq(m.date)})) y, SUM(${qq(m.amount)}) v, COUNT(DISTINCT ${qq(m.order)}) o, COUNT(DISTINCT ${qq(m.cust)}) c, SUM(${qq(m.qty)}) q FROM ${T} ${wAll} GROUP BY y`),
+      m.dflag?bq(`SELECT SUM(CASE WHEN ${qq(m.dflag)}='Latest_MonthYear' THEN ${qq(m.amount)} END) latest, SUM(CASE WHEN ${qq(m.dflag)}='Previous_MonthYear' THEN ${qq(m.amount)} END) prevm FROM ${T} ${wAll}`):Promise.resolve({rows:[]}),
+      bq(`SELECT FORMAT_DATE('%Y-%m',DATE(${qq(m.date)})) m, SUM(${qq(m.amount)}) v FROM ${T} ${wAll} GROUP BY m ORDER BY m`),
+      bq(`SELECT CAST(${qq(m.cat)} AS STRING) k, SUM(${qq(m.amount)}) v FROM ${T} ${wCat} GROUP BY k ORDER BY v DESC`),
+      bq(`SELECT CAST(${qq(m.sku)} AS STRING) sku, ANY_VALUE(${qq(m.prodName)}) pn, ANY_VALUE(CAST(${qq(m.cat)} AS STRING)) cat, SUM(${qq(m.qty)}) qty, SUM(${qq(m.amount)}) v, COUNT(DISTINCT ${qq(m.order)}) ords FROM ${T} ${wAll} GROUP BY sku ORDER BY v DESC LIMIT 200`),
+      bq(`SELECT CAST(${qq(m.cust)} AS STRING) code, ANY_VALUE(${qq(m.custName)}) name, ANY_VALUE(CAST(${qq(m.custType)} AS STRING)) type, SUM(${qq(m.amount)}) v, COUNT(DISTINCT ${qq(m.order)}) ords FROM ${T} ${wAll} GROUP BY code ORDER BY v DESC LIMIT 300`),
+      bq(`SELECT CAST(${qq(m.custType)} AS STRING) k, COUNT(DISTINCT ${qq(m.cust)}) n FROM ${T} ${wType} GROUP BY k ORDER BY n DESC`),
     ];
     const[yr,yo,mon,catr,prod,cust,ctype]=await Promise.all(Q);
+    if(!S._optsInit){ fillOpts("#fCat",catr.rows.map(r=>r.k)); fillOpts("#fType",ctype.rows.map(r=>r.k)); S._optsInit=true; }
     const byY={}; yr.rows.forEach(r=>byY[Number(r.y)]={v:Number(r.v)||0,o:Number(r.o)||0,c:Number(r.c)||0,q:Number(r.q)||0});
     const yrs=Object.keys(byY).map(Number); const cy=yrs.length?Math.max(...yrs):new Date().getFullYear(),py=cy-1;
     const k=yo.rows[0]||{}; const latest=Number(k.latest)||0,prevm=Number(k.prevm)||0;
@@ -331,16 +344,18 @@ const pctPlugin={id:"pct",afterDatasetsDraw(chart){
     ctx.fillText(pct.toFixed(0)+"%",p.x,p.y); });
   ctx.restore();
 }};
+function pieClick(selId,chart,els){ if(!els||!els[0])return; const lab=chart.data.labels[els[0].index]; if(lab==="อื่นๆ"||lab==="(ว่าง)")return;
+  const cur=$(selId).value; $(selId).value=(cur===lab)?"":lab; applyData(); }
 function renderCat(){ const d=S.L.cat.slice(0,8); const rest=S.L.cat.slice(8).reduce((s,x)=>s+x.v,0); const labels=d.map(x=>x.k),data=d.map(x=>x.v); if(rest>0){labels.push("อื่นๆ");data.push(rest);}
   if(S.charts.cat)S.charts.cat.destroy();
   S.charts.cat=new Chart($("#chartCat"),{type:"doughnut",data:{labels,datasets:[{data,backgroundColor:PAL,borderWidth:2,borderColor:"#fff"}]},
-    options:{responsive:true,maintainAspectRatio:false,cutout:"56%",plugins:{legend:{position:"bottom",labels:{boxWidth:9,padding:5,font:{size:9}}},tooltip:{callbacks:{label:c=>{const t=c.dataset.data.reduce((s,x)=>s+x,0);return ` ${c.label}: ${baht(c.raw)} (${t?(c.raw/t*100).toFixed(1):0}%)`;}}}}},
+    options:{responsive:true,maintainAspectRatio:false,cutout:"56%",onClick:(e,els)=>pieClick("#fCat",S.charts.cat,els),plugins:{legend:{position:"bottom",labels:{boxWidth:9,padding:5,font:{size:9}}},tooltip:{callbacks:{label:c=>{const t=c.dataset.data.reduce((s,x)=>s+x,0);return ` ${c.label}: ${baht(c.raw)} (${t?(c.raw/t*100).toFixed(1):0}%)`;}}}}},
     plugins:[pctPlugin]});
 }
 function renderCustType(){ const d=(S.L.custType||[]).slice(0,8); const labels=d.map(x=>x.k),data=d.map(x=>x.n);
   if(S.charts.ctype)S.charts.ctype.destroy();
   S.charts.ctype=new Chart($("#chartCustType"),{type:"doughnut",data:{labels,datasets:[{data,backgroundColor:[PAL[4],PAL[2],PAL[0],PAL[3],PAL[5],PAL[1],PAL[6],PAL[7]],borderWidth:2,borderColor:"#fff"}]},
-    options:{responsive:true,maintainAspectRatio:false,cutout:"56%",plugins:{legend:{position:"bottom",labels:{boxWidth:9,padding:5,font:{size:9}}},tooltip:{callbacks:{label:c=>{const t=c.dataset.data.reduce((s,x)=>s+x,0);return ` ${c.label}: ${num(c.raw)} ราย (${t?(c.raw/t*100).toFixed(1):0}%)`;}}}}},
+    options:{responsive:true,maintainAspectRatio:false,cutout:"56%",onClick:(e,els)=>pieClick("#fType",S.charts.ctype,els),plugins:{legend:{position:"bottom",labels:{boxWidth:9,padding:5,font:{size:9}}},tooltip:{callbacks:{label:c=>{const t=c.dataset.data.reduce((s,x)=>s+x,0);return ` ${c.label}: ${num(c.raw)} ราย (${t?(c.raw/t*100).toFixed(1):0}%)`;}}}}},
     plugins:[pctPlugin]});
 }
 function thM(ym){const[y,m]=ym.split("-");return MONTHS[(+m)-1]+" "+be(+y).toString().slice(2);}
@@ -416,8 +431,9 @@ $("#signinBtn").onclick=signIn;
 $("#connectBtn").onclick=()=>{saveCfg();$("#cfgPanel").open=false;if(S.token){S.mode="live";loadLive();}else signIn();};
 $("#refreshBtn").onclick=()=>{if(S.mode==="live")loadLive();else{buildDemo();demoCompute();}};
 $("#applyBtn").onclick=()=>applyData();
-$("#clearBtn").onclick=()=>{$("#dFrom").value="2023-12-01";$("#dTo").value="2025-12-31";$("#fCat").value="";S.sel="";applyData();};
+$("#clearBtn").onclick=()=>{$("#dFrom").value="2023-12-01";$("#dTo").value="2025-12-31";$("#fCat").value="";$("#fType").value="";S.sel="";applyData();};
 $("#fCat").addEventListener("change",()=>applyData());
+$("#fType").addEventListener("change",()=>applyData());
 $("#prodSearch").addEventListener("input",()=>renderProds());
 $("#prodMetric").addEventListener("change",()=>{S.prodSort.c=$("#prodMetric").value;S.prodSort.d=-1;renderProds();});
 $("#custSearch").addEventListener("input",()=>{S.custPage=0;renderCusts();});
