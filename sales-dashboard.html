@@ -348,13 +348,15 @@ function pieClick(selId,chart,els){ if(!els||!els[0])return; const lab=chart.dat
   const cur=$(selId).value; $(selId).value=(cur===lab)?"":lab; applyData(); }
 function renderCat(){ const d=S.L.cat.slice(0,8); const rest=S.L.cat.slice(8).reduce((s,x)=>s+x.v,0); const labels=d.map(x=>x.k),data=d.map(x=>x.v); if(rest>0){labels.push("อื่นๆ");data.push(rest);}
   if(S.charts.cat)S.charts.cat.destroy();
-  S.charts.cat=new Chart($("#chartCat"),{type:"doughnut",data:{labels,datasets:[{data,backgroundColor:PAL,borderWidth:2,borderColor:"#fff"}]},
+  const selC=$("#fCat").value; const bgC=labels.map((lab,i)=>(!selC||lab===selC)?PAL[i%PAL.length]:"#d8dce0");
+  S.charts.cat=new Chart($("#chartCat"),{type:"doughnut",data:{labels,datasets:[{data,backgroundColor:bgC,borderWidth:2,borderColor:"#fff"}]},
     options:{responsive:true,maintainAspectRatio:false,cutout:"56%",onClick:(e,els)=>pieClick("#fCat",S.charts.cat,els),plugins:{legend:{position:"bottom",labels:{boxWidth:9,padding:5,font:{size:9}}},tooltip:{callbacks:{label:c=>{const t=c.dataset.data.reduce((s,x)=>s+x,0);return ` ${c.label}: ${baht(c.raw)} (${t?(c.raw/t*100).toFixed(1):0}%)`;}}}}},
     plugins:[pctPlugin]});
 }
 function renderCustType(){ const d=(S.L.custType||[]).slice(0,8); const labels=d.map(x=>x.k),data=d.map(x=>x.n);
   if(S.charts.ctype)S.charts.ctype.destroy();
-  S.charts.ctype=new Chart($("#chartCustType"),{type:"doughnut",data:{labels,datasets:[{data,backgroundColor:[PAL[4],PAL[2],PAL[0],PAL[3],PAL[5],PAL[1],PAL[6],PAL[7]],borderWidth:2,borderColor:"#fff"}]},
+  const tc=[PAL[4],PAL[2],PAL[0],PAL[3],PAL[5],PAL[1],PAL[6],PAL[7]]; const selT=$("#fType").value; const bgT=labels.map((lab,i)=>(!selT||lab===selT)?tc[i%tc.length]:"#d8dce0");
+  S.charts.ctype=new Chart($("#chartCustType"),{type:"doughnut",data:{labels,datasets:[{data,backgroundColor:bgT,borderWidth:2,borderColor:"#fff"}]},
     options:{responsive:true,maintainAspectRatio:false,cutout:"56%",onClick:(e,els)=>pieClick("#fType",S.charts.ctype,els),plugins:{legend:{position:"bottom",labels:{boxWidth:9,padding:5,font:{size:9}}},tooltip:{callbacks:{label:c=>{const t=c.dataset.data.reduce((s,x)=>s+x,0);return ` ${c.label}: ${num(c.raw)} ราย (${t?(c.raw/t*100).toFixed(1):0}%)`;}}}}},
     plugins:[pctPlugin]});
 }
