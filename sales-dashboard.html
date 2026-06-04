@@ -205,8 +205,17 @@ function M(){const s=S.schema;return{
   qty:hasCol(s,"qty")||"qty", order:hasCol(s,"order_number")||hasCol(s,"invoice_number")||"order_number",
   cust:hasCol(s,"customer_id")||"customer_id", custName:hasCol(s,"best_customer_name")||hasCol(s,"customer_name")||"customer_name",
   prodName:hasCol(s,"product_name")||"product_name", sku:hasCol(s,"product_sku")||"product_sku",
+  model:hasCol(s,"product_model")||hasCol(s,"model")||hasCol(s,"product_series")||hasCol(s,"series"),
+  color:hasCol(s,"product_color")||hasCol(s,"color")||hasCol(s,"colour"),
   cat:hasCol(s,"final_category")||hasCol(s,"category")||"final_category", dflag:hasCol(s,"date_flag"),
   custType:hasCol(s,"customer_type_2")||hasCol(s,"customer_type_1")||"customer_type_2"};}
+// fall back to extracting รุ่น/สี from the product name when dedicated columns are absent
+function parseDetail(name){ name=name||"";
+  const COLORS=["ขาว","ดำ","เทา","เงิน","ทอง","น้ำเงิน","น้ำตาล","แดง","เขียว","นิกเกิล","โครเมียม","ลายไม้","ไม้","ใส"];
+  let color=""; for(const c of COLORS){ if(name.includes(c)){color=c;break;} }
+  let model=""; const mm=name.match(/รุ่น\s*([A-Za-z0-9\-\.\/]+)/); if(mm)model=mm[1];
+  else { const m2=name.match(/([A-Za-z]{1,4}-?\d{2,4})/); if(m2)model=m2[1]; }
+  return {model,color};}
 function tbl(){const c=readCfg();return `\`${c.project}.${c.dataset}.${c.table}\``;}
 function dWhere(col){const f=$("#dFrom").value,t=$("#dTo").value;const c=[];if(f)c.push(`DATE(${qq(col)})>='${f}'`);if(t)c.push(`DATE(${qq(col)})<='${t}'`);return c;}
 const esc=s=>String(s).replace(/'/g,"\\'");
@@ -217,7 +226,11 @@ function fillOpts(sel,vals){const el=$(sel);if(!el)return;const cur=el.value;el.
    ========================================================================= */
 function buildDemo(){
   const cats=["เฟรมอลูมิเนียม","บานพับถ้วย","รางลิ้นชัก","มือจับเฟอร์นิเจอร์","ปุ่มจับลิ้นชัก","อุปกรณ์จัดเก็บตู้เสื้อผ้า","อุปกรณ์จัดเก็บชุดครัว","unknown"];
-  const prods={}; cats.forEach((c,ci)=>{prods[c]=[];const n=4+((Math.random()*5)|0);for(let i=0;i<n;i++)prods[c].push({sku:(c==="unknown"?"H":"APH")+(100000+ci*1000+i*7),name:c+" รุ่น "+String.fromCharCode(65+i)+(100+((Math.random()*900)|0)),unit:200+Math.random()*2400});});
+  const COLORS=["ขาว","ดำ","เงิน","ทอง","น้ำเงิน","ลายไม้","นิกเกิลด้าน","โครเมียมเงา"];
+  const SIZES=["16 มม.","18 มม.","25 มม.","35 มม.","350 มม.","450 มม.","ชุดมาตรฐาน"];
+  const prods={}; cats.forEach((c,ci)=>{prods[c]=[];const n=4+((Math.random()*5)|0);for(let i=0;i<n;i++){
+    const model=String.fromCharCode(65+i)+"-"+(100+((Math.random()*900)|0)); const color=COLORS[(Math.random()*COLORS.length)|0]; const size=SIZES[(Math.random()*SIZES.length)|0];
+    prods[c].push({sku:(c==="unknown"?"H":"APH")+(100000+ci*1000+i*7),name:c+" รุ่น "+model+" สี"+color,model,color,size,unit:200+Math.random()*2400});}});
   const names=["วุ่นเทคเฟอร์นิช","พี.เอส.พีเฟอร์นิเจอร์","ชัคริชบุญมีลีค","วอร์มเบอร์บิวด์","ทองไทยเฟอร์นิเชอร์","สยามดีไซน์","ลัคกี้สโตนกรุ๊ป","เอเชียโปรดักส์","บ้านสวยวัสดุ","กรีนโฮมดีไซน์","เอ็มเจครีเอชั่น","ไอพลัสดีไซน์","เดอะวู้ดเวิร์ค","ครัวสวยสตูดิโอ"];
   const cust=[],rows=[]; let order=900000;
   const types=["โรงงานเฟอร์นิเจอร์","ผู้รับเหมา","ร้านค้า/ตัวแทน","ช่างมืออาชีพ","ออกแบบ-ตกแต่ง","ลูกค้าทั่วไป"];
@@ -232,7 +245,7 @@ function buildDemo(){
       for(let o=0;o<norders;o++){ const ordn="ORD"+(order++); const d=new Date(day); d.setDate(1+((Math.random()*27)|0)); const iso=d.toISOString().slice(0,10);
         const lines=1+((Math.random()*4)|0);
         for(let l=0;l<lines;l++){ const cat=c.cats[(Math.random()*c.cats.length)|0]; const p=prods[cat][(Math.random()*prods[cat].length)|0]; const qty=1+((Math.random()*40)|0);
-          rows.push({date:iso,product_price_amount:Math.round(qty*p.unit*yF*c.scale*0.5),qty,order_number:ordn,customer_id:c.code,customer_name:c.name,product_name:p.name,product_sku:p.sku,category:cat}); } } }); }
+          rows.push({date:iso,product_price_amount:Math.round(qty*p.unit*yF*c.scale*0.5),qty,order_number:ordn,customer_id:c.code,customer_name:c.name,product_name:p.name,product_sku:p.sku,product_model:p.model,product_color:p.color,product_size:p.size,category:cat}); } } }); }
   S.demoRows=rows; S.demoCust=cust; S.mode="demo"; badge();
   $("#dTo").value="2025-12-31"; $("#dFrom").value="2023-12-01";
   // category dropdown
@@ -251,7 +264,7 @@ function demoCompute(){
   rows.forEach(r=>{ const y=+r.date.slice(0,4),mo=+r.date.slice(5,7);
     total+=r.product_price_amount; qtyTot+=r.qty; ords.add(r.order_number); custs.add(r.customer_id);
     mon.set(r.date.slice(0,7),(mon.get(r.date.slice(0,7))||0)+r.product_price_amount);
-    if(!prodM.has(r.product_sku))prodM.set(r.product_sku,{sku:r.product_sku,pn:r.product_name,cat:r.category,qty:0,v:0,ords:new Set(),custs:new Set()});
+    if(!prodM.has(r.product_sku))prodM.set(r.product_sku,{sku:r.product_sku,pn:r.product_name,cat:r.category,model:r.product_model||"",color:r.product_color||"",size:r.product_size||"",qty:0,v:0,ords:new Set(),custs:new Set()});
     const p=prodM.get(r.product_sku); p.qty+=r.qty;p.v+=r.product_price_amount;p.ords.add(r.order_number);p.custs.add(r.customer_id);
     if(!custM.has(r.customer_id))custM.set(r.customer_id,{code:r.customer_id,name:r.customer_name,v:0,ords:new Set()});
     const cu=custM.get(r.customer_id); cu.v+=r.product_price_amount;cu.ords.add(r.order_number);
@@ -265,9 +278,9 @@ function demoCompute(){
     custType:[...typeCusts.entries()].map(([k,s])=>({k,n:s.size})).sort((a,b)=>b.n-a.n),
     mon:[...mon.entries()].sort((a,b)=>a[0]<b[0]?-1:1).map(([m,v])=>({m,v})),
     cat:[...catM.entries()].sort((a,b)=>b[1]-a[1]).map(([k,v])=>({k,v})),
-    prods:[...prodM.values()].map(p=>({sku:p.sku,pn:p.pn,cat:p.cat,qty:p.qty,v:p.v,ords:p.ords.size,custs:p.custs.size})),
+    prods:[...prodM.values()].map(p=>({sku:p.sku,pn:p.pn,cat:p.cat,model:p.model,color:p.color,size:p.size,qty:p.qty,v:p.v,ords:p.ords.size,custs:p.custs.size})),
     custs2:[...custM.values()].map(c=>({code:c.code,name:c.name,type:typeByCode[c.code]||"",v:c.v,ords:c.ords.size})).sort((a,b)=>b.v-a.v),
-    buys:(code)=>{const m=new Map();S.demoRows.filter(r=>r.customer_id===code&&inDate(r)&&(!cat||r.category===cat)).forEach(r=>{const k=r.date+"|"+r.product_sku;if(!m.has(k))m.set(k,{d:r.date,cat:r.category,sku:r.product_sku,pn:r.product_name,qty:0,v:0});const o=m.get(k);o.qty+=r.qty;o.v+=r.product_price_amount;});return [...m.values()].sort((a,b)=>a.d<b.d?1:a.d>b.d?-1:b.v-a.v);}};
+    buys:(code)=>{const m=new Map();S.demoRows.filter(r=>r.customer_id===code&&inDate(r)&&(!cat||r.category===cat)).forEach(r=>{const k=r.date+"|"+r.product_sku;if(!m.has(k))m.set(k,{d:r.date,cat:r.category,sku:r.product_sku,pn:r.product_name,model:r.product_model||"",color:r.product_color||"",size:r.product_size||"",qty:0,v:0});const o=m.get(k);o.qty+=r.qty;o.v+=r.product_price_amount;});return [...m.values()].sort((a,b)=>a.d<b.d?1:a.d>b.d?-1:b.v-a.v);}};
   render();
 }
 
@@ -293,7 +306,7 @@ async function loadLive(){
       m.dflag?bq(`SELECT SUM(CASE WHEN ${qq(m.dflag)}='Latest_MonthYear' THEN ${qq(m.amount)} END) latest, SUM(CASE WHEN ${qq(m.dflag)}='Previous_MonthYear' THEN ${qq(m.amount)} END) prevm FROM ${T} ${wAll}`):Promise.resolve({rows:[]}),
       bq(`SELECT FORMAT_DATE('%Y-%m',DATE(${qq(m.date)})) m, SUM(${qq(m.amount)}) v FROM ${T} ${wAll} GROUP BY m ORDER BY m`),
       bq(`SELECT CAST(${qq(m.cat)} AS STRING) k, SUM(${qq(m.amount)}) v FROM ${T} ${wCat} GROUP BY k ORDER BY v DESC`),
-      bq(`SELECT CAST(${qq(m.sku)} AS STRING) sku, ANY_VALUE(${qq(m.prodName)}) pn, ANY_VALUE(CAST(${qq(m.cat)} AS STRING)) cat, SUM(${qq(m.qty)}) qty, SUM(${qq(m.amount)}) v, COUNT(DISTINCT ${qq(m.order)}) ords, COUNT(DISTINCT ${qq(m.cust)}) custs FROM ${T} ${wAll} GROUP BY sku ORDER BY v DESC LIMIT 200`),
+      bq(`SELECT CAST(${qq(m.sku)} AS STRING) sku, ANY_VALUE(${qq(m.prodName)}) pn, ANY_VALUE(CAST(${qq(m.cat)} AS STRING)) cat${m.model?`, ANY_VALUE(CAST(${qq(m.model)} AS STRING)) model`:", CAST(NULL AS STRING) model"}${m.color?`, ANY_VALUE(CAST(${qq(m.color)} AS STRING)) color`:", CAST(NULL AS STRING) color"}, SUM(${qq(m.qty)}) qty, SUM(${qq(m.amount)}) v, COUNT(DISTINCT ${qq(m.order)}) ords, COUNT(DISTINCT ${qq(m.cust)}) custs FROM ${T} ${wAll} GROUP BY sku ORDER BY v DESC LIMIT 200`),
       bq(`SELECT CAST(${qq(m.cust)} AS STRING) code, ANY_VALUE(${qq(m.custName)}) name, ANY_VALUE(CAST(${qq(m.custType)} AS STRING)) type, SUM(${qq(m.amount)}) v, COUNT(DISTINCT ${qq(m.order)}) ords FROM ${T} ${wAll} GROUP BY code ORDER BY v DESC LIMIT 300`),
       bq(`SELECT CAST(${qq(m.custType)} AS STRING) k, COUNT(DISTINCT ${qq(m.cust)}) n FROM ${T} ${wType} GROUP BY k ORDER BY n DESC`),
     ];
@@ -307,7 +320,7 @@ async function loadLive(){
       mon:mon.rows.map(r=>({m:r.m,v:Number(r.v)||0})),
       cat:catr.rows.map(r=>({k:r.k||"(ว่าง)",v:Number(r.v)||0})),
       custType:ctype.rows.map(r=>({k:r.k||"(ว่าง)",n:Number(r.n)||0})),
-      prods:prod.rows.map(r=>({sku:r.sku,pn:r.pn||r.sku,cat:r.cat||"",qty:Number(r.qty)||0,v:Number(r.v)||0,ords:Number(r.ords)||0,custs:Number(r.custs)||0})),
+      prods:prod.rows.map(r=>{const det=parseDetail(r.pn);return{sku:r.sku,pn:r.pn||r.sku,cat:r.cat||"",model:r.model||det.model||"",color:r.color||det.color||"",size:"",qty:Number(r.qty)||0,v:Number(r.v)||0,ords:Number(r.ords)||0,custs:Number(r.custs)||0};}),
       custs2:cust.rows.map(r=>({code:r.code,name:r.name||r.code,type:r.type||"",v:Number(r.v)||0,ords:Number(r.ords)||0}))};
     status(`${S.L.custs2.length} ลูกค้า`);
     render();
@@ -317,8 +330,8 @@ async function loadLive(){
 async function loadBuysLive(code){
   const m=M(),T=tbl();
   const conds=[`${qq(m.cust)}='${code.replace(/'/g,"\\'")}'`,...dWhere(m.date)]; const cat=$("#fCat").value; if(cat)conds.push(`${qq(m.cat)}='${cat.replace(/'/g,"\\'")}'`);
-  try{const{rows}=await bq(`SELECT DATE(${qq(m.date)}) d, ANY_VALUE(CAST(${qq(m.cat)} AS STRING)) cat, CAST(${qq(m.sku)} AS STRING) sku, ANY_VALUE(${qq(m.prodName)}) pn, SUM(${qq(m.qty)}) qty, SUM(${qq(m.amount)}) v FROM ${T} WHERE ${conds.join(" AND ")} GROUP BY d, sku ORDER BY d DESC, v DESC LIMIT 400`);
-    renderBuys(rows.map(r=>({d:String(r.d).slice(0,10),cat:r.cat||"",sku:r.sku||"",pn:r.pn||"",qty:Number(r.qty)||0,v:Number(r.v)||0})));}
+  try{const{rows}=await bq(`SELECT DATE(${qq(m.date)}) d, ANY_VALUE(CAST(${qq(m.cat)} AS STRING)) cat, CAST(${qq(m.sku)} AS STRING) sku, ANY_VALUE(${qq(m.prodName)}) pn${m.model?`, ANY_VALUE(CAST(${qq(m.model)} AS STRING)) model`:", CAST(NULL AS STRING) model"}${m.color?`, ANY_VALUE(CAST(${qq(m.color)} AS STRING)) color`:", CAST(NULL AS STRING) color"}, SUM(${qq(m.qty)}) qty, SUM(${qq(m.amount)}) v FROM ${T} WHERE ${conds.join(" AND ")} GROUP BY d, sku ORDER BY d DESC, v DESC LIMIT 400`);
+    renderBuys(rows.map(r=>{const det=parseDetail(r.pn);return{d:String(r.d).slice(0,10),cat:r.cat||"",sku:r.sku||"",pn:r.pn||"",model:r.model||det.model||"",color:r.color||det.color||"",size:"",qty:Number(r.qty)||0,v:Number(r.v)||0};}));}
   catch(e){toast("โหลดสินค้าลูกค้าไม่สำเร็จ: "+e.message,1);console.error(e);}
 }
 
@@ -428,19 +441,23 @@ function thM(ym){const[y,m]=ym.split("-");return MONTHS[(+m)-1]+" "+be(+y).toStr
 function renderProds(){
   const q=($("#prodSearch")?.value||"").trim().toLowerCase();
   let r=S.L.prods.slice();
-  if(q)r=r.filter(p=>(p.pn||"").toLowerCase().includes(q)||(p.sku||"").toLowerCase().includes(q)||(p.cat||"").toLowerCase().includes(q));
+  if(q)r=r.filter(p=>(p.pn||"").toLowerCase().includes(q)||(p.sku||"").toLowerCase().includes(q)||(p.cat||"").toLowerCase().includes(q)||(p.model||"").toLowerCase().includes(q)||(p.color||"").toLowerCase().includes(q));
+  const STR=["pn","cat","model","color","sku"];
   const sc=S.prodSort.c,sd=S.prodSort.d;
-  r.sort((a,b)=>sc==="pn"?(a.pn<b.pn?-1:1)*sd:((a[sc]||0)-(b[sc]||0))*sd);
+  r.sort((a,b)=>STR.includes(sc)?(((a[sc]||"")<(b[sc]||"")?-1:1)*sd):(((a[sc]||0)-(b[sc]||0))*sd));
   r=r.slice(0,100); const mx=Math.max(1,...r.map(x=>x.v));
-  const cols=[{c:"rank",t:"#"},{c:"pn",t:"สินค้า"},{c:"cat",t:"กลุ่ม"},{c:"qty",t:"จำนวน",num:1},{c:"v",t:"ยอดขาย",num:1},{c:"ords",t:"ออเดอร์",num:1}];
+  const cols=[{c:"rank",t:"#"},{c:"pn",t:"สินค้า"},{c:"cat",t:"กลุ่ม"},{c:"model",t:"รุ่น"},{c:"color",t:"สี"},{c:"qty",t:"จำนวน",num:1},{c:"v",t:"ยอดขาย",num:1},{c:"ords",t:"ออเดอร์",num:1}];
   $("#prodTable thead").innerHTML="<tr>"+cols.map(c=>{const ar=S.prodSort.c===c.c?(sd>0?" ▲":" ▼"):"";return `<th class="${c.num?'num':''}" data-c="${c.c}">${c.t}${ar}</th>`;}).join("")+"</tr>";
   $("#prodTable tbody").innerHTML=r.map((x,i)=>`<tr>
     <td><span class="rank ${i<3?'r'+(i+1):''}">${i+1}</span></td>
-    <td class="prod" title="${x.pn}">${x.pn}</td><td>${x.cat}</td>
+    <td class="prod" title="${x.pn}">${x.pn}<div style="font-size:10px;color:#9aa0a6">SKU: ${x.sku||"–"}${x.size?" · "+x.size:""}</div></td>
+    <td>${x.cat}</td>
+    <td>${x.model?`<span class="pill" style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;background:#eef1f4;color:#3c4043;white-space:nowrap">${x.model}</span>`:"–"}</td>
+    <td>${x.color||"–"}</td>
     <td class="num">${num(x.qty)}</td>
     <td class="num" style="background:linear-gradient(90deg,#e8f0fe ${(x.v/mx*100).toFixed(0)}%,transparent 0)">${baht(x.v)}</td>
-    <td class="num">${num(x.ords)}</td></tr>`).join("")||`<tr><td colspan="6" class="drill-hint">ไม่มีข้อมูล</td></tr>`;
-  $("#prodTable thead").querySelectorAll("th").forEach(th=>th.onclick=()=>{const c=th.dataset.c;if(c==="rank")return;if(S.prodSort.c===c)S.prodSort.d*=-1;else{S.prodSort.c=c;S.prodSort.d=c==="pn"?1:-1;}renderProds();});
+    <td class="num">${num(x.ords)}</td></tr>`).join("")||`<tr><td colspan="8" class="drill-hint">ไม่มีข้อมูล</td></tr>`;
+  $("#prodTable thead").querySelectorAll("th").forEach(th=>th.onclick=()=>{const c=th.dataset.c;if(c==="rank")return;if(S.prodSort.c===c)S.prodSort.d*=-1;else{S.prodSort.c=c;S.prodSort.d=STR.includes(c)?1:-1;}renderProds();});
 }
 let CUST_PP=10;
 function renderCusts(){
@@ -468,14 +485,16 @@ function renderBuysEmpty(){
   // Buy panel: Top สินค้าที่ลูกค้าทั้งหมดซื้อ
   const top=S.L.prods.slice().sort((a,b)=>b.v-a.v).slice(0,60);
   $("#buySub").textContent=`ภาพรวมทุกลูกค้า · ${num(totalCust)} ราย · Top ${top.length} สินค้าที่ถูกซื้อ`;
-  $("#buyTable thead").innerHTML="<tr><th style='width:34px'>#</th><th>ชื่อสินค้า</th><th>กลุ่ม</th><th class='num'>จำนวนรวม</th><th class='num'>ยอดขายรวม</th><th class='num'>ลูกค้าที่ซื้อ</th></tr>";
+  $("#buyTable thead").innerHTML="<tr><th style='width:34px'>#</th><th>ชื่อสินค้า</th><th>กลุ่ม</th><th>รุ่น</th><th>สี</th><th class='num'>จำนวนรวม</th><th class='num'>ยอดขายรวม</th><th class='num'>ลูกค้าที่ซื้อ</th></tr>";
   const mx=Math.max(1,...top.map(x=>x.v));
   $("#buyTable tbody").innerHTML=top.map((p,i)=>`<tr>
     <td><span class="rank ${i<3?'r'+(i+1):''}">${i+1}</span></td>
-    <td class="prod" title="${p.pn}">${p.pn}</td><td>${p.cat}</td>
+    <td class="prod" title="${p.pn}">${p.pn}<div style="font-size:10px;color:#9aa0a6">SKU: ${p.sku||"–"}${p.size?" · "+p.size:""}</div></td><td>${p.cat}</td>
+    <td>${p.model?`<span class="pill" style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;background:#eef1f4;color:#3c4043;white-space:nowrap">${p.model}</span>`:"–"}</td>
+    <td>${p.color||"–"}</td>
     <td class="num">${num(p.qty)}</td>
     <td class="num" style="background:linear-gradient(90deg,#e8f0fe ${(p.v/mx*100).toFixed(0)}%,transparent 0)">${baht(p.v)}</td>
-    <td class="num">${num(p.custs||0)}</td></tr>`).join("")||`<tr><td colspan="6" class="drill-hint">ไม่มีข้อมูล</td></tr>`;
+    <td class="num">${num(p.custs||0)}</td></tr>`).join("")||`<tr><td colspan="8" class="drill-hint">ไม่มีข้อมูล</td></tr>`;
   $("#buyPager").innerHTML="";
   // Cross-sell panel: สินค้าขายดี + จำนวนลูกค้าที่ยังไม่เคยซื้อ (โอกาสขยายฐาน)
   const opp=S.L.prods.slice().sort((a,b)=>b.v-a.v).slice(0,20).map(p=>({...p,nb:Math.max(0,totalCust-(p.custs||0))}));
@@ -507,8 +526,8 @@ let BUY_PP=10;
 function renderBuyTable(){
   const a=_buys; const pages=Math.max(1,Math.ceil(a.length/BUY_PP)); S.buyPage=Math.min(S.buyPage,pages-1);
   const sl=a.slice(S.buyPage*BUY_PP,S.buyPage*BUY_PP+BUY_PP);
-  $("#buyTable thead").innerHTML="<tr><th>วันที่</th><th>กลุ่ม</th><th>รหัสสินค้า</th><th>ชื่อสินค้า</th><th class='num'>จำนวน</th><th class='num'>ยอดซื้อ</th></tr>";
-  $("#buyTable tbody").innerHTML=sl.map(b=>`<tr><td>${b.d}</td><td>${b.cat}</td><td>${b.sku}</td><td class="prod" title="${b.pn}">${b.pn}</td><td class="num">${num(b.qty)}</td><td class="num">${baht(b.v)}</td></tr>`).join("")||`<tr><td colspan="6" class="drill-hint">ไม่มีข้อมูล</td></tr>`;
+  $("#buyTable thead").innerHTML="<tr><th>วันที่</th><th>กลุ่ม</th><th>รหัสสินค้า</th><th>ชื่อสินค้า</th><th>รุ่น</th><th>สี</th><th class='num'>จำนวน</th><th class='num'>ยอดซื้อ</th></tr>";
+  $("#buyTable tbody").innerHTML=sl.map(b=>`<tr><td>${b.d}</td><td>${b.cat}</td><td>${b.sku}</td><td class="prod" title="${b.pn}">${b.pn}</td><td>${b.model?`<span class="pill" style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;background:#eef1f4;color:#3c4043;white-space:nowrap">${b.model}</span>`:"–"}</td><td>${b.color||"–"}</td><td class="num">${num(b.qty)}</td><td class="num">${baht(b.v)}</td></tr>`).join("")||`<tr><td colspan="8" class="drill-hint">ไม่มีข้อมูล</td></tr>`;
   $("#buyPager").innerHTML=`<span>${a.length?(S.buyPage*BUY_PP+1):0} - ${Math.min((S.buyPage+1)*BUY_PP,a.length)} / ${a.length}</span>
     <button ${S.buyPage<=0?"disabled":""} id="bPrev">‹</button><button ${S.buyPage>=pages-1?"disabled":""} id="bNext">›</button>`;
   $("#bPrev")&&($("#bPrev").onclick=()=>{S.buyPage--;renderBuyTable();}); $("#bNext")&&($("#bNext").onclick=()=>{S.buyPage++;renderBuyTable();});
