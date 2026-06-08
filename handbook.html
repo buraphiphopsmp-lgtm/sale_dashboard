@@ -58,6 +58,14 @@
   .pg .q{color:var(--muted);font-size:12px;margin:3px 0 7px}
   .pg a{color:var(--brand);text-decoration:none;font-size:12px;font-weight:600}
   .pg a:hover{text-decoration:underline}
+  .fig{margin:12px 0 4px;border:1px solid var(--line);border-radius:10px;overflow:hidden;box-shadow:var(--shadow);background:#fff}
+  .fig .frame{position:relative;width:100%;overflow:hidden}
+  .fig .frame>img{position:absolute;top:0;left:0;width:100%;display:block}
+  .fig .mk{position:absolute;border:2.5px solid #c5221f;border-radius:7px;background:rgba(197,34,31,.04);box-sizing:border-box;pointer-events:none}
+  .fig .mk>span{position:absolute;top:-13px;left:-13px;min-width:25px;height:25px;padding:0 6px;border-radius:13px;background:#c5221f;color:#fff;font-size:12.5px;font-weight:700;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 4px rgba(0,0,0,.45);box-sizing:border-box}
+  .figcap{margin:10px 2px 4px;padding:0;list-style:none;font-size:12.5px;display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:3px 16px}
+  .figcap li{position:relative;padding:4px 0 4px 33px;margin:0;line-height:1.45}
+  .figcap li>i{position:absolute;left:0;top:3px;min-width:24px;height:24px;padding:0 5px;border-radius:12px;background:#c5221f;color:#fff;font-size:11px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;font-style:normal;box-sizing:border-box}
   .foot{font-size:10px;color:#9aa0a6;margin-top:18px;text-align:center}
   .backtop{display:inline-block;margin-top:6px;font-size:11px;color:var(--muted);text-decoration:none}
   .backtop:hover{color:var(--brand)}
@@ -238,6 +246,22 @@
 
     <h3>📈 Sales Dashboard</h3>
     <p class="q" style="color:var(--muted);margin:0 0 4px">ใช้ตอบ: ภาพรวมการขายทั้งหมดในหน้าเดียว (รายละเอียดการ์ดดูหัวข้อ 5)</p>
+    <div class="fig">
+      <div class="frame" style="aspect-ratio:1280 / 1560">
+        <img src="img/sales.png" alt="Sales Dashboard — หน้าจอจริงพร้อมหมายเลขกำกับ (ส่วนบน)" loading="lazy">
+        <div class="mk" style="left:1.4%;top:6.8%;width:95.8%;height:3.4%"><span>1</span></div>
+        <div class="mk" style="left:1.4%;top:11.2%;width:95.8%;height:8.8%"><span>2</span></div>
+        <div class="mk" style="left:2.7%;top:54.2%;width:52.7%;height:16.0%"><span>3</span></div>
+        <div class="mk" style="left:2.7%;top:79.4%;width:93.1%;height:18.6%"><span>4</span></div>
+      </div>
+    </div>
+    <ul class="figcap">
+      <li><i>1</i> ตัวกรองทั้งหน้า — วันที่ · กลุ่มสินค้า · ประเภทลูกค้า · จำนวนเดือนพยากรณ์</li>
+      <li><i>2</i> KPI — ยอดขายปี · เดือนล่าสุด · YTD · พยากรณ์ · Order เดือนล่าสุด · AOV (มีค่าเฉลี่ย 3 เดือน + สีขึ้น/ลง)</li>
+      <li><i>3</i> กราฟ “เทียบรายเดือน ปีนี้ vs ปีก่อน” + เส้น %YoY บนแกนขวา (เขียว=โต แดง=หด)</li>
+      <li><i>4</i> โดนัทกลุ่มสินค้า/ประเภทลูกค้า — <b>คลิกชิ้นเพื่อกรองทั้งหน้า</b> (คลิกซ้ำเพื่อยกเลิก)</li>
+    </ul>
+    <p style="font-size:12px;color:var(--muted);margin:2px 0 0">▾ เลื่อนลงในหน้าจริงจะพบ ตารางสินค้าขายดี · ตะกร้าสินค้า · ตารางลูกค้า · Cross-sell (ตามขั้นตอนด้านล่าง / รายละเอียดหัวข้อ 5)</p>
     <ol class="steps">
       <li><b>ตั้งตัวกรองด้านบน</b> — ช่วงวันที่ / กลุ่มสินค้า / ประเภทลูกค้า / จำนวนเดือนพยากรณ์ แล้วกด <b>“ใช้ตัวกรอง”</b> (กด “ล้างตัวกรอง” เพื่อรีเซ็ต)</li>
       <li><b>คลิกชิ้นกราฟโดนัท</b> (สัดส่วนกลุ่มสินค้า หรือ ประเภทลูกค้า) เพื่อกรองทั้งหน้าตามชิ้นนั้น — คลิกซ้ำที่ชิ้นเดิมเพื่อยกเลิก</li>
@@ -247,38 +271,87 @@
 
     <h3>💎 High Value Monitor</h3>
     <p class="q" style="color:var(--muted);margin:0 0 4px">ใช้ตอบ: เจาะลูกค้ามูลค่าสูงเป็นรายคน — ซื้ออะไร โตแค่ไหน หายไปนานหรือยัง</p>
-    <ol class="steps">
-      <li><b>กรองด้านบน</b> — เลือก ประเภทกลุ่มลูกค้า / รหัสลูกค้า / ชื่อลูกค้า / เซลล์ผู้ดูแล / ช่วงวันที่</li>
-      <li><b>คลิกแถบกราฟ “ประเภทลูกค้า High Value”</b> เพื่อกรองเฉพาะกลุ่มที่ต้องการดู (คลิกซ้ำเพื่อล้าง)</li>
-      <li><b>คลิกชื่อลูกค้า</b> ในตาราง “รายชื่อลูกค้า” เพื่อดูรายละเอียดของลูกค้าคนนั้น — ใช้ปุ่ม <b>‹ ›</b> ใต้ตารางเพื่อเลื่อนหน้า</li>
-      <li>เมื่อเลือกลูกค้าแล้ว ด้านบนจะแสดง <b>สกอร์การ์ด</b>: ยอดซื้อปีนี้, การเติบโต (%YTD YoY), จำนวนบิล, ยอดเฉลี่ยต่อบิล, วันที่ซื้อล่าสุด พร้อมกราฟเทรนด์รายเดือน</li>
-      <li>ตาราง <b>“สินค้าที่เคยซื้อ”</b> ด้านล่างจะแสดงรายการสินค้าทั้งหมดของลูกค้าที่เลือก</li>
-      <li>ถ้าจำชื่อ/รหัสไม่ได้ ให้กดที่ดรอปดาวน์ตัวกรองแล้ว <b>พิมพ์ในช่อง “ค้นหา…”</b> เพื่อค้นหาชื่อหรือรหัสลูกค้า</li>
-    </ol>
+    <div class="fig">
+      <div class="frame" style="aspect-ratio:1280 / 1388">
+        <img src="img/high-value.png" alt="High Value Monitor — หน้าจอจริงพร้อมหมายเลขกำกับ" loading="lazy">
+        <div class="mk" style="left:2.9%;top:11.9%;width:93%;height:7.6%"><span>1</span></div>
+        <div class="mk" style="left:4.1%;top:25.3%;width:35.9%;height:10.4%"><span>2</span></div>
+        <div class="mk" style="left:43.4%;top:24.0%;width:51.4%;height:12.8%"><span>3</span></div>
+        <div class="mk" style="left:87.4%;top:36.8%;width:8.1%;height:2.2%"><span>3.1</span></div>
+        <div class="mk" style="left:42.1%;top:41.3%;width:53.8%;height:20.2%"><span>4</span></div>
+        <div class="mk" style="left:4.1%;top:65.9%;width:90.6%;height:23.5%"><span>5</span></div>
+      </div>
+    </div>
+    <ul class="figcap">
+      <li><i>1</i> ใช้ตัวกรอง/ค้นหา — ประเภทกลุ่ม · รหัส/ชื่อลูกค้า · เซลล์ผู้ดูแล · ช่วงวันที่ (พิมพ์ในช่อง “ค้นหา…” ได้)</li>
+      <li><i>2</i> คลิกแถบกลุ่มลูกค้า เพื่อกรองเฉพาะกลุ่มนั้น (คลิกซ้ำเพื่อล้าง)</li>
+      <li><i>3</i> คลิกชื่อลูกค้าในตาราง เพื่อดูรายละเอียดรายคน</li>
+      <li><i>3.1</i> ปุ่ม ‹ › เลื่อนหน้ารายชื่อลูกค้า</li>
+      <li><i>4</i> สกอร์การ์ดของลูกค้าที่เลือก — ยอดซื้อ · %YTD YoY · จำนวนบิล · ยอดเฉลี่ย/บิล · วันที่ซื้อล่าสุด + เทรนด์รายเดือน</li>
+      <li><i>5</i> ตาราง “สินค้าที่เคยซื้อ” ของลูกค้าที่เลือก</li>
+    </ul>
 
     <h3>🗂️ All Segment Monitor</h3>
-    <p class="q" style="color:var(--muted);margin:0 0 4px">ใช้ตอบ: ภาพลูกค้าทุก segment</p>
-    <p>ใช้งาน <b>เหมือน High Value Monitor ทุกขั้นตอน</b> (คลิกแถบกลุ่ม → คลิกชื่อลูกค้า → ดูสกอร์การ์ดและสินค้าที่ซื้อ → ค้นหา)
-      ต่างกันแค่หน้านี้ครอบคลุม <b>ลูกค้าทุกกลุ่ม</b> ไม่จำกัดเฉพาะ High Value</p>
+    <p class="q" style="color:var(--muted);margin:0 0 4px">ใช้ตอบ: ภาพลูกค้าทุก segment (ใช้งานเหมือน High Value แต่ครอบคลุมทุกกลุ่ม)</p>
+    <div class="fig">
+      <div class="frame" style="aspect-ratio:1280 / 1416">
+        <img src="img/all-segment.png" alt="All Segment Monitor — หน้าจอจริงพร้อมหมายเลขกำกับ" loading="lazy">
+        <div class="mk" style="left:2.9%;top:11.7%;width:92.8%;height:7.5%"><span>1</span></div>
+        <div class="mk" style="left:4.1%;top:23.6%;width:35.7%;height:15.5%"><span>2</span></div>
+        <div class="mk" style="left:43.3%;top:23.7%;width:51.2%;height:12.6%"><span>3</span></div>
+        <div class="mk" style="left:87.9%;top:36.8%;width:6.6%;height:1.8%"><span>3.1</span></div>
+        <div class="mk" style="left:42.0%;top:40.7%;width:53.7%;height:19.9%"><span>4</span></div>
+        <div class="mk" style="left:4.1%;top:66.4%;width:90.3%;height:23.2%"><span>5</span></div>
+      </div>
+    </div>
+    <ul class="figcap">
+      <li><i>1</i> ใช้ตัวกรอง/ค้นหา — ประเภทกลุ่ม · รหัส/ชื่อลูกค้า · เซลล์ · ช่วงวันที่</li>
+      <li><i>2</i> คลิกแถบกลุ่มลูกค้า (ทุก segment) เพื่อกรอง (คลิกซ้ำเพื่อล้าง)</li>
+      <li><i>3</i> คลิกชื่อลูกค้าในตาราง เพื่อดูรายละเอียดรายคน</li>
+      <li><i>3.1</i> ปุ่ม ‹ › เลื่อนหน้ารายชื่อ</li>
+      <li><i>4</i> สกอร์การ์ดของลูกค้าที่เลือก + เทรนด์รายเดือน</li>
+      <li><i>5</i> ตาราง “สินค้าที่เคยซื้อ” ของลูกค้าที่เลือก</li>
+    </ul>
 
     <h3>🧑‍💼 Sales Performance</h3>
     <p class="q" style="color:var(--muted);margin:0 0 4px">ใช้ตอบ: ผลงานเซลล์รายคน</p>
-    <ol class="steps">
-      <li><b>กรองช่วงวันที่</b> ด้านบน แล้วดู <b>“อันดับเซลล์ตามยอดขาย”</b> — คลิกหัวคอลัมน์เพื่อเรียงลำดับ</li>
-      <li><b>คลิกแถวเซลล์</b> (ในตารางอันดับ หรือ Leaderboard) เพื่อเจาะดูรายคน</li>
-      <li>เมื่อเลือกเซลล์ จะเห็น <b>เทรนด์ยอดขายรายเดือน</b>, <b>กลุ่มลูกค้าของเซลล์</b> และ <b>ลูกค้าที่ควรติดตาม</b> ของเซลล์คนนั้น</li>
-      <li><b>คลิกกลุ่มลูกค้า</b> เพื่อกรองเพิ่ม (คลิกซ้ำเพื่อล้าง)</li>
-    </ol>
+    <div class="fig">
+      <div class="frame" style="aspect-ratio:1280 / 1704">
+        <img src="img/sales-performance.png" alt="Sales Performance — หน้าจอจริงพร้อมหมายเลขกำกับ" loading="lazy">
+        <div class="mk" style="left:1.4%;top:6.2%;width:95.8%;height:3.1%"><span>1</span></div>
+        <div class="mk" style="left:2.7%;top:20.4%;width:52.7%;height:17.6%"><span>2</span></div>
+        <div class="mk" style="left:2.8%;top:42.7%;width:93%;height:26.1%"><span>3</span></div>
+        <div class="mk" style="left:2.7%;top:73.5%;width:36.6%;height:15.3%"><span>4</span></div>
+        <div class="mk" style="left:43.2%;top:73.5%;width:52.6%;height:18.5%"><span>5</span></div>
+      </div>
+    </div>
+    <ul class="figcap">
+      <li><i>1</i> กรอง ช่วงวันที่ และ เลือกเซลล์ แล้วกด “ใช้ตัวกรอง”</li>
+      <li><i>2</i> “อันดับเซลล์ตามยอดขาย” — เปรียบเทียบเซลล์เป็นกราฟแท่ง</li>
+      <li><i>3</i> “Leaderboard เซลล์” — คลิกแถวเซลล์เพื่อเจาะดูรายคน (คลิกหัวคอลัมน์เพื่อเรียง)</li>
+      <li><i>4</i> กลุ่มลูกค้าของเซลล์ที่เลือก — คลิกกลุ่มเพื่อกรองเพิ่ม</li>
+      <li><i>5</i> “ลูกค้าที่ควรติดตาม” ของเซลล์ที่เลือก</li>
+    </ul>
 
     <h3>⚠️ Churn &amp; Win-back</h3>
     <p class="q" style="color:var(--muted);margin:0 0 4px">ใช้ตอบ: ลูกค้าคนไหนกำลังจะหลุด และควรดึงกลับใคร</p>
-    <ol class="steps">
-      <li><b>กรองด้านบน</b> — เซลล์ผู้ดูแล / กลุ่มลูกค้า (segment) และ <b>เกณฑ์จำนวนวัน</b> ที่ถือว่าเสี่ยงหลุด</li>
-      <li>ดู <b>“สถานะการซื้อของลูกค้า”</b> และ <b>“การกระจายตัวตาม Recency”</b> (จำนวนวันที่หายไป) ที่แบ่งระดับ ปกติ / เสี่ยงหลุด / เสี่ยงสูญเสีย</li>
-      <li><b>คลิกกลุ่ม/แถบความเสี่ยง</b> เพื่อกรองรายชื่อลูกค้าในระดับนั้น</li>
-      <li>ดูรายการ <b>“ดึงกลับ (Win-back)”</b> — ลูกค้าที่ควรติดต่อกลับ ใช้ปุ่ม <b>‹ ›</b> เลื่อนหน้า และช่อง <b>“ค้นหาลูกค้า…”</b> เพื่อหาลูกค้ารายตัว</li>
-    </ol>
-    <div class="note">ทุกหน้าทำงานได้ทั้งโหมด <span class="chip gold">DEMO</span> และ <span class="chip green">LIVE</span> — ในโหมด DEMO ปุ่ม/การคลิกทำงานครบเหมือนของจริง ใช้ลองมือก่อนได้</div>
+    <div class="fig">
+      <div class="frame" style="aspect-ratio:1280 / 1310">
+        <img src="img/churn.png" alt="Churn & Win-back — หน้าจอจริงพร้อมหมายเลขกำกับ" loading="lazy">
+        <div class="mk" style="left:1.4%;top:8.1%;width:95.8%;height:4.0%"><span>1</span></div>
+        <div class="mk" style="left:1.4%;top:13.4%;width:95.8%;height:8.0%"><span>2</span></div>
+        <div class="mk" style="left:2.7%;top:26.3%;width:36.6%;height:21.4%"><span>3</span></div>
+        <div class="mk" style="left:43.1%;top:26.3%;width:52.7%;height:21.4%"><span>4</span></div>
+        <div class="mk" style="left:2.8%;top:54.7%;width:93%;height:40.2%"><span>5</span></div>
+      </div>
+    </div>
+    <ul class="figcap">
+      <li><i>1</i> กรอง เซลล์ผู้ดูแล / กลุ่มลูกค้า และ <b>เกณฑ์จำนวนวัน</b> ที่ถือว่าเสี่ยงหลุด</li>
+      <li><i>2</i> KPI สรุประดับความเสี่ยง — ทั้งหมด · ยัง Active · กำลังหายไป · หลุดแล้ว · มูลค่าเสี่ยงสูญเสีย</li>
+      <li><i>3</i> “สถานะการซื้อของลูกค้า” — สัดส่วนปกติ/เสี่ยง/หลุด</li>
+      <li><i>4</i> “การกระจายตัวตาม Recency” — จำนวนลูกค้าตามวันที่หายไป</li>
+      <li><i>5</i> ตาราง “ดึงกลับ (Win-back)” — ใช้ช่อง “ค้นหาลูกค้า…” และปุ่ม ‹ › เลื่อนหน้า</li>
+    </ul>
     <a class="backtop" href="#top">↑ กลับขึ้นสารบัญ</a>
   </div>
 
