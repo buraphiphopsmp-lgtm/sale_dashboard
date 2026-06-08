@@ -103,6 +103,8 @@
   </details>
 
   <div class="toolbar">
+    <label>ตั้งแต่วันที่ (ซื้อล่าสุด)<input type="date" id="dFrom"></label>
+    <label>ถึง / ณ วันที่<input type="date" id="dTo"></label>
     <label>เซลล์ผู้ดูแล<select id="fSeller"><option value="">— ทุกคน —</option></select></label>
     <label>กลุ่มลูกค้า (segment)<select id="fSeg"><option value="">— ทุกกลุ่ม —</option></select></label>
     <label>เกณฑ์เสี่ยงหลุด (วัน)<select id="fThresh">
@@ -214,14 +216,18 @@ function buildDemo(){
   }
   S.demoCust=cust; S.mode="demo"; badge();
   fillOpts("#fSeller",sellers); fillOpts("#fSeg",segs);
+  const dts=cust.map(c=>c.last).sort(); S.dateLo=dts[0]; S.dateHi=dts[dts.length-1];
+  if(!$("#dFrom").value)$("#dFrom").value=S.dateLo; if(!$("#dTo").value)$("#dTo").value=S.dateHi;
   $("#foot").textContent="DEMO data — ข้อมูลจำลอง · "+cust.length+" ลูกค้า";
 }
 function demoCompute(){
   const seller=$("#fSeller").value, seg=$("#fSeg").value;
-  const cust=S.demoCust.filter(c=>(!seller||c.seller===seller)&&(!seg||c.seg===seg));
-  const asOf=new Date(); // today
+  const f=$("#dFrom").value, t=$("#dTo").value;
+  const cust=S.demoCust.filter(c=>(!seller||c.seller===seller)&&(!seg||c.seg===seg)&&(!f||c.last>=f)&&(!t||c.last<=t));
+  const asOfStr=t||S.dateHi||new Date().toISOString().slice(0,10);   // อ้างอิงเดือนล่าสุดที่มีข้อมูล
+  const asOf=new Date(asOfStr);
   const enriched=cust.map(c=>({...c,rec:dayDiff(asOf,new Date(c.last))}));
-  buildL(enriched,asOf.toISOString().slice(0,10));
+  buildL(enriched,asOfStr);
   render();
 }
 function buildL(enriched,asOf){
@@ -247,11 +253,16 @@ async function bootLive(){ try{ status("กำลังอ่าน schema…",t
 async function loadLive(){
   const a=AM(),A=aggT(); status("กำลังคำนวณ…",true);
   const seller=$("#fSeller").value, seg=$("#fSeg").value, thresh=+$("#fThresh").value;
+  const f=$("#dFrom").value, t=$("#dTo").value;
   const conds=[`${qq(a.cust)} IS NOT NULL`,`${qq(a.last)} IS NOT NULL`];
   if(seller)conds.push(`${qq(a.seller)}='${esc(seller)}'`);
   if(seg)conds.push(`CAST(${qq(a.seg)} AS STRING)='${esc(seg)}'`);
+  if(f)conds.push(`DATE(${qq(a.last)})>='${f}'`);
+  if(t)conds.push(`DATE(${qq(a.last)})<='${t}'`);
   const W="WHERE "+conds.join(" AND ");
-  const REC=`DATE_DIFF(CURRENT_DATE(),DATE(${qq(a.last)}),DAY)`;
+  // reference date for recency = selected "ถึง/ณ วันที่" or the latest date that has data
+  const asOfExpr=t?`DATE('${t}')`:`(SELECT MAX(DATE(${qq(a.last)})) FROM ${A} WHERE ${qq(a.last)} IS NOT NULL)`;
+  const REC=`DATE_DIFF(${asOfExpr},DATE(${qq(a.last)}),DAY)`;
   try{
     const Q=[
       // per-customer dedup → status + recency buckets + totals
@@ -264,9 +275,15 @@ async function loadLive(){
       bq(`SELECT DISTINCT CAST(${qq(a.seg)} AS STRING) v FROM ${A} WHERE ${qq(a.seg)} IS NOT NULL LIMIT 100`),
       // win-back targets
       bq(`SELECT CAST(${qq(a.cust)} AS STRING) code, ANY_VALUE(${qq(a.name)}) name, ANY_VALUE(CAST(${qq(a.seller)} AS STRING)) seller, MAX(CAST(${qq(a.seg)} AS STRING)) seg, MAX(${qq(a.mon)}) v, MAX(${REC}) rec, MAX(DATE(${qq(a.last)})) last FROM ${A} ${W} GROUP BY code HAVING rec>${thresh} ORDER BY v DESC LIMIT 500`),
+      // available date range of the data (latest month with data)
+      bq(`SELECT MIN(DATE(${qq(a.last)})) lo, MAX(DATE(${qq(a.last)})) hi FROM ${A} WHERE ${qq(a.last)} IS NOT NULL`),
     ];
-    const[g,sl,sg,wb]=await Promise.all(Q);
+    const[g,sl,sg,wb,rng]=await Promise.all(Q);
     if(!S._optsInit){ fillOpts("#fSeller",sl.rows.map(r=>r.v)); fillOpts("#fSeg",sg.rows.map(r=>r.v)); S._optsInit=true; }
+    const lo=rng.rows[0]?.lo?String(rng.rows[0].lo).slice(0,10):"", hi=rng.rows[0]?.hi?String(rng.rows[0].hi).slice(0,10):"";
+    S.dateLo=lo; S.dateHi=hi;
+    if(!$("#dFrom").value&&lo)$("#dFrom").value=lo;   // default range = full data, reference = latest data date
+    if(!$("#dTo").value&&hi)$("#dTo").value=hi;
     const statusCnt=STATUS.map(s=>({k:s.k,c:s.c,n:0,v:0}));
     const recCnt=RBUCKETS.map(b=>({k:b.k,n:0}));
     let total=0,valAtRisk=0,riskN=0;
@@ -276,7 +293,7 @@ async function loadLive(){
     });
     // value at risk from win-back rows (rec>thresh)
     wb.rows.forEach(r=>{valAtRisk+=Number(r.v)||0;riskN++;});
-    S.L={total,statusCnt,recCnt,valAtRisk,riskN,thresh,asOf:"วันนี้",
+    S.L={total,statusCnt,recCnt,valAtRisk,riskN,thresh,asOf:(t||hi||""),
       wb:wb.rows.map(r=>({code:r.code,name:r.name||r.code,seller:r.seller||"",seg:r.seg||"",mon:Number(r.v)||0,rec:Number(r.rec)||0,last:r.last?String(r.last).slice(0,10):""}))};
     status(`${num(total)} ลูกค้า`);
     render();
@@ -303,7 +320,7 @@ function renderKPIs(){
     <div class="label">${c.l}</div><div class="value">${c.v}</div><div class="delta">&nbsp;</div></div>`).join("");
 }
 function renderStatus(){ const d=S.L.statusCnt;
-  $("#statusSub").textContent=`รวม ${num(S.L.total)} ลูกค้า`;
+  $("#statusSub").textContent=`รวม ${num(S.L.total)} ลูกค้า`+(S.L.asOf?` · เทียบ ณ ${S.L.asOf}`:"");
   if(S.charts.status)S.charts.status.destroy();
   S.charts.status=new Chart($("#chartStatus"),{type:"doughnut",
     data:{labels:d.map(x=>x.k),datasets:[{data:d.map(x=>x.n),backgroundColor:d.map(x=>x.c),borderWidth:2,borderColor:"#fff"}]},
@@ -349,7 +366,9 @@ $("#signinBtn").onclick=signIn;
 $("#connectBtn").onclick=()=>{saveCfg();$("#cfgPanel").open=false;if(S.token){S.mode="live";loadLive();}else signIn();};
 $("#refreshBtn").onclick=()=>{if(S.mode==="live")loadLive();else{buildDemo();demoCompute();}};
 $("#applyBtn").onclick=()=>{S.wbPage=0;applyData();};
-$("#clearBtn").onclick=()=>{$("#fSeller").value="";$("#fSeg").value="";$("#fThresh").value="180";S.wbPage=0;applyData();};
+$("#clearBtn").onclick=()=>{$("#fSeller").value="";$("#fSeg").value="";$("#fThresh").value="180";if(S.dateLo)$("#dFrom").value=S.dateLo;if(S.dateHi)$("#dTo").value=S.dateHi;S.wbPage=0;applyData();};
+$("#dFrom").addEventListener("change",()=>{S.wbPage=0;applyData();});
+$("#dTo").addEventListener("change",()=>{S.wbPage=0;applyData();});
 $("#fSeller").addEventListener("change",()=>{S.wbPage=0;applyData();});
 $("#fSeg").addEventListener("change",()=>{S.wbPage=0;applyData();});
 $("#fThresh").addEventListener("change",()=>{S.wbPage=0;applyData();});
