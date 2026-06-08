@@ -283,11 +283,12 @@ function demoCompute(){
   const rows=S.demoRows.filter(r=>inDate(r)&&(!cat||r.category===cat)&&(!type||typeByCode[r.customer_id]===type));
   const years=new Set(); rows.forEach(r=>years.add(+r.date.slice(0,4)));
   const cy=years.size?Math.max(...years):new Date().getFullYear(),py=cy-1;
-  let total=0,qtyTot=0; const ords=new Set(),custs=new Set(),skus=new Set(),mon=new Map(),prodM=new Map(),custM=new Map();
+  let total=0,qtyTot=0; const ords=new Set(),custs=new Set(),skus=new Set(),mon=new Map(),monO=new Map(),prodM=new Map(),custM=new Map();
   let curM=0,prevM=0; let maxMo=0; rows.forEach(r=>{if(+r.date.slice(0,4)===cy)maxMo=Math.max(maxMo,+r.date.slice(5,7));});
   rows.forEach(r=>{ const y=+r.date.slice(0,4),mo=+r.date.slice(5,7),ym=r.date.slice(0,7);
     total+=r.product_price_amount; qtyTot+=r.qty; ords.add(r.order_number); custs.add(r.customer_id); skus.add(r.product_sku);
     mon.set(ym,(mon.get(ym)||0)+r.product_price_amount);
+    if(!monO.has(ym))monO.set(ym,new Set()); monO.get(ym).add(r.order_number);
     if(!prodM.has(r.product_sku))prodM.set(r.product_sku,{sku:r.product_sku,pn:r.product_name,cat:r.category,model:r.product_model||"",color:r.product_color||"",size:r.product_size||"",qty:0,v:0,cy:0,py:0,ords:new Set(),custs:new Set()});
     const p=prodM.get(r.product_sku); p.qty+=r.qty;p.v+=r.product_price_amount;p.ords.add(r.order_number);p.custs.add(r.customer_id);
     if(y===cy)p.cy+=r.product_price_amount; if(y===py)p.py+=r.product_price_amount;
@@ -318,7 +319,7 @@ function demoCompute(){
   const typeCusts=new Map(); S.demoRows.filter(r=>inDate(r)&&(!cat||r.category===cat)).forEach(r=>{const ty=typeByCode[r.customer_id];if(!ty)return;if(!typeCusts.has(ty))typeCusts.set(ty,new Set());typeCusts.get(ty).add(r.customer_id);});
   S.L={cy,py,total,orders:ords.size,custs:custs.size,qty:qtyTot,skus:skus.size,avgLines:ords.size?rows.length/ords.size:0,yoy:prevM?((curM-prevM)/prevM*100):null,
     custType:[...typeCusts.entries()].map(([k,s])=>({k,n:s.size})).sort((a,b)=>b.n-a.n),
-    mon:[...mon.entries()].sort((a,b)=>a[0]<b[0]?-1:1).map(([m,v])=>({m,v})),
+    mon:[...mon.entries()].sort((a,b)=>a[0]<b[0]?-1:1).map(([m,v])=>({m,v,o:(monO.get(m)||new Set()).size})),
     cat:[...catM.entries()].sort((a,b)=>b[1]-a[1]).map(([k,v])=>({k,v})),
     catMom:catArr, catMonths, catTop5, monCat:(c)=>catMonths.map(mm=>monCat.get(c+"|"+mm)||0),
     pairs, basketOrders,
@@ -350,7 +351,7 @@ async function loadLive(){
     const Q=[
       bq(`SELECT EXTRACT(YEAR FROM DATE(${qq(m.date)})) y, SUM(${qq(m.amount)}) v, COUNT(DISTINCT ${qq(m.order)}) o, COUNT(DISTINCT ${qq(m.cust)}) c, SUM(${qq(m.qty)}) q, COUNT(DISTINCT ${qq(m.sku)}) sk, COUNT(*) lines FROM ${T} ${wAll} GROUP BY y`),
       m.dflag?bq(`SELECT SUM(CASE WHEN ${qq(m.dflag)}='Latest_MonthYear' THEN ${qq(m.amount)} END) latest, SUM(CASE WHEN ${qq(m.dflag)}='Previous_MonthYear' THEN ${qq(m.amount)} END) prevm FROM ${T} ${wAll}`):Promise.resolve({rows:[]}),
-      bq(`SELECT FORMAT_DATE('%Y-%m',DATE(${qq(m.date)})) m, SUM(${qq(m.amount)}) v FROM ${T} ${wAll} GROUP BY m ORDER BY m`),
+      bq(`SELECT FORMAT_DATE('%Y-%m',DATE(${qq(m.date)})) m, SUM(${qq(m.amount)}) v, COUNT(DISTINCT ${qq(m.order)}) o FROM ${T} ${wAll} GROUP BY m ORDER BY m`),
       bq(`SELECT CAST(${qq(m.cat)} AS STRING) k, SUM(${qq(m.amount)}) v, SUM(${qq(m.qty)}) qty, SUM(CASE WHEN EXTRACT(YEAR FROM DATE(${qq(m.date)}))=${cyMaxC} THEN ${qq(m.amount)} END) cyv, SUM(CASE WHEN EXTRACT(YEAR FROM DATE(${qq(m.date)}))=${cyMaxC}-1 THEN ${qq(m.amount)} END) pyv FROM ${T} ${wCat} GROUP BY k ORDER BY v DESC`),
       bq(`SELECT CAST(${qq(m.sku)} AS STRING) sku, ANY_VALUE(${qq(m.prodName)}) pn, ANY_VALUE(CAST(${qq(m.cat)} AS STRING)) cat${m.model?`, ANY_VALUE(CAST(${qq(m.model)} AS STRING)) model`:", CAST(NULL AS STRING) model"}${m.color?`, ANY_VALUE(CAST(${qq(m.color)} AS STRING)) color`:", CAST(NULL AS STRING) color"}, SUM(${qq(m.qty)}) qty, SUM(${qq(m.amount)}) v, COUNT(DISTINCT ${qq(m.order)}) ords, COUNT(DISTINCT ${qq(m.cust)}) custs, SUM(CASE WHEN EXTRACT(YEAR FROM DATE(${qq(m.date)}))=${cyMax} THEN ${qq(m.amount)} END) cyv, SUM(CASE WHEN EXTRACT(YEAR FROM DATE(${qq(m.date)}))=${cyMax}-1 THEN ${qq(m.amount)} END) pyv FROM ${T} ${wAll} GROUP BY sku ORDER BY v DESC LIMIT 200`),
       bq(`SELECT CAST(${qq(m.cust)} AS STRING) code, ANY_VALUE(${qq(m.custName)}) name, ANY_VALUE(CAST(${qq(m.custType)} AS STRING)) type, SUM(${qq(m.amount)}) v, COUNT(DISTINCT ${qq(m.order)}) ords FROM ${T} ${wAll} GROUP BY code ORDER BY v DESC LIMIT 300`),
@@ -375,7 +376,7 @@ async function loadLive(){
     const monMap=new Map(); monc.rows.forEach(r=>monMap.set((r.k||"(ว่าง)")+"|"+r.m,(monMap.get((r.k||"(ว่าง)")+"|"+r.m)||0)+(Number(r.v)||0)));
     const catMomArr=catr.rows.map(r=>({k:r.k||"(ว่าง)",v:Number(r.v)||0,cy:Number(r.cyv)||0,py:Number(r.pyv)||0,qty:Number(r.qty)||0,yoy:Number(r.pyv)>0?((Number(r.cyv)-Number(r.pyv))/Number(r.pyv)*100):null}));
     S.L={cy,py,total:cur.v,orders:cur.o,custs:cur.c,qty:cur.q,skus:cur.sk,avgLines:cur.o?cur.lines/cur.o:0,yoy:prevm?((latest-prevm)/prevm*100):null,
-      mon:mon.rows.map(r=>({m:r.m,v:Number(r.v)||0})),
+      mon:mon.rows.map(r=>({m:r.m,v:Number(r.v)||0,o:Number(r.o)||0})),
       cat:catr.rows.map(r=>({k:r.k||"(ว่าง)",v:Number(r.v)||0})),
       catMom:catMomArr, catMonths, catTop5:catMomArr.slice(0,5).map(c=>c.k), monCat:(c)=>catMonths.map(mm=>monMap.get(c+"|"+mm)||0),
       basketOrders:Number(pairr.rows[0]?.totord)||cur.o||1,
@@ -427,7 +428,10 @@ function buildForecast(L){
   L.fcCy=cy; L.fcPy=py;
 }
 function renderKPIs(){
-  const L=S.L; const cards=[
+  const L=S.L;
+  const aov=L.orders?L.total/L.orders:0;
+  const aov3=(L.mon||[]).slice(-3).map(x=>`${thM(x.m)} ${baht(x.o?x.v/x.o:0)}`).join(" · ");
+  const cards=[
     {l:`ยอดขายปี ${be(L.cy)}`,v:baht(L.total),a:PAL[0],d:L.yoy,dl:"YoY (เดือนล่าสุด)"},
     {l:`เดือนล่าสุด${L.curMon&&L.curMon.m?" ("+thM(L.curMon.m)+")":""}`,v:baht(L.curMon?L.curMon.v:0),a:PAL[1],d:L.mom,dl:"MoM"},
     {l:"เติบโต YTD (เทียบช่วงเดียวกันปีก่อน)",v:L.ytdYoy==null?"–":(L.ytdYoy>=0?"+":"")+L.ytdYoy.toFixed(1)+"%",a:PAL[4],sub:`${baht(L.ytd)} vs ${baht(L.ytdPrev)}`},
@@ -435,7 +439,7 @@ function renderKPIs(){
     {l:"จำนวน Order",v:num(L.orders),a:PAL[3]},
     {l:"จำนวนลูกค้า",v:num(L.custs),a:PAL[5]},
     {l:"จำนวน SKU ที่ขายได้",v:num(L.skus||0),a:PAL[1]},
-    {l:"เฉลี่ยรายการ/ออเดอร์ (Basket size)",v:(L.avgLines||0).toFixed(1),a:PAL[6]},
+    {l:"AOV · ค่าใช้จ่ายเฉลี่ยต่อ Order",v:baht(aov),a:PAL[6],sub:aov3?("ย้อนหลัง 3 ด. · "+aov3):""},
   ];
   $("#kpis").innerHTML=cards.map(c=>`<div class="kpi"><div class="accent" style="background:${c.a}"></div>
     <div class="label">${c.l}</div><div class="value">${c.v}</div>
