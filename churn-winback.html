@@ -9,7 +9,7 @@
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
   :root{--bg:#eef1f4;--panel:#fff;--ink:#1f2933;--muted:#5f6368;--line:#e2e5e9;
-    --brand:#1a73e8;--gold:#f9ab00;--green:#188038;--red:#c5221f;--teal:#12b5cb;--purple:#9334e6;
+    --brand:#ad1f23;--gold:#e8a52b;--green:#188038;--red:#c5221f;--teal:#12b5cb;--purple:#9334e6;
     --shadow:0 1px 2px rgba(60,64,67,.1),0 1px 3px rgba(60,64,67,.08);--radius:10px;}
   *{box-sizing:border-box} html,body{margin:0;padding:0}
   body{font-family:"Google Sans","Segoe UI",Roboto,Arial,"Noto Sans Thai",sans-serif;background:var(--bg);color:var(--ink);font-size:13px}
@@ -19,7 +19,7 @@
   .appnav a.tab:hover{color:#fff;background:rgba(255,255,255,.06)}
   .appnav a.tab.active{color:#fff;border-bottom-color:var(--brand)}
   button{font:inherit;cursor:pointer;border:1px solid var(--line);background:#fff;color:var(--ink);padding:6px 12px;border-radius:6px;display:inline-flex;align-items:center;gap:6px}
-  button:hover{background:#f5f6f7} button.primary{background:var(--brand);color:#fff;border-color:var(--brand)} button.primary:hover{background:#1765cc}
+  button:hover{background:#f5f6f7} button.primary{background:var(--brand);color:#fff;border-color:var(--brand)} button.primary:hover{background:#8a0202}
   .topbar{display:flex;align-items:center;gap:12px;padding:12px 22px;flex-wrap:wrap}
   .topbar h1{font-size:20px;font-weight:700;margin:0} .topbar h1 .lite{color:var(--red)}
   .topbar .tag{font-size:12px;color:var(--muted)} .topbar .spacer{flex:1}
@@ -57,7 +57,7 @@
   td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
   tbody tr:nth-child(even){background:#fafbfc} tbody tr:hover{background:#fff4e0}
   .rank{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;font-size:11px;font-weight:700;background:#eef1f4;color:#5f6368}
-  .rank.r1{background:#f9ab00;color:#fff}.rank.r2{background:#9aa0a6;color:#fff}.rank.r3{background:#cd7f32;color:#fff}
+  .rank.r1{background:#e8a52b;color:#fff}.rank.r2{background:#9aa0a6;color:#fff}.rank.r3{background:#cd7f32;color:#fff}
   .pill{font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;white-space:nowrap}
   .drill-hint{color:var(--muted);text-align:center;padding:30px;font-size:13px}
   .pager{display:flex;justify-content:flex-end;align-items:center;gap:6px;font-size:11px;color:var(--muted);margin-top:7px}
@@ -147,11 +147,11 @@ const $=s=>document.querySelector(s);
 const baht=n=>"฿"+Math.round(n||0).toLocaleString("en-US");
 const num=n=>Math.round(n||0).toLocaleString("en-US");
 const NUMERIC=["INTEGER","INT64","FLOAT","FLOAT64","NUMERIC","BIGNUMERIC"];
-const PAL=["#188038","#1a73e8","#f9ab00","#c5221f","#9334e6","#12b5cb"];
+const PAL=["#188038","#1a73e8","#e8a52b","#c5221f","#9334e6","#12b5cb"];
 const LS="churnWB.cfg";
 Chart.defaults.font.family=getComputedStyle(document.body).fontFamily; Chart.defaults.color="#5f6368"; Chart.defaults.font.size=11;
 // status buckets (days since last purchase)
-const STATUS=[{k:"Active (≤90 วัน)",max:90,c:"#188038"},{k:"เฝ้าระวัง (91-180)",max:180,c:"#1a73e8"},{k:"เสี่ยงหลุด (181-365)",max:365,c:"#f9ab00"},{k:"หลุดแล้ว (>365)",max:1e9,c:"#c5221f"}];
+const STATUS=[{k:"Active (≤90 วัน)",max:90,c:"#188038"},{k:"เฝ้าระวัง (91-180)",max:180,c:"#1a73e8"},{k:"เสี่ยงหลุด (181-365)",max:365,c:"#e8a52b"},{k:"หลุดแล้ว (>365)",max:1e9,c:"#c5221f"}];
 const RBUCKETS=[{k:"0-30",lo:0,hi:30},{k:"31-60",lo:31,hi:60},{k:"61-90",lo:61,hi:90},{k:"91-180",lo:91,hi:180},{k:"181-365",lo:181,hi:365},{k:">365",lo:366,hi:1e9}];
 
 const S={mode:"demo",token:null,aggSchema:[],amap:{},wbSort:{c:"v",d:-1},wbPage:0,L:null,charts:{},demoCust:[]};
@@ -311,7 +311,7 @@ function renderKPIs(){
     {l:"ลูกค้าทั้งหมด",v:num(L.total),a:PAL[1]},
     {l:"Active (≤90 วัน)",v:num(sc[0].n),a:"#188038"},
     {l:"เฝ้าระวัง (91-180 วัน)",v:num(sc[1].n),a:"#1a73e8"},
-    {l:"เสี่ยงหลุด (181-365 วัน)",v:num(sc[2].n),a:"#f9ab00"},
+    {l:"เสี่ยงหลุด (181-365 วัน)",v:num(sc[2].n),a:"#e8a52b"},
     {l:"หลุดแล้ว (>365 วัน)",v:num(sc[3].n),a:"#c5221f"},
     {l:`มูลค่าเสี่ยงสูญเสีย (>${L.thresh} วัน)`,v:baht(L.valAtRisk),a:"#c5221f"},
   ];
@@ -329,7 +329,7 @@ function renderStatus(){ const d=S.L.statusCnt;
 }
 function renderRecency(){ const d=S.L.recCnt;
   if(S.charts.rec)S.charts.rec.destroy();
-  const colors=["#188038","#34a853","#1a73e8","#f9ab00","#e8710a","#c5221f"];
+  const colors=["#188038","#34a853","#1a73e8","#e8a52b","#e8710a","#c5221f"];
   S.charts.rec=new Chart($("#chartRecency"),{type:"bar",
     data:{labels:d.map(x=>x.k+" วัน"),datasets:[{data:d.map(x=>x.n),backgroundColor:colors,borderRadius:4}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>" "+num(c.raw)+" ราย"}}},

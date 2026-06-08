@@ -9,7 +9,7 @@
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
   :root{--bg:#eef1f4;--panel:#fff;--ink:#1f2933;--muted:#5f6368;--line:#e2e5e9;
-    --brand:#1a73e8;--gold:#f9ab00;--green:#188038;--red:#c5221f;--teal:#12b5cb;--purple:#9334e6;
+    --brand:#ad1f23;--gold:#e8a52b;--green:#188038;--red:#c5221f;--teal:#12b5cb;--purple:#9334e6;
     --shadow:0 1px 2px rgba(60,64,67,.1),0 1px 3px rgba(60,64,67,.08);--radius:10px;}
   *{box-sizing:border-box} html,body{margin:0;padding:0}
   body{font-family:"Google Sans","Segoe UI",Roboto,Arial,"Noto Sans Thai",sans-serif;background:var(--bg);color:var(--ink);font-size:13px}
@@ -19,7 +19,7 @@
   .appnav a.tab:hover{color:#fff;background:rgba(255,255,255,.06)}
   .appnav a.tab.active{color:#fff;border-bottom-color:var(--brand)}
   button{font:inherit;cursor:pointer;border:1px solid var(--line);background:#fff;color:var(--ink);padding:6px 12px;border-radius:6px;display:inline-flex;align-items:center;gap:6px}
-  button:hover{background:#f5f6f7} button.primary{background:var(--brand);color:#fff;border-color:var(--brand)} button.primary:hover{background:#1765cc}
+  button:hover{background:#f5f6f7} button.primary{background:var(--brand);color:#fff;border-color:var(--brand)} button.primary:hover{background:#8a0202}
   .topbar{display:flex;align-items:center;gap:12px;padding:12px 22px;flex-wrap:wrap}
   .topbar h1{font-size:20px;font-weight:700;margin:0} .topbar h1 .lite{color:var(--brand)}
   .topbar .tag{font-size:12px;color:var(--muted)} .topbar .spacer{flex:1}
@@ -59,7 +59,7 @@
   tbody tr.click{cursor:pointer} tbody tr:nth-child(even){background:#fafbfc} tbody tr:hover{background:#fff4e0}
   tbody tr.sel{background:#e8f0fe!important}
   .rank{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;font-size:11px;font-weight:700;background:#eef1f4;color:#5f6368}
-  .rank.r1{background:#f9ab00;color:#fff}.rank.r2{background:#9aa0a6;color:#fff}.rank.r3{background:#cd7f32;color:#fff}
+  .rank.r1{background:#e8a52b;color:#fff}.rank.r2{background:#9aa0a6;color:#fff}.rank.r3{background:#cd7f32;color:#fff}
   .pill{font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;white-space:nowrap}
   .up{color:var(--green)} .down{color:var(--red)}
   .secnote{font-size:11px;color:var(--muted);margin:18px 0 -2px;font-weight:600;letter-spacing:.3px;text-transform:uppercase;grid-column:1/-1;display:flex;align-items:center;gap:8px}
@@ -193,7 +193,7 @@ const baht=n=>"฿"+Math.round(n||0).toLocaleString("en-US");
 const num=n=>Math.round(n||0).toLocaleString("en-US");
 const NUMERIC=["INTEGER","INT64","FLOAT","FLOAT64","NUMERIC","BIGNUMERIC"];
 const MONTHS=["ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."];
-const PAL=["#1a73e8","#12b5cb","#e8710a","#9334e6","#188038","#d01884","#f9ab00","#5f6368","#1e8e3e","#a142f4","#0b8043","#c5221f"];
+const PAL=["#ad1f23","#e8a52b","#1f6fb5","#188038","#9334e6","#12b5cb","#e8710a","#5f6368","#0b8043","#a142f4","#c05530","#0f9d9d"];
 const LS="salesDash2.cfg";
 Chart.defaults.font.family=getComputedStyle(document.body).fontFamily; Chart.defaults.color="#5f6368"; Chart.defaults.font.size=11;
 
@@ -465,8 +465,8 @@ function renderTrend(){ const L=S.L, d=L.mon;
   $("#trendSub").textContent=d.length?`${thM(d[0].m)} - ${thM(d[d.length-1].m)} · * = พยากรณ์`:"";
   if(S.charts.trend)S.charts.trend.destroy();
   S.charts.trend=new Chart($("#chartTrend"),{type:"line",data:{labels,datasets:[
-    {label:"ยอดขายจริง",data:actual,borderColor:"#1a73e8",backgroundColor:"rgba(26,115,232,.12)",fill:true,tension:.3,pointRadius:0,borderWidth:2},
-    {label:"ค่าเฉลี่ยเคลื่อนที่ 3 เดือน",data:ma,borderColor:"#f9ab00",backgroundColor:"transparent",tension:.3,pointRadius:0,borderWidth:2,borderDash:[2,2]},
+    {label:"ยอดขายจริง",data:actual,borderColor:"#ad1f23",backgroundColor:"rgba(173,31,35,.12)",fill:true,tension:.3,pointRadius:0,borderWidth:2},
+    {label:"ค่าเฉลี่ยเคลื่อนที่ 3 เดือน",data:ma,borderColor:"#e8a52b",backgroundColor:"transparent",tension:.3,pointRadius:0,borderWidth:2,borderDash:[2,2]},
     {label:"พยากรณ์",data:fcLine,borderColor:"#c5221f",backgroundColor:"transparent",tension:.2,pointRadius:2,borderWidth:2,borderDash:[6,4]},
   ]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"bottom",labels:{boxWidth:12,padding:8,font:{size:10}}},tooltip:{callbacks:{label:c=>c.raw==null?null:` ${c.dataset.label}: ${baht(c.raw)}`}}},
@@ -490,7 +490,7 @@ function renderCompare(){ const L=S.L;
   S.charts.cmp=new Chart($("#chartCompare"),{type:"bar",
     data:{labels:MONTHS,datasets:[
       {label:`ปี ${be(L.fcPy)}`,data:prev,backgroundColor:"#c6dafc",borderRadius:3,order:3},
-      {label:`ปี ${be(L.fcCy)}`,data:cur,backgroundColor:cur.map((v,i)=>(prev[i]>0&&v>0)?(v>=prev[i]?"#1a73e8":"#ea8600"):"#1a73e8"),borderRadius:3,order:2},
+      {label:`ปี ${be(L.fcCy)}`,data:cur,backgroundColor:cur.map((v,i)=>(prev[i]>0&&v>0)?(v>=prev[i]?"#ad1f23":"#ea8600"):"#ad1f23"),borderRadius:3,order:2},
       {type:"line",label:"%YoY (แกนขวา)",data:yoy,yAxisID:"y1",spanGaps:false,borderColor:"#9aa0a6",borderWidth:1.5,tension:.3,
         pointRadius:4,pointHoverRadius:6,pointBackgroundColor:yoy.map(p=>p==null?"#9aa0a6":p>=0?"#188038":"#c5221f"),pointBorderColor:"#fff",pointBorderWidth:1,order:1},
     ]},
