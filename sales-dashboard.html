@@ -131,7 +131,7 @@
     </div>
 
     <div class="s7 card"><h3>เทียบรายเดือน ปีนี้ vs ปีก่อน <span class="sub" id="cmpSub"></span></h3><div class="chart-box sm"><canvas id="chartCompare"></canvas></div></div>
-    <div class="s5 card"><h3>ฤดูกาล — ยอดขายเฉลี่ยรายเดือน <span class="sub">เฉลี่ยทุกปี</span></h3><div class="chart-box sm"><canvas id="chartSeason"></canvas></div></div>
+    <div class="s5 card"><h3>ฤดูกาล (Seasonality) — เทรนด์รายเดือนเทียบทุกปี <span class="sub" id="seasonSub"></span></h3><div class="chart-box sm"><canvas id="chartSeason"></canvas></div></div>
 
     <div class="secnote">② โครงสร้างยอดขาย <span class="nrm">— อะไรและใครคือสัดส่วนหลักของรายได้ (คลิกวงเพื่อกรองทั้งหน้า)</span></div>
     <div class="s6 card"><h3>สัดส่วนตามกลุ่มสินค้า <span class="sub">ตามยอดขาย</span></h3><div class="chart-box"><canvas id="chartCat"></canvas></div></div>
@@ -423,7 +423,10 @@ function buildForecast(L){
   let ytd=0,ytdPrev=0; for(let mo=1;mo<=upTo;mo++){const k=String(mo).padStart(2,"0");ytd+=byYM[cy+"-"+k]||0;ytdPrev+=byYM[py+"-"+k]||0;}
   L.ytd=ytd; L.ytdPrev=ytdPrev; L.ytdYoy=ytdPrev?((ytd-ytdPrev)/ytdPrev*100):null;
   const ss=Array(12).fill(0),sc=Array(12).fill(0); mon.forEach(x=>{const mi=+x.m.slice(5,7)-1;ss[mi]+=x.v;sc[mi]++;});
-  L.season=ss.map((s,i)=>sc[i]?s/sc[i]:0);
+  L.season=ss.map((s,i)=>sc[i]?s/sc[i]:null);
+  // per-year monthly series (Jan–Dec) for the seasonal overlay — null = no data that month
+  const yrsS=[...new Set(mon.map(x=>+x.m.slice(0,4)))].sort();
+  L.seasonYears=yrsS.map(y=>({year:y,data:Array.from({length:12},(_,i)=>{const k=y+"-"+String(i+1).padStart(2,"0");return (k in byYM)?byYM[k]:null;})}));
   L.cmpCur=[];L.cmpPrev=[]; for(let mo=1;mo<=12;mo++){const k=String(mo).padStart(2,"0");L.cmpCur.push(byYM[cy+"-"+k]||0);L.cmpPrev.push(byYM[py+"-"+k]||0);}
   L.fcCy=cy; L.fcPy=py;
 }
@@ -437,14 +440,17 @@ function renderKPIs(){
   const aovPct=aov3?((aovLast-aov3)/aov3*100):null;          // เดือนล่าสุด vs เฉลี่ย 3 เดือน
   const aovUp=aovPct==null?null:aovPct>=0;
   const aovSub=`เฉลี่ย 3 เดือน ${baht(aov3)}`+(aovPct==null?"":` <span class="${aovUp?'up':'down'}">${aovUp?'▲':'▼'} ${Math.abs(aovPct).toFixed(1)}%</span>`);
+  const ordLast=cm?(cm.o||0):0;                              // จำนวน Order ของเดือนล่าสุด (ค่าหลัก)
+  const ord3=m3.length?m3.reduce((s,x)=>s+(x.o||0),0)/m3.length:0;  // เฉลี่ย Order 3 เดือน
+  const ordPct=ord3?((ordLast-ord3)/ord3*100):null;
+  const ordUp=ordPct==null?null:ordPct>=0;
+  const ordSub=`เฉลี่ย 3 เดือน ${num(ord3)}`+(ordPct==null?"":` <span class="${ordUp?'up':'down'}">${ordUp?'▲':'▼'} ${Math.abs(ordPct).toFixed(1)}%</span>`);
   const cards=[
     {l:`ยอดขายปี ${be(L.cy)}`,v:baht(L.total),a:PAL[0],d:L.yoy,dl:"YoY (เดือนล่าสุด)"},
     {l:`เดือนล่าสุด${L.curMon&&L.curMon.m?" ("+thM(L.curMon.m)+")":""}`,v:baht(L.curMon?L.curMon.v:0),a:PAL[1],d:L.mom,dl:"MoM"},
     {l:"เติบโต YTD (เทียบช่วงเดียวกันปีก่อน)",v:L.ytdYoy==null?"–":(L.ytdYoy>=0?"+":"")+L.ytdYoy.toFixed(1)+"%",a:PAL[4],sub:`${baht(L.ytd)} vs ${baht(L.ytdPrev)}`},
     {l:`พยากรณ์ ${L.horizon} เดือนข้างหน้า`,v:baht(L.fcTotal),a:PAL[2],sub:(L.slope>=0?"▲ แนวโน้มขึ้น ":"▼ แนวโน้มลง ")+baht(Math.abs(L.slope))+"/เดือน"},
-    {l:"จำนวน Order",v:num(L.orders),a:PAL[3]},
-    {l:"จำนวนลูกค้า",v:num(L.custs),a:PAL[5]},
-    {l:"จำนวน SKU ที่ขายได้",v:num(L.skus||0),a:PAL[1]},
+    {l:`จำนวน Order เดือนล่าสุด${cm&&cm.m?" ("+thM(cm.m)+")":""}`,v:num(ordLast),a:PAL[3],sub:ordSub},
     {l:`AOV เดือนล่าสุด${cm&&cm.m?" ("+thM(cm.m)+")":""}`,v:baht(aovLast),a:PAL[6],sub:aovSub},
   ];
   $("#kpis").innerHTML=cards.map(c=>`<div class="kpi"><div class="accent" style="background:${c.a}"></div>
@@ -479,11 +485,29 @@ function renderCompare(){ const L=S.L;
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"bottom",labels:{boxWidth:12,padding:8,font:{size:10}}},tooltip:{callbacks:{label:c=>` ${c.dataset.label}: ${baht(c.raw)}`}}},
       scales:{x:{grid:{display:false},ticks:{font:{size:9}}},y:{ticks:{callback:v=>v>=1e6?(v/1e6)+"M":v/1e3+"K"},grid:{color:"#f1f3f4"},beginAtZero:true}}}});
 }
-function renderSeason(){ const L=S.L; const mx=Math.max(1,...L.season);
+function renderSeason(){ const L=S.L; const years=L.seasonYears||[]; const avg=L.season||[];
+  // seasonal insight: peak / trough month, and the month that swings the most across years
+  let peak=-1,low=-1,pv=-Infinity,lv=Infinity;
+  avg.forEach((v,i)=>{if(v==null)return;if(v>pv){pv=v;peak=i;}if(v<lv){lv=v;low=i;}});
+  let swing=-1,sw=-1; for(let i=0;i<12;i++){const vals=years.map(y=>y.data[i]).filter(v=>v!=null);
+    if(vals.length>=2){const sp=Math.max(...vals)-Math.min(...vals); if(sp>sw){sw=sp;swing=i;}}}
+  const sub=$("#seasonSub"); if(sub) sub.textContent=peak>=0
+    ? `พีค ${MONTHS[peak]} · ต่ำสุด ${MONTHS[low]}`+(swing>=0?` · สวิงมากสุด ${MONTHS[swing]}`:"")
+    : "";
+  const ds=years.map((yr,i)=>({label:String(be(yr.year)),data:yr.data,borderColor:PAL[i%PAL.length],
+    backgroundColor:"transparent",tension:.35,pointRadius:2,pointHoverRadius:4,borderWidth:1.6,spanGaps:true}));
+  // average line — bold dark dashed reference, with a green dot on the peak and red on the trough
+  ds.push({label:"เฉลี่ยทุกปี",data:avg,borderColor:"#202124",backgroundColor:"transparent",tension:.35,
+    borderWidth:2.6,borderDash:[5,3],spanGaps:true,
+    pointRadius:avg.map((_,i)=>i===peak||i===low?4:0),
+    pointBackgroundColor:avg.map((_,i)=>i===peak?"#188038":i===low?"#c5221f":"#202124"),
+    pointBorderColor:"#fff",pointBorderWidth:1});
   if(S.charts.season)S.charts.season.destroy();
-  S.charts.season=new Chart($("#chartSeason"),{type:"bar",
-    data:{labels:MONTHS,datasets:[{data:L.season,backgroundColor:L.season.map(v=>v>=mx*0.85?"#188038":v>=mx*0.6?"#1a73e8":"#c6dafc"),borderRadius:3}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>" เฉลี่ย "+baht(c.raw)}}},
+  S.charts.season=new Chart($("#chartSeason"),{type:"line",
+    data:{labels:MONTHS,datasets:ds},
+    options:{responsive:true,maintainAspectRatio:false,interaction:{mode:"index",intersect:false},
+      plugins:{legend:{position:"bottom",labels:{boxWidth:9,padding:5,font:{size:9}}},
+        tooltip:{callbacks:{label:c=>c.raw==null?null:` ${c.dataset.label}: ${baht(c.raw)}`}}},
       scales:{x:{grid:{display:false},ticks:{font:{size:9}}},y:{ticks:{callback:v=>v>=1e6?(v/1e6)+"M":v/1e3+"K"},grid:{color:"#f1f3f4"},beginAtZero:true}}}});
 }
 const pctPlugin={id:"pct",afterDatasetsDraw(chart){
