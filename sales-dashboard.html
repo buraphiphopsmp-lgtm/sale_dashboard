@@ -475,15 +475,33 @@ function renderTrend(){ const L=S.L, d=L.mon;
   const note=$("#fcNote"); if(note)note.innerHTML=`พยากรณ์แบบเส้นตรงจากแนวโน้มในอดีต — <b>${nf}</b> · ใช้ประกอบการวางแผน ไม่รวมปัจจัยฤดูกาล/โปรโมชัน`;
 }
 function renderCompare(){ const L=S.L;
-  $("#cmpSub").textContent=`${be(L.fcCy)} vs ${be(L.fcPy)}`;
+  const cur=L.cmpCur||[], prev=L.cmpPrev||[];
+  const yoy=cur.map((v,i)=>(prev[i]>0&&v>0)?((v-prev[i])/prev[i]*100):null);   // %YoY per month (skip months w/o comparison)
+  const delta=cur.map((v,i)=>v-(prev[i]||0));
+  // header insight: strongest growth month + worst decline (if any) + YTD
+  let best=-1,worst=-1,bv=-Infinity,wv=Infinity;
+  yoy.forEach((p,i)=>{if(p==null)return;if(p>bv){bv=p;best=i;}if(p<wv){wv=p;worst=i;}});
+  let sub=`${be(L.fcCy)} vs ${be(L.fcPy)}`;
+  if(L.ytdYoy!=null) sub+=` · YTD ${L.ytdYoy>=0?"+":""}${L.ytdYoy.toFixed(1)}%`;
+  if(best>=0&&bv>=0) sub+=` · โตสุด ${MONTHS[best]} +${bv.toFixed(0)}%`;
+  if(worst>=0&&wv<0) sub+=` · หด ${MONTHS[worst]} ${wv.toFixed(0)}%`;
+  $("#cmpSub").textContent=sub;
   if(S.charts.cmp)S.charts.cmp.destroy();
   S.charts.cmp=new Chart($("#chartCompare"),{type:"bar",
     data:{labels:MONTHS,datasets:[
-      {label:`ปี ${be(L.fcPy)}`,data:L.cmpPrev,backgroundColor:"#c6dafc",borderRadius:3},
-      {label:`ปี ${be(L.fcCy)}`,data:L.cmpCur,backgroundColor:"#1a73e8",borderRadius:3},
+      {label:`ปี ${be(L.fcPy)}`,data:prev,backgroundColor:"#c6dafc",borderRadius:3,order:3},
+      {label:`ปี ${be(L.fcCy)}`,data:cur,backgroundColor:cur.map((v,i)=>(prev[i]>0&&v>0)?(v>=prev[i]?"#1a73e8":"#ea8600"):"#1a73e8"),borderRadius:3,order:2},
+      {type:"line",label:"%YoY (แกนขวา)",data:yoy,yAxisID:"y1",spanGaps:false,borderColor:"#9aa0a6",borderWidth:1.5,tension:.3,
+        pointRadius:4,pointHoverRadius:6,pointBackgroundColor:yoy.map(p=>p==null?"#9aa0a6":p>=0?"#188038":"#c5221f"),pointBorderColor:"#fff",pointBorderWidth:1,order:1},
     ]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"bottom",labels:{boxWidth:12,padding:8,font:{size:10}}},tooltip:{callbacks:{label:c=>` ${c.dataset.label}: ${baht(c.raw)}`}}},
-      scales:{x:{grid:{display:false},ticks:{font:{size:9}}},y:{ticks:{callback:v=>v>=1e6?(v/1e6)+"M":v/1e3+"K"},grid:{color:"#f1f3f4"},beginAtZero:true}}}});
+    options:{responsive:true,maintainAspectRatio:false,interaction:{mode:"index",intersect:false},
+      plugins:{legend:{position:"bottom",labels:{boxWidth:12,padding:8,font:{size:10}}},
+        tooltip:{callbacks:{
+          label:c=>c.dataset.yAxisID==="y1"?(c.raw==null?null:` %YoY: ${c.raw>=0?"+":""}${c.raw.toFixed(1)}%`):` ${c.dataset.label}: ${baht(c.raw)}`,
+          afterBody:items=>{const i=items[0].dataIndex; if(prev[i]>0&&cur[i]>0){const d=delta[i],p=yoy[i];return [`Δ ${d>=0?"+":""}${baht(d)} (${p>=0?"▲ +":"▼ "}${p.toFixed(1)}%)`];} return [];}}}},
+      scales:{x:{grid:{display:false},ticks:{font:{size:9}}},
+        y:{ticks:{callback:v=>v>=1e6?(v/1e6)+"M":v/1e3+"K"},grid:{color:"#f1f3f4"},beginAtZero:true},
+        y1:{position:"right",grid:{display:false},ticks:{callback:v=>v+"%",font:{size:9},color:"#9aa0a6"}}}}});
 }
 function renderSeason(){ const L=S.L; const years=L.seasonYears||[]; const avg=L.season||[];
   // seasonal insight: peak / trough month, and the month that swings the most across years
