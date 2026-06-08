@@ -75,7 +75,7 @@
 
 <nav class="appnav">
   <div class="brand">📊 Futuretech Dashboards</div>
-  <a href="sales-dashboard.html" class="tab">Sales Dashboard</a>
+  <a href="sales-dashboard.html" class="tab">Sales Performance Overview</a>
   <a href="high-value-monitor.html" class="tab">High Value Monitor</a>
   <a href="all-segment-monitor.html" class="tab">All Segment Monitor</a>
   <a href="sales-performance.html" class="tab">Individual Sales Performance</a>
@@ -105,7 +105,7 @@
       <a href="#mode"><b>2.</b> โหมด DEMO vs LIVE &amp; BigQuery</a>
       <a href="#filter"><b>3.</b> แถบตัวกรองร่วม</a>
       <a href="#pages"><b>4.</b> แนะนำ 5 หน้า Dashboard</a>
-      <a href="#sales"><b>5.</b> เจาะลึก Sales Dashboard</a>
+      <a href="#sales"><b>5.</b> เจาะลึก Sales Performance Overview</a>
       <a href="#detail"><b>6.</b> วิธีใช้งานละเอียดรายหน้า</a>
       <a href="#glossary"><b>7.</b> คำศัพท์ &amp; สูตรคำนวณ</a>
       <a href="#faq"><b>8.</b> คำถามที่พบบ่อย / แก้ปัญหา</a>
@@ -152,9 +152,9 @@
       <tr><td class="k">ตั้งแต่ / ถึงวันที่</td><td>จำกัดช่วงเวลาของข้อมูลที่นำมาคำนวณทุกการ์ด</td></tr>
       <tr><td class="k">กลุ่มสินค้า</td><td>โฟกัสเฉพาะหมวดสินค้าที่เลือก (เช่น รางลิ้นชัก, บานพับถ้วย)</td></tr>
       <tr><td class="k">ประเภทลูกค้า</td><td>กรองตามชนิดลูกค้า (โรงงาน, ผู้รับเหมา, ร้านค้า ฯลฯ)</td></tr>
-      <tr><td class="k">พยากรณ์</td><td>เลือกจำนวนเดือนข้างหน้าที่จะพยากรณ์ (3 หรือ 6 เดือน) — เฉพาะ Sales Dashboard</td></tr>
+      <tr><td class="k">พยากรณ์</td><td>เลือกจำนวนเดือนข้างหน้าที่จะพยากรณ์ (3 หรือ 6 เดือน) — เฉพาะ Sales Performance Overview</td></tr>
     </table>
-    <div class="note"><b>เคล็ดลับ — คลิกกราฟเพื่อกรอง:</b> ใน Sales Dashboard คลิก “ชิ้น” ของกราฟโดนัท
+    <div class="note"><b>เคล็ดลับ — คลิกกราฟเพื่อกรอง:</b> ใน Sales Performance Overview คลิก “ชิ้น” ของกราฟโดนัท
       (กลุ่มสินค้า/ประเภทลูกค้า) เพื่อกรองทั้งหน้าได้ทันที คลิกซ้ำที่ชิ้นเดิมเพื่อยกเลิก
       ส่วนหน้า Monitor คลิกที่แถบ segment เพื่อเจาะดูเฉพาะกลุ่มนั้น</div>
   </div>
@@ -164,7 +164,7 @@
     <p class="lead">แต่ละหน้าตอบโจทย์คนละมุม เลือกใช้ตามคำถามที่อยากได้คำตอบ</p>
     <div class="pages">
       <div class="pg">
-        <div class="pt">📈 Sales Dashboard</div>
+        <div class="pt">📈 Sales Performance Overview</div>
         <div class="q">“ภาพรวมการขายเป็นอย่างไร และกำลังไปทางไหน?”</div>
         ภาพรวมยอดขาย แนวโน้ม พยากรณ์ สัดส่วนสินค้า/ลูกค้า โมเมนตัมกลุ่มสินค้า สินค้าขายดี ตะกร้าสินค้า และโอกาสขายเพิ่ม รวมในหน้าเดียว
         <div><a href="sales-dashboard.html">เปิดหน้านี้ →</a></div>
@@ -198,7 +198,7 @@
   </div>
 
   <div class="card">
-    <h2 id="sales"><span class="n">5</span> เจาะลึก Sales Dashboard</h2>
+    <h2 id="sales"><span class="n">5</span> เจาะลึก Sales Performance Overview</h2>
     <p class="lead">หน้านี้เรียงเป็น 5 ส่วนตามลำดับการเล่าเรื่อง — ไล่จากบนลงล่างจะได้ภาพครบตั้งแต่ “ภาพใหญ่” ไปจนถึง “สิ่งที่ต้องลงมือทำ”</p>
 
     <h3><span class="chip brand">KPI</span> แถบตัวเลขสรุปด้านบน</h3>
@@ -244,11 +244,11 @@
     <h2 id="detail"><span class="n">6</span> วิธีใช้งานละเอียดรายหน้า (Step-by-step)</h2>
     <p class="lead">ขั้นตอนการคลิก-กรอง-เจาะข้อมูลของแต่ละหน้า — ทำตามหมายเลขได้เลย</p>
 
-    <h3>📈 Sales Dashboard</h3>
+    <h3>📈 Sales Performance Overview</h3>
     <p class="q" style="color:var(--muted);margin:0 0 4px">ใช้ตอบ: ภาพรวมการขายทั้งหมดในหน้าเดียว (รายละเอียดการ์ดดูหัวข้อ 5)</p>
     <div class="fig">
       <div class="frame" style="aspect-ratio:1280 / 1560">
-        <img src="img/sales.png" alt="Sales Dashboard — หน้าจอจริงพร้อมหมายเลขกำกับ (ส่วนบน)" loading="lazy">
+        <img src="img/sales.png" alt="Sales Performance Overview — หน้าจอจริงพร้อมหมายเลขกำกับ (ส่วนบน)" loading="lazy">
         <div class="mk" style="left:1.4%;top:6.8%;width:95.8%;height:3.4%"><span>1</span></div>
         <div class="mk" style="left:1.4%;top:11.2%;width:95.8%;height:8.8%"><span>2</span></div>
         <div class="mk" style="left:2.7%;top:54.2%;width:52.7%;height:16.0%"><span>3</span></div>
@@ -396,7 +396,7 @@
     <h3>ตัวเลขใน DEMO ไม่ตรงกับของจริง</h3>
     <p>ถูกต้องแล้ว — DEMO เป็นข้อมูลจำลองล้วน ใช้ดูหน้าตาเท่านั้น ต้องล็อกอินเพื่อดูข้อมูลจริง (LIVE)</p>
     <h3>หน้า “Product &amp; Basket” เดิมหายไป?</h3>
-    <p>ถูกรวมเข้ากับ <b>Sales Dashboard</b> แล้ว (ส่วน ③ โมเมนตัมกลุ่มสินค้า และ ④ ตะกร้าสินค้า) ลิงก์เก่าจะพาไปหน้า Sales Dashboard โดยอัตโนมัติ</p>
+    <p>ถูกรวมเข้ากับ <b>Sales Performance Overview</b> แล้ว (ส่วน ③ โมเมนตัมกลุ่มสินค้า และ ④ ตะกร้าสินค้า) ลิงก์เก่าจะพาไปหน้า Sales Performance Overview โดยอัตโนมัติ</p>
     <a class="backtop" href="#top">↑ กลับขึ้นสารบัญ</a>
   </div>
 
