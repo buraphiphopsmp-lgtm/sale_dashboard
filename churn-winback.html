@@ -288,11 +288,10 @@ async function loadLive(){
     const recCnt=RBUCKETS.map(b=>({k:b.k,n:0}));
     let total=0,valAtRisk=0,riskN=0;
     g.rows.forEach(r=>{const st=Number(r.st),rb=Number(r.rb),n=Number(r.n)||0,v=Number(r.v)||0;
-      statusCnt[st].n+=n; statusCnt[st].v+=v; recCnt[rb].n+=n; total+=n;
-      // recency bucket > thresh mapping handled below via wb totals
-    });
-    // value at risk from win-back rows (rec>thresh)
-    wb.rows.forEach(r=>{valAtRisk+=Number(r.v)||0;riskN++;});
+      statusCnt[st].n+=n; statusCnt[st].v+=v; recCnt[rb].n+=n; total+=n;});
+    // at-risk (>thresh) derived from the FULL status buckets — not the 500-row win-back list
+    const thIdx=thresh<=90?1:thresh<=180?2:3;
+    for(let i=thIdx;i<4;i++){riskN+=statusCnt[i].n;valAtRisk+=statusCnt[i].v;}
     S.L={total,statusCnt,recCnt,valAtRisk,riskN,thresh,asOf:(t||hi||""),
       wb:wb.rows.map(r=>({code:r.code,name:r.name||r.code,seller:r.seller||"",seg:r.seg||"",mon:Number(r.v)||0,rec:Number(r.rec)||0,last:r.last?String(r.last).slice(0,10):""}))};
     status(`${num(total)} ลูกค้า`);
@@ -306,15 +305,15 @@ async function loadLive(){
 function applyData(){ if(S.mode==="live")loadLive(); else demoCompute(); }
 function render(){ if(!S.L)return; renderKPIs(); renderStatus(); renderRecency(); renderWB(); }
 function renderKPIs(){
-  const L=S.L; const active=L.statusCnt[0].n, lost=L.statusCnt[3].n;
-  const riskShare=L.total?(L.riskN/L.total*100):0;
+  const L=S.L; const sc=L.statusCnt;
+  // status buckets are mutually exclusive → 2-5 sum to "ลูกค้าทั้งหมด" (same as the donut)
   const cards=[
     {l:"ลูกค้าทั้งหมด",v:num(L.total),a:PAL[1]},
-    {l:"ยัง Active (≤90 วัน)",v:num(active),a:PAL[0]},
-    {l:`กำลังหายไป (>${L.thresh} วัน)`,v:num(L.riskN),a:PAL[2]},
-    {l:"หลุดแล้ว (>365 วัน)",v:num(lost),a:PAL[3]},
-    {l:"มูลค่าเสี่ยงสูญเสีย",v:baht(L.valAtRisk),a:PAL[3]},
-    {l:"สัดส่วนเสี่ยงหลุด",v:riskShare.toFixed(1)+"%",a:PAL[2]},
+    {l:"Active (≤90 วัน)",v:num(sc[0].n),a:"#188038"},
+    {l:"เฝ้าระวัง (91-180 วัน)",v:num(sc[1].n),a:"#1a73e8"},
+    {l:"เสี่ยงหลุด (181-365 วัน)",v:num(sc[2].n),a:"#f9ab00"},
+    {l:"หลุดแล้ว (>365 วัน)",v:num(sc[3].n),a:"#c5221f"},
+    {l:`มูลค่าเสี่ยงสูญเสีย (>${L.thresh} วัน)`,v:baht(L.valAtRisk),a:"#c5221f"},
   ];
   $("#kpis").innerHTML=cards.map(c=>`<div class="kpi"><div class="accent" style="background:${c.a}"></div>
     <div class="label">${c.l}</div><div class="value">${c.v}</div><div class="delta">&nbsp;</div></div>`).join("");
@@ -342,7 +341,9 @@ function renderWB(){
   let r=S.L.wb.slice(); if(q)r=r.filter(c=>(c.name||"").toLowerCase().includes(q)||(c.code||"").toLowerCase().includes(q)||(c.seller||"").toLowerCase().includes(q));
   const sc=S.wbSort.c,sd=S.wbSort.d;
   r.sort((a,b)=>{if(sc==="name"||sc==="seller"||sc==="seg")return((a[sc]||"")<(b[sc]||"")?-1:1)*sd;return((a[sc]||0)-(b[sc]||0))*sd;});
-  $("#wbSub").textContent=`${num(r.length)} ลูกค้าที่ไม่ซื้อเกิน ${S.L.thresh} วัน · มูลค่ารวม ${baht(r.reduce((s,x)=>s+x.mon,0))}`;
+  $("#wbSub").textContent = q
+    ? `พบ ${num(r.length)} ราย จากการค้นหา`
+    : `${num(S.L.riskN)} ราย (ไม่ซื้อเกิน ${S.L.thresh} วัน) · มูลค่ารวม ${baht(S.L.valAtRisk)}`+((S.L.wb||[]).length>=500?` · ตารางแสดง Top 500 ตามมูลค่า`:"");
   const pages=Math.max(1,Math.ceil(r.length/WB_PP)); S.wbPage=Math.min(S.wbPage,pages-1);
   const sl=r.slice(S.wbPage*WB_PP,S.wbPage*WB_PP+WB_PP);
   const cols=[{c:"rank",t:"#"},{c:"code",t:"รหัส"},{c:"name",t:"ชื่อลูกค้า"},{c:"seller",t:"เซลล์"},{c:"seg",t:"กลุ่ม"},{c:"rec",t:"หายไป (วัน)",num:1},{c:"mon",t:"มูลค่าลูกค้า",num:1},{c:"last",t:"ซื้อล่าสุด"}];
