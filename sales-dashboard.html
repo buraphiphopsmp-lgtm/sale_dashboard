@@ -429,8 +429,14 @@ function buildForecast(L){
 }
 function renderKPIs(){
   const L=S.L;
-  const aov=L.orders?L.total/L.orders:0;
-  const aov3=(L.mon||[]).slice(-3).map(x=>`${thM(x.m)} ${baht(x.o?x.v/x.o:0)}`).join(" · ");
+  const aovOf=x=>x&&x.o?x.v/x.o:0;
+  const cm=L.curMon||(L.mon&&L.mon.length?L.mon[L.mon.length-1]:null);
+  const aovLast=aovOf(cm);                                   // AOV ของเดือนล่าสุด (ค่าหลัก)
+  const m3=(L.mon||[]).slice(-3).filter(x=>x.o>0);
+  const aov3=m3.length?m3.reduce((s,x)=>s+aovOf(x),0)/m3.length:0;   // AOV เฉลี่ย 3 เดือน
+  const aovPct=aov3?((aovLast-aov3)/aov3*100):null;          // เดือนล่าสุด vs เฉลี่ย 3 เดือน
+  const aovUp=aovPct==null?null:aovPct>=0;
+  const aovSub=`เฉลี่ย 3 เดือน ${baht(aov3)}`+(aovPct==null?"":` <span class="${aovUp?'up':'down'}">${aovUp?'▲':'▼'} ${Math.abs(aovPct).toFixed(1)}%</span>`);
   const cards=[
     {l:`ยอดขายปี ${be(L.cy)}`,v:baht(L.total),a:PAL[0],d:L.yoy,dl:"YoY (เดือนล่าสุด)"},
     {l:`เดือนล่าสุด${L.curMon&&L.curMon.m?" ("+thM(L.curMon.m)+")":""}`,v:baht(L.curMon?L.curMon.v:0),a:PAL[1],d:L.mom,dl:"MoM"},
@@ -439,7 +445,7 @@ function renderKPIs(){
     {l:"จำนวน Order",v:num(L.orders),a:PAL[3]},
     {l:"จำนวนลูกค้า",v:num(L.custs),a:PAL[5]},
     {l:"จำนวน SKU ที่ขายได้",v:num(L.skus||0),a:PAL[1]},
-    {l:"AOV · ค่าใช้จ่ายเฉลี่ยต่อ Order",v:baht(aov),a:PAL[6],sub:aov3?("ย้อนหลัง 3 ด. · "+aov3):""},
+    {l:`AOV เดือนล่าสุด${cm&&cm.m?" ("+thM(cm.m)+")":""}`,v:baht(aovLast),a:PAL[6],sub:aovSub},
   ];
   $("#kpis").innerHTML=cards.map(c=>`<div class="kpi"><div class="accent" style="background:${c.a}"></div>
     <div class="label">${c.l}</div><div class="value">${c.v}</div>
