@@ -68,6 +68,8 @@
   td.act{white-space:normal;min-width:190px;color:#3c4043}
   tbody tr:nth-child(even){background:#fafbfc} tbody tr:hover{background:#fff4e0}
   tbody tr.click{cursor:pointer} tbody tr.sel{background:#fbeaea!important;box-shadow:inset 3px 0 0 var(--brand)}
+  table.dtl{table-layout:fixed;width:100%} table.dtl th,table.dtl td{white-space:normal;word-break:break-word;vertical-align:top}
+  #detailBody .tbl-scroll{overflow-x:hidden}
   .rank{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;font-size:11px;font-weight:700;background:#eef1f4;color:#5f6368}
   .rank.r1{background:var(--gold);color:#fff}.rank.r2{background:#9aa0a6;color:#fff}.rank.r3{background:#cd7f32;color:#fff}
   .pill{font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;white-space:nowrap;color:#fff}
@@ -184,7 +186,7 @@ function nextAction(rec,seg){const hv=/High Value|Champion|VIP/i.test(seg||"");
   if(rec<=365) return "⚠ โทรด่วน · เสนอโปรโมชันดึงกลับ";
   return "Win-back · ประเมินมูลค่าก่อนทุ่มทรัพยากร";}
 
-const S={mode:"demo",token:null,aggSchema:[],txnSchema:[],focus:"follow",sort:{c:"mon",d:-1},page:0,L:null,charts:{},demoCust:[],topProds:[],sel:"",dateHi:""};
+const S={mode:"demo",token:null,aggSchema:[],txnSchema:[],focus:"follow",sort:{c:"mon",d:-1},page:0,L:null,charts:{},demoCust:[],topProds:[],bookProds:[],sel:"",dateHi:""};
 
 let tt; function toast(m,e){const t=$("#toast");t.textContent=m;t.className="toast show"+(e?" err":"");clearTimeout(tt);tt=setTimeout(()=>t.className="toast",4500);}
 function status(m,b){$("#status").innerHTML=(b?'<span class="spinner"></span> ':'')+(m||"");}
@@ -303,6 +305,13 @@ async function loadLive(){
     S.topProds=(tp.rows||[]).map(r=>({sku:r.sku,name:r.name||r.sku,cat:r.cat||"",v:Number(r.v)||0,custs:Number(r.custs)||0}));
     const hi=rng.rows[0]?.hi?String(rng.rows[0].hi).slice(0,10):"";
     S.dateHi=hi; if(!$("#dTo").value&&hi)$("#dTo").value=hi;
+    // book-level product overview (shown when no customer is selected)
+    if(seller && S.txnSchema.length){
+      try{ const bp=await bq(`WITH mc AS (SELECT DISTINCT CAST(${qq(a.cust)} AS STRING) cid FROM ${A} WHERE CAST(${qq(a.seller)} AS STRING)='${esc(seller)}' AND ${qq(a.cust)} IS NOT NULL)
+        SELECT CAST(${qq(m.sku)} AS STRING) sku, ANY_VALUE(${qq(m.prodName)}) name, ANY_VALUE(CAST(${qq(m.cat)} AS STRING)) cat, SUM(${qq(m.qty)}) qty, SUM(${qq(m.amount)}) v, COUNT(DISTINCT ${qq(m.cust)}) custs FROM ${txnT()} JOIN mc ON CAST(${qq(m.cust)} AS STRING)=mc.cid GROUP BY sku ORDER BY v DESC LIMIT 60`);
+        S.bookProds=bp.rows.map(r=>({sku:r.sku,name:r.name||r.sku,cat:r.cat||"",qty:Number(r.qty)||0,v:Number(r.v)||0,custs:Number(r.custs)||0}));
+      }catch(e){S.bookProds=S.topProds;}
+    } else S.bookProds=S.topProds;
     const cust=cr.rows.map(r=>({code:r.code,name:r.name||r.code,seller:r.seller||"",seg:r.seg||"",mon:Number(r.mon)||0,freq:Number(r.freq)||0,rec:Number(r.rec)||0,last:r.last?String(r.last).slice(0,10):""}));
     enrichAndStore(cust,(t||hi||""),true);
     status(`${num(cust.length)} ลูกค้า`);
@@ -317,9 +326,13 @@ function enrichAndStore(cust,asOfStr,recReady){
   const arr=cust.map(c=>({...c, rec:(recReady?c.rec:(asOf?dayDiff(asOf,new Date(c.last)):0)) }));
   const statusCnt=STATUS.map(s=>({k:s.k,c:s.c,f:s.f,n:0,v:0}));
   let totalV=0; arr.forEach(c=>{const st=statusOf(c.rec);statusCnt[st].n++;statusCnt[st].v+=c.mon;totalV+=c.mon;});
+  const bp=computeBookProds(arr); if(bp)S.bookProds=bp;   // DEMO: aggregate my customers' purchases (LIVE set in loadLive)
   S.L={asOf:asOfStr,cust:arr,statusCnt,totalV,total:arr.length};
   render();
 }
+function computeBookProds(arr){const m=new Map();let has=false;
+  arr.forEach(c=>{(c.items||[]).forEach(it=>{has=true;if(!m.has(it.sku))m.set(it.sku,{sku:it.sku,name:it.name,cat:it.cat,v:0,qty:0,cs:new Set()});const o=m.get(it.sku);o.v+=it.v;o.qty+=it.qty;o.cs.add(c.code);});});
+  return has?[...m.values()].map(p=>({sku:p.sku,name:p.name,cat:p.cat,v:p.v,qty:p.qty,custs:p.cs.size})).sort((a,b)=>b.v-a.v):null;}
 function applyData(){ if(S.mode==="live")loadLive(); else demoCompute(); }
 function render(){ if(!S.L)return; const seller=$("#fSeller").value;
   $("#hintbar").innerHTML = seller ? `กำลังดูลูกค้าของ <b>${seller}</b>${S.L.asOf?` · เทียบ ณ ${S.L.asOf}`:""} — เปลี่ยนได้ที่ช่องเซลล์`
@@ -425,16 +438,31 @@ async function loadBuysLive(c){
     renderDetail(c, rows.map(r=>({sku:r.sku,name:r.name||r.sku,cat:r.cat||"",qty:Number(r.qty)||0,v:Number(r.v)||0})));
   }catch(e){status("");toast("โหลดสินค้าไม่สำเร็จ: "+e.message,1);console.error(e);renderDetail(c,[]);}
 }
-function renderDetailEmpty(){ $("#detailTitle").innerHTML=`👤 รายละเอียดลูกค้า &amp; บทคุย <span class="sub">คลิกลูกค้าในตารางด้านบน</span>`;
-  $("#detailBody").innerHTML=`<div class="drill-hint">เลือกลูกค้าจากตารางด้านบน เพื่อดู “สินค้าที่เคยซื้อ” และ “สินค้าที่ควรเสนอเพิ่ม” สำหรับใช้คุยกับลูกค้า</div>`; }
+const sattr=s=>String(s==null?"":s).replace(/"/g,"&quot;");
+function boughtTableHTML(rows){return `<div class="tbl-scroll" style="max-height:330px"><table class="dtl"><colgroup><col style="width:25%"><col style="width:45%"><col style="width:13%"><col style="width:17%"></colgroup>
+  <thead><tr><th>กลุ่ม</th><th>สินค้า</th><th class="num">จำนวน</th><th class="num">มูลค่า</th></tr></thead><tbody>${
+  rows.map(p=>`<tr><td><span class="segpill">${p.cat||"-"}</span></td><td title="${sattr(p.name)}">${p.name}</td><td class="num">${p.qty!=null?num(p.qty):"–"}</td><td class="num">${baht(p.v)}</td></tr>`).join("")||`<tr><td colspan="4" class="drill-hint">ไม่พบสินค้า</td></tr>`}</tbody></table></div>`;}
+function recTableHTML(rows,myCats){return `<div class="tbl-scroll" style="max-height:330px"><table class="dtl"><colgroup><col style="width:55%"><col style="width:29%"><col style="width:16%"></colgroup>
+  <thead><tr><th>สินค้าแนะนำ</th><th>กลุ่ม</th><th class="num">ลูกค้าที่ซื้อ</th></tr></thead><tbody>${
+  rows.map(p=>`<tr><td title="${sattr(p.name)}">${p.name}${myCats&&myCats.has(p.cat)?' <span class="pill" style="background:#188038;font-size:9px;padding:1px 5px">ตรงกลุ่ม</span>':''}</td><td><span class="segpill">${p.cat||"-"}</span></td><td class="num">${num(p.custs)}</td></tr>`).join("")||`<tr><td colspan="3" class="drill-hint">—</td></tr>`}</tbody></table></div>`;}
+function renderOverview(){
+  if(!S.L)return;
+  const seller=$("#fSeller").value, book=(S.bookProds||[]).slice(0,50), top=(S.topProds||[]).slice(0,50);
+  $("#detailTitle").innerHTML=`📦 ภาพรวมสินค้า <span class="sub">${seller?("ของ "+seller):"ทั้งทีม"} · 👆 คลิกลูกค้าในตารางเพื่อดูรายตัว &amp; บทคุย</span>`;
+  $("#detailBody").innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+     <div><div style="font-weight:600;margin-bottom:6px">🛒 สินค้าที่ลูกค้าของฉันซื้อมากที่สุด</div>${boughtTableHTML(book)}</div>
+     <div><div style="font-weight:600;margin-bottom:6px">💡 สินค้าขายดี (ภาพรวม) ที่น่าเสนอ</div>${recTableHTML(top)}</div>
+   </div>`;
+}
+function renderDetailEmpty(){ renderOverview(); }
 function renderDetail(c, items){
-  if(!c){renderDetailEmpty();return;}
+  if(!c){renderOverview();return;}
   items=items||[]; const st=STATUS[statusOf(c.rec)];
   const catV={}; items.forEach(it=>{catV[it.cat]=(catV[it.cat]||0)+it.v;});
   const cats=Object.keys(catV).sort((a,b)=>catV[b]-catV[a]);
-  const prods=[...items].sort((a,b)=>b.v-a.v).slice(0,12);
+  const prods=[...items].sort((a,b)=>b.v-a.v).slice(0,30);
   const bought=new Set(items.map(it=>it.sku)); const myCats=new Set(items.map(it=>it.cat));
-  const rec=(S.topProds||[]).filter(p=>!bought.has(p.sku)).sort((a,b)=>{const am=myCats.has(a.cat)?0:1,bm=myCats.has(b.cat)?0:1;return am-bm||b.v-a.v;}).slice(0,8);
+  const rec=(S.topProds||[]).filter(p=>!bought.has(p.sku)).sort((a,b)=>{const am=myCats.has(a.cat)?0:1,bm=myCats.has(b.cat)?0:1;return am-bm||b.v-a.v;}).slice(0,12);
   $("#detailTitle").innerHTML=`👤 ${c.name} <span class="sub">(${c.code})${c.seller?" · "+c.seller:""}</span>`;
   $("#detailBody").innerHTML=`
    <div style="display:flex;gap:8px 14px;flex-wrap:wrap;align-items:center;margin-bottom:11px;font-size:12px">
@@ -445,12 +473,8 @@ function renderDetail(c, items){
    <div style="background:#fbeaea;border:1px solid #f1c4c5;border-radius:8px;padding:10px 13px;margin-bottom:13px;font-size:12.5px;line-height:1.6">
      💬 <b>บทคุยแนะนำ:</b> ลูกค้าซื้อกลุ่ม <b>${cats.slice(0,3).join(" · ")||"-"}</b> เป็นหลัก · <b>${nextAction(c.rec,c.seg)}</b>${rec.length?` · ลองชวนคุยเรื่อง <b>${rec[0].name}</b>`:""}</div>
    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
-     <div><div style="font-weight:600;margin-bottom:6px">🛒 สินค้าที่เคยซื้อ (${num(items.length)} รายการ)</div>
-       <div class="tbl-scroll" style="max-height:300px"><table><thead><tr><th>กลุ่ม</th><th>สินค้า</th><th class="num">จำนวน</th><th class="num">มูลค่า</th></tr></thead><tbody>${
-         prods.map(p=>`<tr><td><span class="segpill">${p.cat||"-"}</span></td><td title="${p.name}">${p.name}</td><td class="num">${num(p.qty)}</td><td class="num">${baht(p.v)}</td></tr>`).join("")||`<tr><td colspan="4" class="drill-hint">ไม่พบสินค้า</td></tr>`}</tbody></table></div></div>
-     <div><div style="font-weight:600;margin-bottom:6px">💡 แนะนำให้เสนอเพิ่ม (Cross-sell)</div>
-       <div class="tbl-scroll" style="max-height:300px"><table><thead><tr><th>สินค้าแนะนำ</th><th>กลุ่ม</th><th class="num">ลูกค้าที่ซื้อ</th></tr></thead><tbody>${
-         rec.map(p=>`<tr><td title="${p.name}">${p.name}${myCats.has(p.cat)?' <span class="pill" style="background:#188038;font-size:9.5px;padding:1px 6px">ตรงกลุ่ม</span>':''}</td><td><span class="segpill">${p.cat||"-"}</span></td><td class="num">${num(p.custs)}</td></tr>`).join("")||`<tr><td colspan="3" class="drill-hint">${S.topProds.length?"ลูกค้าซื้อครบสินค้าขายดีแล้ว 🎉":"ไม่มีข้อมูลสินค้า"}</td></tr>`}</tbody></table></div></div>
+     <div><div style="font-weight:600;margin-bottom:6px">🛒 สินค้าที่เคยซื้อ (${num(items.length)} รายการ)</div>${boughtTableHTML(prods)}</div>
+     <div><div style="font-weight:600;margin-bottom:6px">💡 แนะนำให้เสนอเพิ่ม (Cross-sell)</div>${recTableHTML(rec,myCats)}</div>
    </div>`;
 }
 /* ---------- customer-type analysis (RFM segment of my book) ---------- */
