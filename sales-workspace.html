@@ -70,6 +70,8 @@
   tbody tr.click{cursor:pointer} tbody tr.sel{background:#fbeaea!important;box-shadow:inset 3px 0 0 var(--brand)}
   table.dtl{table-layout:fixed;width:100%} table.dtl th,table.dtl td{white-space:normal;word-break:break-word;vertical-align:top}
   #detailBody .tbl-scroll{overflow-x:hidden}
+  #segBox .segrow:hover{background:#f6f8fa}
+  #chartStatus{cursor:pointer}
   .rank{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;font-size:11px;font-weight:700;background:#eef1f4;color:#5f6368}
   .rank.r1{background:var(--gold);color:#fff}.rank.r2{background:#9aa0a6;color:#fff}.rank.r3{background:#cd7f32;color:#fff}
   .pill{font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;white-space:nowrap;color:#fff}
@@ -186,7 +188,7 @@ function nextAction(rec,seg){const hv=/High Value|Champion|VIP/i.test(seg||"");
   if(rec<=365) return "⚠ โทรด่วน · เสนอโปรโมชันดึงกลับ";
   return "Win-back · ประเมินมูลค่าก่อนทุ่มทรัพยากร";}
 
-const S={mode:"demo",token:null,aggSchema:[],txnSchema:[],focus:"follow",sort:{c:"mon",d:-1},page:0,L:null,charts:{},demoCust:[],topProds:[],bookProds:[],sel:"",dateHi:""};
+const S={mode:"demo",token:null,aggSchema:[],txnSchema:[],focus:"follow",fSeg:"",sort:{c:"mon",d:-1},page:0,L:null,charts:{},demoCust:[],topProds:[],bookProds:[],sel:"",dateHi:""};
 
 let tt; function toast(m,e){const t=$("#toast");t.textContent=m;t.className="toast show"+(e?" err":"");clearTimeout(tt);tt=setTimeout(()=>t.className="toast",4500);}
 function status(m,b){$("#status").innerHTML=(b?'<span class="spinner"></span> ':'')+(m||"");}
@@ -335,18 +337,28 @@ function computeBookProds(arr){const m=new Map();let has=false;
   arr.forEach(c=>{(c.items||[]).forEach(it=>{has=true;if(!m.has(it.sku))m.set(it.sku,{sku:it.sku,name:it.name,cat:it.cat,v:0,qty:0,cs:new Set()});const o=m.get(it.sku);o.v+=it.v;o.qty+=it.qty;o.cs.add(c.code);});});
   return has?[...m.values()].map(p=>({sku:p.sku,name:p.name,cat:p.cat,v:p.v,qty:p.qty,custs:p.cs.size})).sort((a,b)=>b.v-a.v):null;}
 function applyData(){ if(S.mode==="live")loadLive(); else demoCompute(); }
+const segPred=c=>!S.fSeg||c.seg===S.fSeg;
+const statusPred=c=>FOCUS[S.focus].test(c.rec);
+function statusCntOf(arr){const sc=STATUS.map(s=>({k:s.k,c:s.c,f:s.f,n:0,v:0}));let tv=0;arr.forEach(c=>{const st=statusOf(c.rec);sc[st].n++;sc[st].v+=c.mon;tv+=c.mon;});return{sc,total:arr.length,totalV:tv};}
+function setFocus(f){ S.focus=(S.focus===f)?"all":f; S.page=0; render(); }
+function setSeg(g){ S.fSeg=(S.fSeg===g)?"":g; S.page=0; render(); }
 function render(){ if(!S.L)return; const seller=$("#fSeller").value;
-  $("#hintbar").innerHTML = seller ? `กำลังดูลูกค้าของ <b>${seller}</b>${S.L.asOf?` · เทียบ ณ ${S.L.asOf}`:""} — เปลี่ยนได้ที่ช่องเซลล์`
-    : `แสดง <b>ภาพรวมทีม (ทุกคน)</b> — เลือก “ชื่อคุณ” เพื่อดูเฉพาะลูกค้าของคุณ`;
+  // cross-filter: status doughnut/KPIs follow the segment filter; segment bars follow the status filter; table follows both
+  S._custSeg=S.L.cust.filter(segPred);        // KPIs · donut · focus-list
+  S._custStatus=S.L.cust.filter(statusPred);  // segment bars
+  const fl=[]; if(S.fSeg)fl.push(`กลุ่ม <b>${S.fSeg}</b>`); if(S.focus!=="all"&&S.focus!=="follow")fl.push(`สถานะ <b>${FOCUS[S.focus].label}</b>`);
+  $("#hintbar").innerHTML = (seller ? `กำลังดูลูกค้าของ <b>${seller}</b>${S.L.asOf?` · เทียบ ณ ${S.L.asOf}`:""}` : `แสดง <b>ภาพรวมทีม (ทุกคน)</b> — เลือก “ชื่อคุณ” เพื่อดูเฉพาะของคุณ`)
+    + (fl.length?` · กรอง: ${fl.join(" + ")} <a href="#" id="clrFilt" style="color:var(--brand)">✕ ล้าง</a>`:"");
+  const cf=$("#clrFilt"); if(cf)cf.onclick=e=>{e.preventDefault();S.fSeg="";S.focus="follow";S.page=0;render();};
   renderKPIs(); renderStatusChart(); renderSegment(); renderStatusFilter(); renderTable();
   if(S.sel){ const c=S.L.cust.find(x=>x.code===S.sel); if(!c){S.sel="";renderDetailEmpty();} else if(S.mode==="demo")renderDetail(c,c.items||[]); }
   else renderDetailEmpty(); }
 function renderKPIs(){
-  const L=S.L, sc=L.statusCnt;
+  const {sc,total,totalV}=statusCntOf(S._custSeg);
   const followN=sc[1].n+sc[2].n, followV=sc[1].v+sc[2].v;
   const cards=[
-    {l:"ลูกค้าของฉัน",v:num(L.total),a:"#ad1f23"},
-    {l:"มูลค่าลูกค้าที่ดูแล",v:baht(L.totalV),a:"#e8a52b"},
+    {l:S.fSeg?`ลูกค้า: ${S.fSeg}`:"ลูกค้าของฉัน",v:num(total),a:"#ad1f23"},
+    {l:"มูลค่าลูกค้าที่ดูแล",v:baht(totalV),a:"#e8a52b"},
     {l:"Active (≤90 วัน)",v:num(sc[0].n),a:"#188038"},
     {l:"🎯 ต้องติดตาม (91-365)",v:num(followN),a:"#e8a52b",d:baht(followV)+" มูลค่าที่ควรรักษา"},
     {l:"หลุดแล้ว (>365)",v:num(sc[3].n),a:"#c5221f"},
@@ -355,33 +367,36 @@ function renderKPIs(){
   $("#kpis").innerHTML=cards.map(c=>`<div class="kpi"><div class="accent" style="background:${c.a}"></div>
     <div class="label">${c.l}</div><div class="value">${c.v}</div><div class="delta">${c.d||"&nbsp;"}</div></div>`).join("");
 }
-function renderStatusChart(){ const d=S.L.statusCnt;
-  $("#statusSub").textContent=`รวม ${num(S.L.total)} ราย`;
+function renderStatusChart(){ const {sc:d,total}=statusCntOf(S._custSeg);
+  $("#statusSub").textContent=`รวม ${num(total)} ราย${S.fSeg?" · "+S.fSeg:""} · คลิกเพื่อกรอง`;
+  const dim=(S.focus!=="all"&&S.focus!=="follow");   // highlight only when a single status is picked
+  const bg=d.map((x,i)=>(!dim||S.focus===STATUS[i].f)?x.c:"#dde1e5");
   if(S.charts.status)S.charts.status.destroy();
   S.charts.status=new Chart($("#chartStatus"),{type:"doughnut",
-    data:{labels:d.map(x=>x.k),datasets:[{data:d.map(x=>x.n),backgroundColor:d.map(x=>x.c),borderWidth:2,borderColor:"#fff"}]},
+    data:{labels:d.map(x=>x.k),datasets:[{data:d.map(x=>x.n),backgroundColor:bg,borderWidth:2,borderColor:"#fff"}]},
     options:{responsive:true,maintainAspectRatio:false,cutout:"58%",
+      onClick:(e,els)=>{if(els&&els[0])setFocus(STATUS[els[0].index].f);},
       plugins:{legend:{position:"bottom",labels:{boxWidth:10,padding:6,font:{size:10}}},
         tooltip:{callbacks:{label:c=>{const t=c.dataset.data.reduce((s,x)=>s+x,0);return ` ${c.label}: ${num(c.raw)} ราย (${t?(c.raw/t*100).toFixed(0):0}%)`;}}}}}});
 }
-function renderStatusFilter(){ const sc=S.L.statusCnt;
+function renderStatusFilter(){ const {sc,total,totalV}=statusCntOf(S._custSeg);
   const followN=sc[1].n+sc[2].n, followV=sc[1].v+sc[2].v;
   const rows=[
     {f:"follow",dot:"#e8a52b",nm:"🎯 ต้องติดตามด่วน (91-365 วัน)",n:followN,v:followV},
     {f:"active",dot:sc[0].c,nm:sc[0].k+" — รักษา/ขายเพิ่ม",n:sc[0].n,v:sc[0].v},
     {f:"risk",dot:sc[2].c,nm:sc[2].k+" — โทรด่วน",n:sc[2].n,v:sc[2].v},
     {f:"lost",dot:sc[3].c,nm:sc[3].k+" — Win-back",n:sc[3].n,v:sc[3].v},
-    {f:"all",dot:"#5f6368",nm:"ลูกค้าทั้งหมด",n:S.L.total,v:S.L.totalV},
+    {f:"all",dot:"#5f6368",nm:"ลูกค้าทั้งหมด",n:total,v:totalV},
   ];
   $("#statusFilter").innerHTML=rows.map(r=>`<div class="row ${S.focus===r.f?'on':''}" data-f="${r.f}">
     <span class="dot" style="background:${r.dot}"></span><span class="nm">${r.nm}</span>
     <span class="ct">${num(r.n)}</span><span class="vl">${baht(r.v)}</span></div>`).join("");
-  $("#statusFilter").querySelectorAll(".row").forEach(el=>el.onclick=()=>{S.focus=el.dataset.f;S.page=0;renderStatusFilter();renderTable();});
+  $("#statusFilter").querySelectorAll(".row").forEach(el=>el.onclick=()=>{S.focus=el.dataset.f;S.page=0;render();});
 }
 let PP=15;
 function currentRows(){
   const q=($("#search").value||"").trim().toLowerCase();
-  let r=S.L.cust.filter(c=>FOCUS[S.focus].test(c.rec));
+  let r=S.L.cust.filter(c=>FOCUS[S.focus].test(c.rec)&&segPred(c));
   if(q)r=r.filter(c=>(c.name||"").toLowerCase().includes(q)||(c.code||"").toLowerCase().includes(q)||(c.seg||"").toLowerCase().includes(q)||(c.seller||"").toLowerCase().includes(q));
   const sc=S.sort.c,sd=S.sort.d;
   r.sort((a,b)=>{if(sc==="name"||sc==="seg"||sc==="code")return((a[sc]||"")<(b[sc]||"")?-1:1)*sd;return((a[sc]||0)-(b[sc]||0))*sd;});
@@ -389,7 +404,7 @@ function currentRows(){
 }
 function renderTable(){
   const r=currentRows();
-  $("#tblSub").textContent=`${FOCUS[S.focus].label} · ${num(r.length)} ราย · มูลค่ารวม ${baht(r.reduce((s,x)=>s+x.mon,0))}`;
+  $("#tblSub").textContent=`${FOCUS[S.focus].label}${S.fSeg?" · "+S.fSeg:""} · ${num(r.length)} ราย · มูลค่ารวม ${baht(r.reduce((s,x)=>s+x.mon,0))}`;
   const pages=Math.max(1,Math.ceil(r.length/PP)); S.page=Math.min(S.page,pages-1);
   const sl=r.slice(S.page*PP,S.page*PP+PP);
   const cols=[{c:"rank",t:"#"},{c:"code",t:"รหัส"},{c:"name",t:"ชื่อลูกค้า"},{c:"seg",t:"กลุ่ม"},{c:"status",t:"สถานะ"},{c:"mon",t:"มูลค่า",num:1},{c:"freq",t:"ความถี่",num:1},{c:"last",t:"ซื้อล่าสุด"},{c:"rec",t:"หายไป (วัน)",num:1},{c:"act",t:"💡 สิ่งที่ควรทำ"}];
@@ -474,14 +489,16 @@ function renderDetail(c, items){
    <div style="font-weight:600;margin:2px 0 6px">🛒 สินค้าที่เคยซื้อ (${num(items.length)} รายการ)</div>${boughtTableHTML(prods)}
    <div style="font-weight:600;margin:16px 0 6px">💡 แนะนำให้เสนอเพิ่ม (Cross-sell)</div>${recTableHTML(rec,myCats)}`;
 }
-/* ---------- customer-type analysis (RFM segment of my book) ---------- */
+/* ---------- customer-type analysis (RFM segment) — clickable to filter the page ---------- */
 function renderSegment(){ const m=new Map();
-  S.L.cust.forEach(c=>{const k=c.seg||"(ไม่ระบุ)";if(!m.has(k))m.set(k,{k,n:0,v:0});const o=m.get(k);o.n++;o.v+=c.mon;});
+  (S._custStatus||S.L.cust).forEach(c=>{const k=c.seg||"(ไม่ระบุ)";if(!m.has(k))m.set(k,{k,n:0,v:0});const o=m.get(k);o.n++;o.v+=c.mon;});
   const arr=[...m.values()].sort((a,b)=>b.v-a.v); const mx=Math.max(1,...arr.map(x=>x.v));
   const RISKY=/At Risk|Lost|Non.?Focus|เสี่ยง|หลุด/i;
-  $("#segBox").innerHTML=arr.map(s=>`<div style="margin:8px 2px">
+  $("#segBox").innerHTML=arr.map(s=>{const sel=S.fSeg===s.k, dim=S.fSeg&&!sel;
+    return `<div class="segrow" data-seg="${sattr(s.k)}" style="margin:6px 2px;padding:3px 5px;border-radius:6px;cursor:pointer;${sel?'background:#fbeaea;box-shadow:0 0 0 1px var(--brand) inset':''};opacity:${dim?.45:1}">
     <div style="display:flex;justify-content:space-between;font-size:11.5px;margin-bottom:3px"><span>${s.k}</span><span><b>${num(s.n)}</b> · ${baht(s.v)}</span></div>
-    <div style="background:#f1f3f4;border-radius:3px;height:9px;overflow:hidden"><i style="display:block;height:100%;width:${(s.v/mx*100).toFixed(0)}%;background:${RISKY.test(s.k)?'#c5221f':'#ad1f23'}"></i></div></div>`).join("")||`<div class="drill-hint">ไม่มีข้อมูล</div>`;
+    <div style="background:#f1f3f4;border-radius:3px;height:9px;overflow:hidden"><i style="display:block;height:100%;width:${(s.v/mx*100).toFixed(0)}%;background:${RISKY.test(s.k)?'#c5221f':'#ad1f23'}"></i></div></div>`;}).join("")||`<div class="drill-hint">ไม่มีข้อมูล</div>`;
+  $("#segBox").querySelectorAll(".segrow").forEach(el=>el.onclick=()=>setSeg(el.dataset.seg));
 }
 
 /* ---------- seller persistence ---------- */
@@ -492,8 +509,8 @@ function rememberSeller(){try{localStorage.setItem(LS_SELLER,$("#fSeller").value
 $("#signinBtn").onclick=signIn;
 $("#connectBtn").onclick=()=>{saveCfg();$("#cfgPanel").open=false;if(S.token){S.mode="live";loadLive();}else signIn();};
 $("#refreshBtn").onclick=()=>{if(S.mode==="live")loadLive();else{buildDemo();demoCompute();}};
-$("#fSeller").addEventListener("change",()=>{rememberSeller();S.page=0;S.sel="";applyData();});
-$("#dTo").addEventListener("change",()=>{S._dtoTouched=true;S.page=0;S.sel="";applyData();});
+$("#fSeller").addEventListener("change",()=>{rememberSeller();S.page=0;S.sel="";S.fSeg="";applyData();});
+$("#dTo").addEventListener("change",()=>{S._dtoTouched=true;S.page=0;S.sel="";S.fSeg="";applyData();});
 $("#search").addEventListener("input",()=>{S.page=0;renderTable();});
 $("#exportBtn").onclick=exportCSV;
 
