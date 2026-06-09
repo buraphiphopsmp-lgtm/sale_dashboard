@@ -158,8 +158,8 @@
     </div>
 
     <div class="s12 card">
-      <h3>การกระจายตัวตามระยะเวลาที่หายไป (Recency) <span class="sub" id="recSub">จำนวนลูกค้า · ยิ่งหายไปนานยิ่งต้องรีบติดตาม</span></h3>
-      <div class="chart-box" style="height:240px"><canvas id="chartRecency"></canvas></div>
+      <h3>การกระจายตัวตามระยะเวลาที่หายไป (Recency) <span class="sub">จำนวนลูกค้า · ยิ่งหายไปนานยิ่งต้องรีบติดตาม</span></h3>
+      <div id="recBox" style="max-height:236px;overflow:auto;padding-top:2px"></div>
     </div>
 
     <div class="s12 card">
@@ -419,11 +419,10 @@ function renderRecency(){ const src=S._forStatus||S.L.cust;
   const cnt=RBUCKETS.map(b=>({k:b.k,n:0}));
   src.forEach(c=>{for(let i=0;i<RBUCKETS.length;i++){if(c.rec>=RBUCKETS[i].lo&&c.rec<=RBUCKETS[i].hi){cnt[i].n++;break;}}});
   const colors=["#188038","#34a853","#1a73e8","#e8a52b","#e8710a","#c5221f"];
-  if(S.charts.rec)S.charts.rec.destroy();
-  S.charts.rec=new Chart($("#chartRecency"),{type:"bar",
-    data:{labels:cnt.map(x=>x.k+" วัน"),datasets:[{data:cnt.map(x=>x.n),backgroundColor:colors,borderRadius:4}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>" "+num(c.raw)+" ราย"}}},
-      scales:{x:{grid:{display:false},ticks:{font:{size:10}}},y:{grid:{color:"#f1f3f4"},beginAtZero:true,ticks:{precision:0}}}}});
+  const mx=Math.max(1,...cnt.map(x=>x.n)), tot=cnt.reduce((s,x)=>s+x.n,0);
+  $("#recBox").innerHTML=cnt.map((s,i)=>`<div class="segrow" style="margin:5px 2px;padding:3px 5px;border-radius:6px">
+    <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:2px"><span>${s.k} วัน</span><span><b>${num(s.n)}</b> ราย · ${tot?(s.n/tot*100).toFixed(0):0}%</span></div>
+    <div style="background:#f1f3f4;border-radius:3px;height:8px;overflow:hidden"><i style="display:block;height:100%;width:${(s.n/mx*100).toFixed(0)}%;background:${colors[i]}"></i></div></div>`).join("")||`<div class="drill-hint">ไม่มีข้อมูล</div>`;
 }
 function renderStatusFilter(){ const {sc,total,totalV}=statusCntOf(S._forStatus);
   // mutually-exclusive buckets → the four rows sum exactly to "ลูกค้าทั้งหมด"
@@ -556,7 +555,8 @@ function renderDetail(c, items){
 /* ---------- RFM segment bars (clickable to filter) ---------- */
 function renderSegment(){ const m=new Map();
   (S._forSeg||S.L.cust).forEach(c=>{const k=c.seg||"(ไม่ระบุ)";if(!m.has(k))m.set(k,{k,n:0,v:0});const o=m.get(k);o.n++;o.v+=c.mon;});
-  const arr=[...m.values()].sort((a,b)=>b.v-a.v); const mx=Math.max(1,...arr.map(x=>x.v));
+  const segNo=k=>{const mm=String(k).match(/^\s*(\d+)/);return mm?+mm[1]:999;};   // order by the "1." … "7." prefix
+  const arr=[...m.values()].sort((a,b)=>segNo(a.k)-segNo(b.k)||b.v-a.v); const mx=Math.max(1,...arr.map(x=>x.v));
   const RISKY=/At Risk|Lost|Non.?Focus|เสี่ยง|หลุด/i;
   $("#segSub").textContent=`คลิกเพื่อกรอง${S.fSeg?" · "+S.fSeg:""}`;
   $("#segBox").innerHTML=arr.map(s=>{const sel=S.fSeg===s.k, dim=S.fSeg&&!sel;
