@@ -245,6 +245,7 @@ function TM(){const s=S.txnSchema;return{
   qty:hasCol(s,"qty")||"qty",
   amount:hasCol(s,"product_price_amount")||"product_price_amount",
   order:hasCol(s,"order_number")||hasCol(s,"invoice_number"),
+  ctype:hasCol(s,"customer_type_2")||hasCol(s,"customer_type_1")||hasCol(s,"customer_type"),
   date:hasCol(s,"date")||"date"};}
 function txnT(){const c=readCfg();return `\`${c.project}.${c.dataset}.${c.txnTable}\``;}
 function fillOpts(sel,vals){const el=$(sel);if(!el)return;const cur=el.value;el.querySelectorAll("option:not([value=''])").forEach(o=>o.remove());[...new Set(vals.filter(Boolean))].forEach(v=>{const o=document.createElement("option");o.value=v;o.textContent=v;if(v===cur)o.selected=true;el.appendChild(o);});}
@@ -321,8 +322,11 @@ async function loadLive(){
       bq(`SELECT DISTINCT CAST(${qq(a.seller)} AS STRING) v FROM ${A} WHERE ${qq(a.seller)} IS NOT NULL LIMIT 500`),
       bq(`SELECT MAX(DATE(${qq(a.last)})) hi FROM ${A} WHERE ${qq(a.last)} IS NOT NULL`),
       S.txnSchema.length?bq(`SELECT CAST(${qq(m.sku)} AS STRING) sku, ANY_VALUE(${qq(m.prodName)}) name, ANY_VALUE(CAST(${qq(m.cat)} AS STRING)) cat${m.model?`, ANY_VALUE(CAST(${qq(m.model)} AS STRING)) model`:", CAST(NULL AS STRING) model"}${m.color?`, ANY_VALUE(CAST(${qq(m.color)} AS STRING)) color`:", CAST(NULL AS STRING) color"}, SUM(${qq(m.qty)}) qty${m.order?`, COUNT(DISTINCT ${qq(m.order)}) ord`:", 0 ord"}, SUM(${qq(m.amount)}) v, COUNT(DISTINCT ${qq(m.cust)}) custs FROM ${txnT()} GROUP BY sku ORDER BY v DESC LIMIT 200`):Promise.resolve({rows:[]}),
+      // customer_type lives in the transaction table → fetch one type per customer to merge by customer_id
+      (S.txnSchema.length&&m.ctype)?bq(`SELECT CAST(${qq(m.cust)} AS STRING) code, ANY_VALUE(CAST(${qq(m.ctype)} AS STRING)) ctype FROM ${txnT()} WHERE ${qq(m.cust)} IS NOT NULL GROUP BY code LIMIT 100000`):Promise.resolve({rows:[]}),
     ];
-    const[cr,sl,rng,tp]=await Promise.all(Q);
+    const[cr,sl,rng,tp,ct]=await Promise.all(Q);
+    const tyMap={}; (ct.rows||[]).forEach(r=>{if(r.code)tyMap[r.code]=(r.ctype||"").trim();});
     if(!S._optsInit){ fillOpts("#fSeller",sl.rows.map(r=>r.v)); S._optsInit=true; restoreSeller(); }
     S.topProds=(tp.rows||[]).map(r=>{const d=parseDetail(r.name);return{sku:r.sku,name:r.name||r.sku,cat:r.cat||"",model:r.model||d.model||"",color:r.color||d.color||"",qty:Number(r.qty)||0,ord:Number(r.ord)||0,v:Number(r.v)||0,custs:Number(r.custs)||0};});
     const hi=rng.rows[0]?.hi?String(rng.rows[0].hi).slice(0,10):"";
@@ -334,7 +338,7 @@ async function loadLive(){
         S.bookProds=bp.rows.map(r=>{const d=parseDetail(r.name);return{sku:r.sku,name:r.name||r.sku,cat:r.cat||"",model:r.model||d.model||"",color:r.color||d.color||"",qty:Number(r.qty)||0,ord:Number(r.ord)||0,v:Number(r.v)||0,custs:Number(r.custs)||0};});
       }catch(e){S.bookProds=S.topProds;}
     } else S.bookProds=S.topProds;
-    const cust=cr.rows.map(r=>({code:r.code,name:r.name||r.code,seller:r.seller||"",seg:r.seg||"",ctype:r.ctype||"",mon:Number(r.mon)||0,freq:Number(r.freq)||0,rec:Number(r.rec)||0,last:r.last?String(r.last).slice(0,10):""}));
+    const cust=cr.rows.map(r=>({code:r.code,name:r.name||r.code,seller:r.seller||"",seg:r.seg||"",ctype:(r.ctype||"").trim()||tyMap[r.code]||"",mon:Number(r.mon)||0,freq:Number(r.freq)||0,rec:Number(r.rec)||0,last:r.last?String(r.last).slice(0,10):""}));
     enrichAndStore(cust,(useDt?t:hi)||t||"",true);
     status(`${num(cust.length)} ลูกค้า`);
   }catch(e){status("");toast("คำนวณไม่สำเร็จ: "+e.message,1);console.error(e);}
