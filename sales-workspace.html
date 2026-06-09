@@ -199,7 +199,7 @@ function nextAction(rec,seg){const hv=/High Value|Champion|VIP/i.test(seg||"");
   if(rec<=365) return "⚠ โทรด่วน · เสนอโปรโมชันดึงกลับ";
   return "Win-back · ประเมินมูลค่าก่อนทุ่มทรัพยากร";}
 
-const S={mode:"demo",token:null,aggSchema:[],txnSchema:[],focus:"follow",fSeg:"",fType:"",fProdCat:"",sort:{c:"mon",d:-1},prodSort:{c:"v",d:-1},page:0,L:null,charts:{},demoCust:[],topProds:[],bookProds:[],sel:"",dateHi:""};
+const S={mode:"demo",token:null,aggSchema:[],txnSchema:[],focus:"all",fSeg:"",fType:"",fProdCat:"",sort:{c:"mon",d:-1},prodSort:{c:"v",d:-1},page:0,L:null,charts:{},demoCust:[],topProds:[],bookProds:[],sel:"",dateHi:""};
 
 let tt; function toast(m,e){const t=$("#toast");t.textContent=m;t.className="toast show"+(e?" err":"");clearTimeout(tt);tt=setTimeout(()=>t.className="toast",4500);}
 function status(m,b){$("#status").innerHTML=(b?'<span class="spinner"></span> ':'')+(m||"");}
@@ -377,10 +377,10 @@ function render(){ if(!S.L)return; const seller=$("#fSeller").value;
   S._forStatus=S.L.cust.filter(c=>segPred(c)&&typePred(c));   // KPIs · status doughnut · focus list
   S._forSeg=S.L.cust.filter(c=>statusPred(c)&&typePred(c));   // RFM bars
   S._forType=S.L.cust.filter(c=>statusPred(c)&&segPred(c));   // business-type chart
-  const fl=[]; if(S.fSeg)fl.push(`กลุ่ม <b>${S.fSeg}</b>`); if(S.fType)fl.push(`ประเภท <b>${S.fType}</b>`); if(S.focus!=="all"&&S.focus!=="follow")fl.push(`สถานะ <b>${FOCUS[S.focus].label}</b>`);
+  const fl=[]; if(S.fSeg)fl.push(`กลุ่ม <b>${S.fSeg}</b>`); if(S.fType)fl.push(`ประเภท <b>${S.fType}</b>`); if(S.focus!=="all")fl.push(`สถานะ <b>${FOCUS[S.focus].label}</b>`);
   $("#hintbar").innerHTML = (seller ? `กำลังดูลูกค้าของ <b>${seller}</b>${S.L.asOf?` · เทียบ ณ ${S.L.asOf}`:""}` : `แสดง <b>ภาพรวมทีม (ทุกคน)</b> — เลือก “ชื่อคุณ” เพื่อดูเฉพาะของคุณ`)
     + (fl.length?` · กรอง: ${fl.join(" + ")} <a href="#" id="clrFilt" style="color:var(--brand)">✕ ล้าง</a>`:"");
-  const cf=$("#clrFilt"); if(cf)cf.onclick=e=>{e.preventDefault();S.fSeg="";S.fType="";S.focus="follow";S.page=0;render();};
+  const cf=$("#clrFilt"); if(cf)cf.onclick=e=>{e.preventDefault();S.fSeg="";S.fType="";S.focus="all";S.page=0;render();};
   renderKPIs(); renderStatusChart(); renderSegment(); renderType(); renderStatusFilter(); renderTable();
   showDetailPanel(); }
 function renderKPIs(){
@@ -410,11 +410,11 @@ function renderStatusChart(){ const {sc:d,total}=statusCntOf(S._forStatus);
         tooltip:{callbacks:{label:c=>{const t=c.dataset.data.reduce((s,x)=>s+x,0);return ` ${c.label}: ${num(c.raw)} ราย (${t?(c.raw/t*100).toFixed(0):0}%)`;}}}}}});
 }
 function renderStatusFilter(){ const {sc,total,totalV}=statusCntOf(S._forStatus);
-  const followN=sc[1].n+sc[2].n, followV=sc[1].v+sc[2].v;
+  // mutually-exclusive buckets → the four rows sum exactly to "ลูกค้าทั้งหมด"
   const rows=[
-    {f:"follow",dot:"#e8a52b",nm:"🎯 ต้องติดตามด่วน (91-365 วัน)",n:followN,v:followV},
     {f:"active",dot:sc[0].c,nm:sc[0].k+" — รักษา/ขายเพิ่ม",n:sc[0].n,v:sc[0].v},
-    {f:"risk",dot:sc[2].c,nm:sc[2].k+" — โทรด่วน",n:sc[2].n,v:sc[2].v},
+    {f:"watch",dot:sc[1].c,nm:sc[1].k+" — เช็คอิน/ติดตาม",n:sc[1].n,v:sc[1].v},
+    {f:"risk",dot:sc[2].c,nm:sc[2].k+" — ⚠ โทรด่วน",n:sc[2].n,v:sc[2].v},
     {f:"lost",dot:sc[3].c,nm:sc[3].k+" — Win-back",n:sc[3].n,v:sc[3].v},
     {f:"all",dot:"#5f6368",nm:"ลูกค้าทั้งหมด",n:total,v:totalV},
   ];
