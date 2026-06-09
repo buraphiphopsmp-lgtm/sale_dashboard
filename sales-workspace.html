@@ -450,10 +450,8 @@ function renderOverview(){
   if(!S.L)return;
   const seller=$("#fSeller").value, book=(S.bookProds||[]).slice(0,50), top=(S.topProds||[]).slice(0,50);
   $("#detailTitle").innerHTML=`📦 ภาพรวมสินค้า <span class="sub">${seller?("ของ "+seller):"ทั้งทีม"} · 👆 คลิกลูกค้าในตารางเพื่อดูรายตัว &amp; บทคุย</span>`;
-  $("#detailBody").innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
-     <div><div style="font-weight:600;margin-bottom:6px">🛒 สินค้าที่ลูกค้าของฉันซื้อมากที่สุด</div>${boughtTableHTML(book)}</div>
-     <div><div style="font-weight:600;margin-bottom:6px">💡 สินค้าขายดี (ภาพรวม) ที่น่าเสนอ</div>${recTableHTML(top)}</div>
-   </div>`;
+  $("#detailBody").innerHTML=`<div style="font-weight:600;margin:2px 0 6px">🛒 สินค้าที่ลูกค้าของฉันซื้อมากที่สุด</div>${boughtTableHTML(book)}
+   <div style="font-weight:600;margin:16px 0 6px">💡 สินค้าขายดี (ภาพรวม) ที่น่าเสนอ</div>${recTableHTML(top)}`;
 }
 function renderDetailEmpty(){ renderOverview(); }
 function renderDetail(c, items){
@@ -473,10 +471,8 @@ function renderDetail(c, items){
      <span>ซื้อล่าสุด <b>${c.last||"–"}</b> · หายไป <b>${num(c.rec)}</b> วัน</span></div>
    <div style="background:#fbeaea;border:1px solid #f1c4c5;border-radius:8px;padding:10px 13px;margin-bottom:13px;font-size:12.5px;line-height:1.6">
      💬 <b>บทคุยแนะนำ:</b> ลูกค้าซื้อกลุ่ม <b>${cats.slice(0,3).join(" · ")||"-"}</b> เป็นหลัก · <b>${nextAction(c.rec,c.seg)}</b>${rec.length?` · ลองชวนคุยเรื่อง <b>${rec[0].name}</b>`:""}</div>
-   <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
-     <div><div style="font-weight:600;margin-bottom:6px">🛒 สินค้าที่เคยซื้อ (${num(items.length)} รายการ)</div>${boughtTableHTML(prods)}</div>
-     <div><div style="font-weight:600;margin-bottom:6px">💡 แนะนำให้เสนอเพิ่ม (Cross-sell)</div>${recTableHTML(rec,myCats)}</div>
-   </div>`;
+   <div style="font-weight:600;margin:2px 0 6px">🛒 สินค้าที่เคยซื้อ (${num(items.length)} รายการ)</div>${boughtTableHTML(prods)}
+   <div style="font-weight:600;margin:16px 0 6px">💡 แนะนำให้เสนอเพิ่ม (Cross-sell)</div>${recTableHTML(rec,myCats)}`;
 }
 /* ---------- customer-type analysis (RFM segment of my book) ---------- */
 function renderSegment(){ const m=new Map();
