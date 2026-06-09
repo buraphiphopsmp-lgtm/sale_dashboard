@@ -70,8 +70,10 @@
   tbody tr.click{cursor:pointer} tbody tr.sel{background:#fbeaea!important;box-shadow:inset 3px 0 0 var(--brand)}
   table.dtl{table-layout:fixed;width:100%} table.dtl th,table.dtl td{white-space:normal;word-break:break-word;vertical-align:top}
   #detailBody .tbl-scroll{overflow-x:hidden}
-  #segBox .segrow:hover{background:#f6f8fa}
-  #chartStatus{cursor:pointer}
+  #chartStatus,#chartSeg{cursor:pointer}
+  .catchips{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 10px}
+  .cchip{font-size:11px;padding:3px 10px;border-radius:999px;background:#eef1f4;color:#3c4043;cursor:pointer;border:1px solid var(--line)}
+  .cchip:hover{background:#e9edf1} .cchip.on{background:var(--brand);color:#fff;border-color:var(--brand)}
   .rank{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;font-size:11px;font-weight:700;background:#eef1f4;color:#5f6368}
   .rank.r1{background:var(--gold);color:#fff}.rank.r2{background:#9aa0a6;color:#fff}.rank.r3{background:#cd7f32;color:#fff}
   .pill{font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;white-space:nowrap;color:#fff}
@@ -138,8 +140,8 @@
       <div class="chart-box"><canvas id="chartStatus"></canvas></div>
     </div>
     <div class="s4 card">
-      <h3>ประเภทลูกค้า (RFM Segment) <span class="sub">ของฉัน</span></h3>
-      <div id="segBox" style="max-height:262px;overflow:auto;padding-top:2px"></div>
+      <h3>สัดส่วนประเภทลูกค้า <span class="sub" id="segSub">RFM · คลิกเพื่อกรอง</span></h3>
+      <div class="chart-box"><canvas id="chartSeg"></canvas></div>
     </div>
     <div class="s4 card">
       <h3>โฟกัสรายการ <span class="sub">คลิกเพื่อกรอง</span></h3>
@@ -188,7 +190,7 @@ function nextAction(rec,seg){const hv=/High Value|Champion|VIP/i.test(seg||"");
   if(rec<=365) return "⚠ โทรด่วน · เสนอโปรโมชันดึงกลับ";
   return "Win-back · ประเมินมูลค่าก่อนทุ่มทรัพยากร";}
 
-const S={mode:"demo",token:null,aggSchema:[],txnSchema:[],focus:"follow",fSeg:"",sort:{c:"mon",d:-1},page:0,L:null,charts:{},demoCust:[],topProds:[],bookProds:[],sel:"",dateHi:""};
+const S={mode:"demo",token:null,aggSchema:[],txnSchema:[],focus:"follow",fSeg:"",fProdCat:"",sort:{c:"mon",d:-1},page:0,L:null,charts:{},demoCust:[],topProds:[],bookProds:[],sel:"",dateHi:""};
 
 let tt; function toast(m,e){const t=$("#toast");t.textContent=m;t.className="toast show"+(e?" err":"");clearTimeout(tt);tt=setTimeout(()=>t.className="toast",4500);}
 function status(m,b){$("#status").innerHTML=(b?'<span class="spinner"></span> ':'')+(m||"");}
@@ -228,6 +230,8 @@ function TM(){const s=S.txnSchema;return{
   prodName:hasCol(s,"product_name")||"product_name",
   sku:hasCol(s,"product_sku")||"product_sku",
   cat:hasCol(s,"final_category")||hasCol(s,"category")||"final_category",
+  model:hasCol(s,"product_model")||hasCol(s,"model")||hasCol(s,"product_series")||hasCol(s,"series"),
+  color:hasCol(s,"product_color")||hasCol(s,"color")||hasCol(s,"colour"),
   qty:hasCol(s,"qty")||"qty",
   amount:hasCol(s,"product_price_amount")||"product_price_amount",
   date:hasCol(s,"date")||"date"};}
@@ -258,12 +262,13 @@ function buildDemo(){
   }
   // product catalog + per-customer purchases (for product analysis & cross-sell talking points)
   const CATS=["เฟรมอลูมิเนียม","บานพับถ้วย","รางลิ้นชัก","มือจับเฟอร์นิเจอร์","ปุ่มจับลิ้นชัก","อุปกรณ์จัดเก็บตู้เสื้อผ้า","อุปกรณ์จัดเก็บชุดครัว"];
-  const byCat={}; CATS.forEach((cn,ci)=>{byCat[cn]=[];const n=4+((Math.random()*4)|0);for(let i=0;i<n;i++){byCat[cn].push({sku:"APH"+(100000+ci*100+i),name:cn+" รุ่น "+String.fromCharCode(65+i)+"-"+(100+((Math.random()*800)|0)),cat:cn,unit:200+Math.random()*2400});}});
+  const COLORS=["ขาว","ดำ","เงิน","ทอง","น้ำเงิน","ลายไม้","นิกเกิลด้าน","โครเมียมเงา"];
+  const byCat={}; CATS.forEach((cn,ci)=>{byCat[cn]=[];const n=4+((Math.random()*4)|0);for(let i=0;i<n;i++){const model=String.fromCharCode(65+i)+"-"+(100+((Math.random()*800)|0)),color=COLORS[(Math.random()*COLORS.length)|0];byCat[cn].push({sku:"APH"+(100000+ci*100+i),name:cn+" รุ่น "+model+" สี"+color,cat:cn,model,color,unit:200+Math.random()*2400});}});
   cust.forEach(c=>{ const nc=2+((Math.random()*3)|0); const mycats=[...CATS].sort(()=>Math.random()-.5).slice(0,nc); const items=[];
-    mycats.forEach(cat=>{ const pool=byCat[cat]; const np=1+((Math.random()*Math.min(3,pool.length))|0); [...pool].sort(()=>Math.random()-.5).slice(0,np).forEach(p=>{const qty=5+((Math.random()*60)|0);items.push({sku:p.sku,name:p.name,cat,qty,v:Math.round(qty*p.unit),last:c.last});});});
+    mycats.forEach(cat=>{ const pool=byCat[cat]; const np=1+((Math.random()*Math.min(3,pool.length))|0); [...pool].sort(()=>Math.random()-.5).slice(0,np).forEach(p=>{const qty=5+((Math.random()*60)|0);items.push({sku:p.sku,name:p.name,cat,model:p.model,color:p.color,qty,v:Math.round(qty*p.unit),last:c.last});});});
     c.items=items; });
-  const tp=new Map(); cust.forEach(c=>c.items.forEach(it=>{if(!tp.has(it.sku))tp.set(it.sku,{sku:it.sku,name:it.name,cat:it.cat,v:0,custs:new Set()});const o=tp.get(it.sku);o.v+=it.v;o.custs.add(c.code);}));
-  S.topProds=[...tp.values()].map(p=>({sku:p.sku,name:p.name,cat:p.cat,v:p.v,custs:p.custs.size})).sort((a,b)=>b.v-a.v);
+  const tp=new Map(); cust.forEach(c=>c.items.forEach(it=>{if(!tp.has(it.sku))tp.set(it.sku,{sku:it.sku,name:it.name,cat:it.cat,model:it.model,color:it.color,v:0,custs:new Set()});const o=tp.get(it.sku);o.v+=it.v;o.custs.add(c.code);}));
+  S.topProds=[...tp.values()].map(p=>({sku:p.sku,name:p.name,cat:p.cat,model:p.model,color:p.color,v:p.v,custs:p.custs.size})).sort((a,b)=>b.v-a.v);
   S.demoCust=cust; S.mode="demo"; badge();
   fillOpts("#fSeller",sellers);
   const dts=cust.map(c=>c.last).sort(); S.dateLo=dts[0]; S.dateHi=dts[dts.length-1];
@@ -301,18 +306,18 @@ async function loadLive(){
       bq(`SELECT CAST(${qq(a.cust)} AS STRING) code, ANY_VALUE(${qq(a.name)}) name, ANY_VALUE(CAST(${qq(a.seller)} AS STRING)) seller, MAX(CAST(${qq(a.seg)} AS STRING)) seg, MAX(${qq(a.mon)}) mon${a.freq?`, MAX(${qq(a.freq)}) freq`:", CAST(NULL AS INT64) freq"}, MAX(${REC}) rec, MAX(DATE(${qq(a.last)})) last FROM ${A} ${W} GROUP BY code ORDER BY mon DESC LIMIT 5000`),
       bq(`SELECT DISTINCT CAST(${qq(a.seller)} AS STRING) v FROM ${A} WHERE ${qq(a.seller)} IS NOT NULL LIMIT 500`),
       bq(`SELECT MAX(DATE(${qq(a.last)})) hi FROM ${A} WHERE ${qq(a.last)} IS NOT NULL`),
-      S.txnSchema.length?bq(`SELECT CAST(${qq(m.sku)} AS STRING) sku, ANY_VALUE(${qq(m.prodName)}) name, ANY_VALUE(CAST(${qq(m.cat)} AS STRING)) cat, SUM(${qq(m.amount)}) v, COUNT(DISTINCT ${qq(m.cust)}) custs FROM ${txnT()} GROUP BY sku ORDER BY v DESC LIMIT 60`):Promise.resolve({rows:[]}),
+      S.txnSchema.length?bq(`SELECT CAST(${qq(m.sku)} AS STRING) sku, ANY_VALUE(${qq(m.prodName)}) name, ANY_VALUE(CAST(${qq(m.cat)} AS STRING)) cat${m.model?`, ANY_VALUE(CAST(${qq(m.model)} AS STRING)) model`:", CAST(NULL AS STRING) model"}${m.color?`, ANY_VALUE(CAST(${qq(m.color)} AS STRING)) color`:", CAST(NULL AS STRING) color"}, SUM(${qq(m.amount)}) v, COUNT(DISTINCT ${qq(m.cust)}) custs FROM ${txnT()} GROUP BY sku ORDER BY v DESC LIMIT 60`):Promise.resolve({rows:[]}),
     ];
     const[cr,sl,rng,tp]=await Promise.all(Q);
     if(!S._optsInit){ fillOpts("#fSeller",sl.rows.map(r=>r.v)); S._optsInit=true; restoreSeller(); }
-    S.topProds=(tp.rows||[]).map(r=>({sku:r.sku,name:r.name||r.sku,cat:r.cat||"",v:Number(r.v)||0,custs:Number(r.custs)||0}));
+    S.topProds=(tp.rows||[]).map(r=>{const d=parseDetail(r.name);return{sku:r.sku,name:r.name||r.sku,cat:r.cat||"",model:r.model||d.model||"",color:r.color||d.color||"",v:Number(r.v)||0,custs:Number(r.custs)||0};});
     const hi=rng.rows[0]?.hi?String(rng.rows[0].hi).slice(0,10):"";
     S.dateHi=hi; if(!S._dtoTouched&&hi)$("#dTo").value=hi;   // show the real as-of (latest data date) instead of the demo's today
     // book-level product overview (shown when no customer is selected)
     if(seller && S.txnSchema.length){
       try{ const bp=await bq(`WITH mc AS (SELECT DISTINCT CAST(${qq(a.cust)} AS STRING) cid FROM ${A} WHERE CAST(${qq(a.seller)} AS STRING)='${esc(seller)}' AND ${qq(a.cust)} IS NOT NULL)
-        SELECT CAST(${qq(m.sku)} AS STRING) sku, ANY_VALUE(${qq(m.prodName)}) name, ANY_VALUE(CAST(${qq(m.cat)} AS STRING)) cat, SUM(${qq(m.qty)}) qty, SUM(${qq(m.amount)}) v, COUNT(DISTINCT ${qq(m.cust)}) custs FROM ${txnT()} JOIN mc ON CAST(${qq(m.cust)} AS STRING)=mc.cid GROUP BY sku ORDER BY v DESC LIMIT 60`);
-        S.bookProds=bp.rows.map(r=>({sku:r.sku,name:r.name||r.sku,cat:r.cat||"",qty:Number(r.qty)||0,v:Number(r.v)||0,custs:Number(r.custs)||0}));
+        SELECT CAST(${qq(m.sku)} AS STRING) sku, ANY_VALUE(${qq(m.prodName)}) name, ANY_VALUE(CAST(${qq(m.cat)} AS STRING)) cat${m.model?`, ANY_VALUE(CAST(${qq(m.model)} AS STRING)) model`:", CAST(NULL AS STRING) model"}${m.color?`, ANY_VALUE(CAST(${qq(m.color)} AS STRING)) color`:", CAST(NULL AS STRING) color"}, SUM(${qq(m.qty)}) qty, SUM(${qq(m.amount)}) v, COUNT(DISTINCT ${qq(m.cust)}) custs FROM ${txnT()} JOIN mc ON CAST(${qq(m.cust)} AS STRING)=mc.cid GROUP BY sku ORDER BY v DESC LIMIT 60`);
+        S.bookProds=bp.rows.map(r=>{const d=parseDetail(r.name);return{sku:r.sku,name:r.name||r.sku,cat:r.cat||"",model:r.model||d.model||"",color:r.color||d.color||"",qty:Number(r.qty)||0,v:Number(r.v)||0,custs:Number(r.custs)||0};});
       }catch(e){S.bookProds=S.topProds;}
     } else S.bookProds=S.topProds;
     const cust=cr.rows.map(r=>({code:r.code,name:r.name||r.code,seller:r.seller||"",seg:r.seg||"",mon:Number(r.mon)||0,freq:Number(r.freq)||0,rec:Number(r.rec)||0,last:r.last?String(r.last).slice(0,10):""}));
@@ -334,8 +339,13 @@ function enrichAndStore(cust,asOfStr,recReady){
   render();
 }
 function computeBookProds(arr){const m=new Map();let has=false;
-  arr.forEach(c=>{(c.items||[]).forEach(it=>{has=true;if(!m.has(it.sku))m.set(it.sku,{sku:it.sku,name:it.name,cat:it.cat,v:0,qty:0,cs:new Set()});const o=m.get(it.sku);o.v+=it.v;o.qty+=it.qty;o.cs.add(c.code);});});
-  return has?[...m.values()].map(p=>({sku:p.sku,name:p.name,cat:p.cat,v:p.v,qty:p.qty,custs:p.cs.size})).sort((a,b)=>b.v-a.v):null;}
+  arr.forEach(c=>{(c.items||[]).forEach(it=>{has=true;if(!m.has(it.sku))m.set(it.sku,{sku:it.sku,name:it.name,cat:it.cat,model:it.model,color:it.color,v:0,qty:0,cs:new Set()});const o=m.get(it.sku);o.v+=it.v;o.qty+=it.qty;o.cs.add(c.code);});});
+  return has?[...m.values()].map(p=>({sku:p.sku,name:p.name,cat:p.cat,model:p.model,color:p.color,v:p.v,qty:p.qty,custs:p.cs.size})).sort((a,b)=>b.v-a.v):null;}
+function parseDetail(name){ name=name||"";
+  const C=["ขาว","ดำ","เทา","เงิน","ทอง","น้ำเงิน","น้ำตาล","แดง","เขียว","นิกเกิล","โครเมียม","ลายไม้","ไม้","ใส"];
+  let color=""; for(const c of C){ if(name.includes(c)){color=c;break;} }
+  let model=""; const mm=name.match(/รุ่น\s*([A-Za-z0-9\-\.\/]+)/); if(mm)model=mm[1]; else { const m2=name.match(/([A-Za-z]{1,4}-?\d{2,4})/); if(m2)model=m2[1]; }
+  return {model,color};}
 function applyData(){ if(S.mode==="live")loadLive(); else demoCompute(); }
 const segPred=c=>!S.fSeg||c.seg===S.fSeg;
 const statusPred=c=>FOCUS[S.focus].test(c.rec);
@@ -351,8 +361,7 @@ function render(){ if(!S.L)return; const seller=$("#fSeller").value;
     + (fl.length?` · กรอง: ${fl.join(" + ")} <a href="#" id="clrFilt" style="color:var(--brand)">✕ ล้าง</a>`:"");
   const cf=$("#clrFilt"); if(cf)cf.onclick=e=>{e.preventDefault();S.fSeg="";S.focus="follow";S.page=0;render();};
   renderKPIs(); renderStatusChart(); renderSegment(); renderStatusFilter(); renderTable();
-  if(S.sel){ const c=S.L.cust.find(x=>x.code===S.sel); if(!c){S.sel="";renderDetailEmpty();} else if(S.mode==="demo")renderDetail(c,c.items||[]); }
-  else renderDetailEmpty(); }
+  showDetailPanel(); }
 function renderKPIs(){
   const {sc,total,totalV}=statusCntOf(S._custSeg);
   const followN=sc[1].n+sc[2].n, followV=sc[1].v+sc[2].v;
@@ -440,8 +449,8 @@ function exportCSV(){
 }
 
 /* ---------- product analysis: customer drill-down + cross-sell ---------- */
-function selectCust(code){ S.sel=(S.sel===code)?"":code; renderTable();
-  if(!S.sel){renderDetailEmpty();return;}
+function selectCust(code){ S.sel=(S.sel===code)?"":code; S.fProdCat=""; renderTable();
+  if(!S.sel){renderOverview();return;}
   const c=S.L.cust.find(x=>x.code===code);
   if(S.mode==="live") loadBuysLive(c); else renderDetail(c, c?c.items:[]);
 }
@@ -449,24 +458,36 @@ async function loadBuysLive(c){
   if(!c)return;
   if(!S.txnSchema.length){renderDetail(c,[]);toast("ไม่พบตารางธุรกรรม (สินค้า) — แสดงเฉพาะข้อมูลลูกค้า",1);return;}
   const m=TM(); status("กำลังโหลดสินค้า…",true);
-  try{const{rows}=await bq(`SELECT CAST(${qq(m.sku)} AS STRING) sku, ANY_VALUE(${qq(m.prodName)}) name, ANY_VALUE(CAST(${qq(m.cat)} AS STRING)) cat, SUM(${qq(m.qty)}) qty, SUM(${qq(m.amount)}) v FROM ${txnT()} WHERE CAST(${qq(m.cust)} AS STRING)='${esc(c.code)}' GROUP BY sku ORDER BY v DESC LIMIT 100`);
+  try{const{rows}=await bq(`SELECT CAST(${qq(m.sku)} AS STRING) sku, ANY_VALUE(${qq(m.prodName)}) name, ANY_VALUE(CAST(${qq(m.cat)} AS STRING)) cat${m.model?`, ANY_VALUE(CAST(${qq(m.model)} AS STRING)) model`:", CAST(NULL AS STRING) model"}${m.color?`, ANY_VALUE(CAST(${qq(m.color)} AS STRING)) color`:", CAST(NULL AS STRING) color"}, SUM(${qq(m.qty)}) qty, SUM(${qq(m.amount)}) v FROM ${txnT()} WHERE CAST(${qq(m.cust)} AS STRING)='${esc(c.code)}' GROUP BY sku ORDER BY v DESC LIMIT 100`);
     status(`${num(S.L.total)} ลูกค้า`);
-    renderDetail(c, rows.map(r=>({sku:r.sku,name:r.name||r.sku,cat:r.cat||"",qty:Number(r.qty)||0,v:Number(r.v)||0})));
+    S._liveItems=rows.map(r=>{const d=parseDetail(r.name);return{sku:r.sku,name:r.name||r.sku,cat:r.cat||"",model:r.model||d.model||"",color:r.color||d.color||"",qty:Number(r.qty)||0,v:Number(r.v)||0};});
+    renderDetail(c, S._liveItems);
   }catch(e){status("");toast("โหลดสินค้าไม่สำเร็จ: "+e.message,1);console.error(e);renderDetail(c,[]);}
 }
 const sattr=s=>String(s==null?"":s).replace(/"/g,"&quot;");
-function boughtTableHTML(rows){return `<div class="tbl-scroll" style="max-height:330px"><table class="dtl"><colgroup><col style="width:25%"><col style="width:45%"><col style="width:13%"><col style="width:17%"></colgroup>
-  <thead><tr><th>กลุ่ม</th><th>สินค้า</th><th class="num">จำนวน</th><th class="num">มูลค่า</th></tr></thead><tbody>${
-  rows.map(p=>`<tr><td><span class="segpill">${p.cat||"-"}</span></td><td title="${sattr(p.name)}">${p.name}</td><td class="num">${p.qty!=null?num(p.qty):"–"}</td><td class="num">${baht(p.v)}</td></tr>`).join("")||`<tr><td colspan="4" class="drill-hint">ไม่พบสินค้า</td></tr>`}</tbody></table></div>`;}
-function recTableHTML(rows,myCats){return `<div class="tbl-scroll" style="max-height:330px"><table class="dtl"><colgroup><col style="width:55%"><col style="width:29%"><col style="width:16%"></colgroup>
-  <thead><tr><th>สินค้าแนะนำ</th><th>กลุ่ม</th><th class="num">ลูกค้าที่ซื้อ</th></tr></thead><tbody>${
-  rows.map(p=>`<tr><td title="${sattr(p.name)}">${p.name}${myCats&&myCats.has(p.cat)?' <span class="pill" style="background:#188038;font-size:9px;padding:1px 5px">ตรงกลุ่ม</span>':''}</td><td><span class="segpill">${p.cat||"-"}</span></td><td class="num">${num(p.custs)}</td></tr>`).join("")||`<tr><td colspan="3" class="drill-hint">—</td></tr>`}</tbody></table></div>`;}
+function catChips(rows){const cats=[...new Set((rows||[]).map(p=>p.cat).filter(c=>c&&c!=="-"))].sort();
+  if(cats.length<2)return "";
+  return `<div class="catchips">`+`<span class="cchip ${!S.fProdCat?'on':''}" data-c="">ทุกกลุ่ม</span>`
+    +cats.map(c=>`<span class="cchip ${S.fProdCat===c?'on':''}" data-c="${sattr(c)}">${c}</span>`).join("")+`</div>`;}
+const fProd=rows=>S.fProdCat?(rows||[]).filter(p=>p.cat===S.fProdCat):(rows||[]);
+function wireChips(){ $("#detailBody").querySelectorAll(".cchip").forEach(el=>el.onclick=()=>{S.fProdCat=el.dataset.c||"";showDetailPanel();}); }
+function showDetailPanel(){ if(!S.L)return;
+  if(S.sel){const c=S.L.cust.find(x=>x.code===S.sel); if(!c){S.sel="";renderOverview();return;} renderDetail(c, S.mode==="demo"?(c.items||[]):(S._liveItems||[]));}
+  else renderOverview(); }
+function boughtTableHTML(rows){return `<div class="tbl-scroll" style="max-height:340px"><table class="dtl"><colgroup><col style="width:21%"><col style="width:33%"><col style="width:13%"><col style="width:11%"><col style="width:10%"><col style="width:12%"></colgroup>
+  <thead><tr><th>กลุ่ม</th><th>สินค้า</th><th>รุ่น</th><th>สี</th><th class="num">จำนวน</th><th class="num">มูลค่า</th></tr></thead><tbody>${
+  rows.map(p=>`<tr><td><span class="segpill">${p.cat||"-"}</span></td><td title="${sattr(p.name)}">${p.name}</td><td>${p.model||"–"}</td><td>${p.color||"–"}</td><td class="num">${p.qty!=null?num(p.qty):"–"}</td><td class="num">${baht(p.v)}</td></tr>`).join("")||`<tr><td colspan="6" class="drill-hint">ไม่พบสินค้า</td></tr>`}</tbody></table></div>`;}
+function recTableHTML(rows,myCats){return `<div class="tbl-scroll" style="max-height:330px"><table class="dtl"><colgroup><col style="width:40%"><col style="width:21%"><col style="width:12%"><col style="width:11%"><col style="width:16%"></colgroup>
+  <thead><tr><th>สินค้าแนะนำ</th><th>กลุ่ม</th><th>รุ่น</th><th>สี</th><th class="num">ลูกค้าที่ซื้อ</th></tr></thead><tbody>${
+  rows.map(p=>`<tr><td title="${sattr(p.name)}">${p.name}${myCats&&myCats.has(p.cat)?' <span class="pill" style="background:#188038;font-size:9px;padding:1px 5px">ตรงกลุ่ม</span>':''}</td><td><span class="segpill">${p.cat||"-"}</span></td><td>${p.model||"–"}</td><td>${p.color||"–"}</td><td class="num">${num(p.custs)}</td></tr>`).join("")||`<tr><td colspan="5" class="drill-hint">—</td></tr>`}</tbody></table></div>`;}
 function renderOverview(){
   if(!S.L)return;
-  const seller=$("#fSeller").value, book=(S.bookProds||[]).slice(0,50), top=(S.topProds||[]).slice(0,50);
-  $("#detailTitle").innerHTML=`📦 ภาพรวมสินค้า <span class="sub">${seller?("ของ "+seller):"ทั้งทีม"} · 👆 คลิกลูกค้าในตารางเพื่อดูรายตัว &amp; บทคุย</span>`;
-  $("#detailBody").innerHTML=`<div style="font-weight:600;margin:2px 0 6px">🛒 สินค้าที่ลูกค้าของฉันซื้อมากที่สุด</div>${boughtTableHTML(book)}
-   <div style="font-weight:600;margin:16px 0 6px">💡 สินค้าขายดี (ภาพรวม) ที่น่าเสนอ</div>${recTableHTML(top)}`;
+  const seller=$("#fSeller").value, book=(S.bookProds||[]), top=(S.topProds||[]);
+  $("#detailTitle").innerHTML=`📦 สินค้าขายดี — กลุ่ม / รุ่น / สี <span class="sub">${seller?("ของ "+seller):"ทั้งทีม"} · 👆 คลิกลูกค้าเพื่อดูรายตัว · คลิกกลุ่มเพื่อกรอง</span>`;
+  $("#detailBody").innerHTML=`${catChips(book.length?book:top)}
+   <div style="font-weight:600;margin:2px 0 6px">🛒 สินค้าที่ลูกค้าของฉันซื้อมากที่สุด</div>${boughtTableHTML(fProd(book).slice(0,80))}
+   <div style="font-weight:600;margin:16px 0 6px">💡 สินค้าขายดี (ภาพรวม) ที่น่าเสนอ</div>${recTableHTML(fProd(top).slice(0,60))}`;
+  wireChips();
 }
 function renderDetailEmpty(){ renderOverview(); }
 function renderDetail(c, items){
@@ -474,9 +495,9 @@ function renderDetail(c, items){
   items=items||[]; const st=STATUS[statusOf(c.rec)];
   const catV={}; items.forEach(it=>{catV[it.cat]=(catV[it.cat]||0)+it.v;});
   const cats=Object.keys(catV).sort((a,b)=>catV[b]-catV[a]);
-  const prods=[...items].sort((a,b)=>b.v-a.v).slice(0,30);
   const bought=new Set(items.map(it=>it.sku)); const myCats=new Set(items.map(it=>it.cat));
-  const rec=(S.topProds||[]).filter(p=>!bought.has(p.sku)).sort((a,b)=>{const am=myCats.has(a.cat)?0:1,bm=myCats.has(b.cat)?0:1;return am-bm||b.v-a.v;}).slice(0,12);
+  const prods=fProd([...items].sort((a,b)=>b.v-a.v)).slice(0,60);
+  const rec=fProd((S.topProds||[]).filter(p=>!bought.has(p.sku)).sort((a,b)=>{const am=myCats.has(a.cat)?0:1,bm=myCats.has(b.cat)?0:1;return am-bm||b.v-a.v;})).slice(0,15);
   $("#detailTitle").innerHTML=`👤 ${c.name} <span class="sub">(${c.code})${c.seller?" · "+c.seller:""}</span>`;
   $("#detailBody").innerHTML=`
    <div style="display:flex;gap:8px 14px;flex-wrap:wrap;align-items:center;margin-bottom:11px;font-size:12px">
@@ -486,19 +507,26 @@ function renderDetail(c, items){
      <span>ซื้อล่าสุด <b>${c.last||"–"}</b> · หายไป <b>${num(c.rec)}</b> วัน</span></div>
    <div style="background:#fbeaea;border:1px solid #f1c4c5;border-radius:8px;padding:10px 13px;margin-bottom:13px;font-size:12.5px;line-height:1.6">
      💬 <b>บทคุยแนะนำ:</b> ลูกค้าซื้อกลุ่ม <b>${cats.slice(0,3).join(" · ")||"-"}</b> เป็นหลัก · <b>${nextAction(c.rec,c.seg)}</b>${rec.length?` · ลองชวนคุยเรื่อง <b>${rec[0].name}</b>`:""}</div>
+   ${catChips(items)}
    <div style="font-weight:600;margin:2px 0 6px">🛒 สินค้าที่เคยซื้อ (${num(items.length)} รายการ)</div>${boughtTableHTML(prods)}
    <div style="font-weight:600;margin:16px 0 6px">💡 แนะนำให้เสนอเพิ่ม (Cross-sell)</div>${recTableHTML(rec,myCats)}`;
+  wireChips();
 }
-/* ---------- customer-type analysis (RFM segment) — clickable to filter the page ---------- */
+/* ---------- customer-type proportion (RFM segment) — clickable doughnut to filter the page ---------- */
+const SEGPAL=["#ad1f23","#e8a52b","#1f6fb5","#188038","#9334e6","#12b5cb","#e8710a","#5f6368","#0b8043"];
 function renderSegment(){ const m=new Map();
   (S._custStatus||S.L.cust).forEach(c=>{const k=c.seg||"(ไม่ระบุ)";if(!m.has(k))m.set(k,{k,n:0,v:0});const o=m.get(k);o.n++;o.v+=c.mon;});
-  const arr=[...m.values()].sort((a,b)=>b.v-a.v); const mx=Math.max(1,...arr.map(x=>x.v));
-  const RISKY=/At Risk|Lost|Non.?Focus|เสี่ยง|หลุด/i;
-  $("#segBox").innerHTML=arr.map(s=>{const sel=S.fSeg===s.k, dim=S.fSeg&&!sel;
-    return `<div class="segrow" data-seg="${sattr(s.k)}" style="margin:6px 2px;padding:3px 5px;border-radius:6px;cursor:pointer;${sel?'background:#fbeaea;box-shadow:0 0 0 1px var(--brand) inset':''};opacity:${dim?.45:1}">
-    <div style="display:flex;justify-content:space-between;font-size:11.5px;margin-bottom:3px"><span>${s.k}</span><span><b>${num(s.n)}</b> · ${baht(s.v)}</span></div>
-    <div style="background:#f1f3f4;border-radius:3px;height:9px;overflow:hidden"><i style="display:block;height:100%;width:${(s.v/mx*100).toFixed(0)}%;background:${RISKY.test(s.k)?'#c5221f':'#ad1f23'}"></i></div></div>`;}).join("")||`<div class="drill-hint">ไม่มีข้อมูล</div>`;
-  $("#segBox").querySelectorAll(".segrow").forEach(el=>el.onclick=()=>setSeg(el.dataset.seg));
+  const arr=[...m.values()].sort((a,b)=>(a.k<b.k?-1:1));
+  $("#segSub").textContent=`RFM${S.fSeg?" · "+S.fSeg:""} · คลิกเพื่อกรอง`;
+  const labels=arr.map(x=>x.k), data=arr.map(x=>x.n), vals=arr.map(x=>x.v), dim=!!S.fSeg;
+  const bg=arr.map((x,i)=>(!dim||x.k===S.fSeg)?SEGPAL[i%SEGPAL.length]:"#dde1e5");
+  if(S.charts.seg)S.charts.seg.destroy();
+  S.charts.seg=new Chart($("#chartSeg"),{type:"doughnut",
+    data:{labels,datasets:[{data,backgroundColor:bg,borderWidth:2,borderColor:"#fff"}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:"56%",
+      onClick:(e,els)=>{if(els&&els[0])setSeg(labels[els[0].index]);},
+      plugins:{legend:{position:"bottom",labels:{boxWidth:9,padding:4,font:{size:9}}},
+        tooltip:{callbacks:{label:c=>{const t=c.dataset.data.reduce((s,x)=>s+x,0);return ` ${c.label}: ${num(c.raw)} ราย (${t?(c.raw/t*100).toFixed(0):0}%) · ${baht(vals[c.dataIndex])}`;}}}}}});
 }
 
 /* ---------- seller persistence ---------- */
@@ -509,8 +537,8 @@ function rememberSeller(){try{localStorage.setItem(LS_SELLER,$("#fSeller").value
 $("#signinBtn").onclick=signIn;
 $("#connectBtn").onclick=()=>{saveCfg();$("#cfgPanel").open=false;if(S.token){S.mode="live";loadLive();}else signIn();};
 $("#refreshBtn").onclick=()=>{if(S.mode==="live")loadLive();else{buildDemo();demoCompute();}};
-$("#fSeller").addEventListener("change",()=>{rememberSeller();S.page=0;S.sel="";S.fSeg="";applyData();});
-$("#dTo").addEventListener("change",()=>{S._dtoTouched=true;S.page=0;S.sel="";S.fSeg="";applyData();});
+$("#fSeller").addEventListener("change",()=>{rememberSeller();S.page=0;S.sel="";S.fSeg="";S.fProdCat="";applyData();});
+$("#dTo").addEventListener("change",()=>{S._dtoTouched=true;S.page=0;S.sel="";S.fSeg="";S.fProdCat="";applyData();});
 $("#search").addEventListener("input",()=>{S.page=0;renderTable();});
 $("#exportBtn").onclick=exportCSV;
 
