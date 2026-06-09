@@ -71,6 +71,8 @@
   tbody tr.click{cursor:pointer} tbody tr.sel{background:#fbeaea!important;box-shadow:inset 3px 0 0 var(--brand)}
   table.dtl{table-layout:fixed;width:100%} table.dtl th,table.dtl td{white-space:normal;word-break:break-word;vertical-align:top}
   table.dtl th{cursor:default} table.dtl th.psort{cursor:pointer} table.dtl th.psort:hover{background:#eef1f4}
+  table.dtl td.num,table.dtl th.num{white-space:nowrap}
+  table.dtl td .segpill{white-space:normal;display:inline-block;line-height:1.35;padding:2px 7px}
   #detailBody .tbl-scroll{overflow-x:hidden}
   #chartStatus,#chartType{cursor:pointer}
   #segBox .segrow:hover{background:#f6f8fa}
@@ -492,7 +494,7 @@ function showDetailPanel(){ if(!S.L)return;
   else renderOverview(); }
 const sortProds=rows=>{const c=S.prodSort.c,d=S.prodSort.d;return [...(rows||[])].sort((a,b)=>((a[c]||0)-(b[c]||0))*d);};
 function boughtTableHTML(rows){const ar=k=>S.prodSort.c===k?(S.prodSort.d>0?" ▲":" ▼"):"";
-  return `<div class="tbl-scroll" style="max-height:340px"><table class="dtl"><colgroup><col style="width:19%"><col style="width:30%"><col style="width:12%"><col style="width:10%"><col style="width:9%"><col style="width:9%"><col style="width:11%"></colgroup>
+  return `<div class="tbl-scroll" style="max-height:340px"><table class="dtl"><colgroup><col style="width:22%"><col style="width:29%"><col style="width:9%"><col style="width:9%"><col style="width:9%"><col style="width:9%"><col style="width:13%"></colgroup>
   <thead><tr><th>กลุ่ม</th><th>สินค้า</th><th>รุ่น</th><th>สี</th><th class="num psort" data-ps="qty">จำนวน${ar("qty")}</th><th class="num psort" data-ps="ord">ออเดอร์${ar("ord")}</th><th class="num psort" data-ps="v">มูลค่า${ar("v")}</th></tr></thead><tbody>${
   rows.map(p=>`<tr><td><span class="segpill">${p.cat||"-"}</span></td><td title="${sattr(p.name)}">${p.name}</td><td>${p.model||"–"}</td><td>${p.color||"–"}</td><td class="num">${p.qty!=null?num(p.qty):"–"}</td><td class="num">${p.ord!=null?num(p.ord):"–"}</td><td class="num">${baht(p.v)}</td></tr>`).join("")||`<tr><td colspan="7" class="drill-hint">ไม่พบสินค้า</td></tr>`}</tbody></table></div>`;}
 function recTableHTML(rows,myCats,emptyMsg){return `<div class="tbl-scroll" style="max-height:330px"><table class="dtl"><colgroup><col style="width:40%"><col style="width:21%"><col style="width:12%"><col style="width:11%"><col style="width:16%"></colgroup>
