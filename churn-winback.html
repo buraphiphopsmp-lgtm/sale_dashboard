@@ -254,15 +254,15 @@ async function bootLive(){ try{ status("กำลังอ่าน schema…",t
 async function loadLive(){
   const a=AM(),A=aggT(); status("กำลังคำนวณ…",true);
   const seller=$("#fSeller").value, seg=$("#fSeg").value, thresh=+$("#fThresh").value;
-  const f=$("#dFrom").value, t=$("#dTo").value;
+  const f=$("#dFrom").value, t=$("#dTo").value, ud=S._dtouched;   // apply date range / as-of only when the user picked it (not the demo default)
   const conds=[`${qq(a.cust)} IS NOT NULL`,`${qq(a.last)} IS NOT NULL`];
   if(seller)conds.push(`${qq(a.seller)}='${esc(seller)}'`);
   if(seg)conds.push(`CAST(${qq(a.seg)} AS STRING)='${esc(seg)}'`);
-  if(f)conds.push(`DATE(${qq(a.last)})>='${f}'`);
-  if(t)conds.push(`DATE(${qq(a.last)})<='${t}'`);
+  if(ud&&f)conds.push(`DATE(${qq(a.last)})>='${f}'`);
+  if(ud&&t)conds.push(`DATE(${qq(a.last)})<='${t}'`);
   const W="WHERE "+conds.join(" AND ");
-  // reference date for recency = selected "ถึง/ณ วันที่" or the latest date that has data
-  const asOfExpr=t?`DATE('${t}')`:`(SELECT MAX(DATE(${qq(a.last)})) FROM ${A} WHERE ${qq(a.last)} IS NOT NULL)`;
+  // reference date for recency = the user-picked "ถึง/ณ วันที่", else the latest date that has data
+  const asOfExpr=(ud&&t)?`DATE('${t}')`:`(SELECT MAX(DATE(${qq(a.last)})) FROM ${A} WHERE ${qq(a.last)} IS NOT NULL)`;
   const REC=`DATE_DIFF(${asOfExpr},DATE(${qq(a.last)}),DAY)`;
   try{
     const Q=[
@@ -283,8 +283,8 @@ async function loadLive(){
     if(!S._optsInit){ fillOpts("#fSeller",sl.rows.map(r=>r.v)); fillOpts("#fSeg",sg.rows.map(r=>r.v)); S._optsInit=true; }
     const lo=rng.rows[0]?.lo?String(rng.rows[0].lo).slice(0,10):"", hi=rng.rows[0]?.hi?String(rng.rows[0].hi).slice(0,10):"";
     S.dateLo=lo; S.dateHi=hi;
-    if(!$("#dFrom").value&&lo)$("#dFrom").value=lo;   // default range = full data, reference = latest data date
-    if(!$("#dTo").value&&hi)$("#dTo").value=hi;
+    if(!S._dtouched&&lo)$("#dFrom").value=lo;   // show the real data range / latest as-of (override demo's today)
+    if(!S._dtouched&&hi)$("#dTo").value=hi;
     const statusCnt=STATUS.map(s=>({k:s.k,c:s.c,n:0,v:0}));
     const recCnt=RBUCKETS.map(b=>({k:b.k,n:0}));
     let total=0,valAtRisk=0,riskN=0;
@@ -293,7 +293,7 @@ async function loadLive(){
     // at-risk (>thresh) derived from the FULL status buckets — not the 500-row win-back list
     const thIdx=thresh<=90?1:thresh<=180?2:3;
     for(let i=thIdx;i<4;i++){riskN+=statusCnt[i].n;valAtRisk+=statusCnt[i].v;}
-    S.L={total,statusCnt,recCnt,valAtRisk,riskN,thresh,asOf:(t||hi||""),
+    S.L={total,statusCnt,recCnt,valAtRisk,riskN,thresh,asOf:((ud&&t)?t:hi)||t||"",
       wb:wb.rows.map(r=>({code:r.code,name:r.name||r.code,seller:r.seller||"",seg:r.seg||"",mon:Number(r.v)||0,rec:Number(r.rec)||0,last:r.last?String(r.last).slice(0,10):""}))};
     status(`${num(total)} ลูกค้า`);
     render();
@@ -369,8 +369,8 @@ $("#connectBtn").onclick=()=>{saveCfg();$("#cfgPanel").open=false;if(S.token){S.
 $("#refreshBtn").onclick=()=>{if(S.mode==="live")loadLive();else{buildDemo();demoCompute();}};
 $("#applyBtn").onclick=()=>{S.wbPage=0;applyData();};
 $("#clearBtn").onclick=()=>{$("#fSeller").value="";$("#fSeg").value="";$("#fThresh").value="180";if(S.dateLo)$("#dFrom").value=S.dateLo;if(S.dateHi)$("#dTo").value=S.dateHi;S.wbPage=0;applyData();};
-$("#dFrom").addEventListener("change",()=>{S.wbPage=0;applyData();});
-$("#dTo").addEventListener("change",()=>{S.wbPage=0;applyData();});
+$("#dFrom").addEventListener("change",()=>{S._dtouched=true;S.wbPage=0;applyData();});
+$("#dTo").addEventListener("change",()=>{S._dtouched=true;S.wbPage=0;applyData();});
 $("#fSeller").addEventListener("change",()=>{S.wbPage=0;applyData();});
 $("#fSeg").addEventListener("change",()=>{S.wbPage=0;applyData();});
 $("#fThresh").addEventListener("change",()=>{S.wbPage=0;applyData();});

@@ -287,15 +287,16 @@ async function bootLive(){ try{ status("กำลังอ่าน schema…",t
 async function loadLive(){
   const a=AM(),A=aggT(); status("กำลังคำนวณ…",true);
   const seller=$("#fSeller").value, t=$("#dTo").value;
+  const useDt=S._dtoTouched&&t;   // honor the picked date only if the user set it; otherwise anchor to the latest data date (not today / the demo default)
   const conds=[`${qq(a.cust)} IS NOT NULL`,`${qq(a.last)} IS NOT NULL`];
   if(seller)conds.push(`CAST(${qq(a.seller)} AS STRING)='${esc(seller)}'`);
   const W="WHERE "+conds.join(" AND ");
-  const asOfExpr=t?`DATE('${t}')`:`(SELECT MAX(DATE(${qq(a.last)})) FROM ${A} WHERE ${qq(a.last)} IS NOT NULL)`;
+  const asOfExpr=useDt?`DATE('${t}')`:`(SELECT MAX(DATE(${qq(a.last)})) FROM ${A} WHERE ${qq(a.last)} IS NOT NULL)`;
   const REC=`DATE_DIFF(${asOfExpr},DATE(${qq(a.last)}),DAY)`;
   try{
     const m=TM();
     const Q=[
-      bq(`SELECT CAST(${qq(a.cust)} AS STRING) code, ANY_VALUE(${qq(a.name)}) name, ANY_VALUE(CAST(${qq(a.seller)} AS STRING)) seller, MAX(CAST(${qq(a.seg)} AS STRING)) seg, MAX(${qq(a.mon)}) mon${a.freq?`, MAX(${qq(a.freq)}) freq`:", CAST(NULL AS INT64) freq"}, MAX(${REC}) rec, MAX(DATE(${qq(a.last)})) last FROM ${A} ${W} GROUP BY code ORDER BY mon DESC LIMIT 3000`),
+      bq(`SELECT CAST(${qq(a.cust)} AS STRING) code, ANY_VALUE(${qq(a.name)}) name, ANY_VALUE(CAST(${qq(a.seller)} AS STRING)) seller, MAX(CAST(${qq(a.seg)} AS STRING)) seg, MAX(${qq(a.mon)}) mon${a.freq?`, MAX(${qq(a.freq)}) freq`:", CAST(NULL AS INT64) freq"}, MAX(${REC}) rec, MAX(DATE(${qq(a.last)})) last FROM ${A} ${W} GROUP BY code ORDER BY mon DESC LIMIT 5000`),
       bq(`SELECT DISTINCT CAST(${qq(a.seller)} AS STRING) v FROM ${A} WHERE ${qq(a.seller)} IS NOT NULL LIMIT 500`),
       bq(`SELECT MAX(DATE(${qq(a.last)})) hi FROM ${A} WHERE ${qq(a.last)} IS NOT NULL`),
       S.txnSchema.length?bq(`SELECT CAST(${qq(m.sku)} AS STRING) sku, ANY_VALUE(${qq(m.prodName)}) name, ANY_VALUE(CAST(${qq(m.cat)} AS STRING)) cat, SUM(${qq(m.amount)}) v, COUNT(DISTINCT ${qq(m.cust)}) custs FROM ${txnT()} GROUP BY sku ORDER BY v DESC LIMIT 60`):Promise.resolve({rows:[]}),
@@ -304,7 +305,7 @@ async function loadLive(){
     if(!S._optsInit){ fillOpts("#fSeller",sl.rows.map(r=>r.v)); S._optsInit=true; restoreSeller(); }
     S.topProds=(tp.rows||[]).map(r=>({sku:r.sku,name:r.name||r.sku,cat:r.cat||"",v:Number(r.v)||0,custs:Number(r.custs)||0}));
     const hi=rng.rows[0]?.hi?String(rng.rows[0].hi).slice(0,10):"";
-    S.dateHi=hi; if(!$("#dTo").value&&hi)$("#dTo").value=hi;
+    S.dateHi=hi; if(!S._dtoTouched&&hi)$("#dTo").value=hi;   // show the real as-of (latest data date) instead of the demo's today
     // book-level product overview (shown when no customer is selected)
     if(seller && S.txnSchema.length){
       try{ const bp=await bq(`WITH mc AS (SELECT DISTINCT CAST(${qq(a.cust)} AS STRING) cid FROM ${A} WHERE CAST(${qq(a.seller)} AS STRING)='${esc(seller)}' AND ${qq(a.cust)} IS NOT NULL)
@@ -313,7 +314,7 @@ async function loadLive(){
       }catch(e){S.bookProds=S.topProds;}
     } else S.bookProds=S.topProds;
     const cust=cr.rows.map(r=>({code:r.code,name:r.name||r.code,seller:r.seller||"",seg:r.seg||"",mon:Number(r.mon)||0,freq:Number(r.freq)||0,rec:Number(r.rec)||0,last:r.last?String(r.last).slice(0,10):""}));
-    enrichAndStore(cust,(t||hi||""),true);
+    enrichAndStore(cust,(useDt?t:hi)||t||"",true);
     status(`${num(cust.length)} ลูกค้า`);
   }catch(e){status("");toast("คำนวณไม่สำเร็จ: "+e.message,1);console.error(e);}
 }
@@ -496,7 +497,7 @@ $("#signinBtn").onclick=signIn;
 $("#connectBtn").onclick=()=>{saveCfg();$("#cfgPanel").open=false;if(S.token){S.mode="live";loadLive();}else signIn();};
 $("#refreshBtn").onclick=()=>{if(S.mode==="live")loadLive();else{buildDemo();demoCompute();}};
 $("#fSeller").addEventListener("change",()=>{rememberSeller();S.page=0;S.sel="";applyData();});
-$("#dTo").addEventListener("change",()=>{S.page=0;S.sel="";applyData();});
+$("#dTo").addEventListener("change",()=>{S._dtoTouched=true;S.page=0;S.sel="";applyData();});
 $("#search").addEventListener("input",()=>{S.page=0;renderTable();});
 $("#exportBtn").onclick=exportCSV;
 
