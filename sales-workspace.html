@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Churn & Win-back · Futuretech</title>
+<title>Sales Workspace · Futuretech</title>
 <link rel="icon" href="data:," />
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
@@ -21,7 +21,7 @@
   button{font:inherit;cursor:pointer;border:1px solid var(--line);background:#fff;color:var(--ink);padding:6px 12px;border-radius:6px;display:inline-flex;align-items:center;gap:6px}
   button:hover{background:#f5f6f7} button.primary{background:var(--brand);color:#fff;border-color:var(--brand)} button.primary:hover{background:#8a0202}
   .topbar{display:flex;align-items:center;gap:12px;padding:12px 22px;flex-wrap:wrap}
-  .topbar h1{font-size:20px;font-weight:700;margin:0} .topbar h1 .lite{color:var(--red)}
+  .topbar h1{font-size:20px;font-weight:700;margin:0} .topbar h1 .lite{color:var(--brand)}
   .topbar .tag{font-size:12px;color:var(--muted)} .topbar .spacer{flex:1}
   .badge{font-size:11px;padding:3px 9px;border-radius:999px;font-weight:500;white-space:nowrap}
   .badge.demo{background:var(--gold);color:#fff} .badge.live{background:var(--green);color:#fff}
@@ -32,33 +32,45 @@
   .cfg-body{padding:0 14px 14px;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
   .field{display:flex;flex-direction:column;gap:3px} .field label{font-size:11px;color:var(--muted);font-weight:500}
   .field input{font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:6px} .full{grid-column:1/-1}
-  .toolbar{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-bottom:16px}
+  .toolbar{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-bottom:6px}
   .toolbar label{font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:3px}
   .toolbar input,.toolbar select{font:inherit;padding:7px 10px;border:1px solid var(--line);border-radius:6px;background:#fff;min-width:150px}
+  .toolbar select#fSeller{min-width:210px;font-weight:600;border-color:var(--brand)}
+  .hintbar{font-size:11.5px;color:var(--muted);margin:0 0 14px}
   #status{font-size:12px;color:var(--muted)}
   .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:16px}
   .kpi{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow);position:relative;overflow:hidden}
   .kpi .accent{position:absolute;left:0;top:0;bottom:0;width:4px}
   .kpi .label{font-size:12px;color:var(--muted);font-weight:500}
   .kpi .value{font-size:24px;font-weight:700;margin:5px 0 2px;letter-spacing:-.4px}
-  .kpi .delta{font-size:12px;font-weight:600}
+  .kpi .delta{font-size:12px;font-weight:600;color:var(--muted)}
   .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:14px}
-  .s8{grid-column:span 8}.s4{grid-column:span 4}.s12{grid-column:span 12}.s5{grid-column:span 5}.s7{grid-column:span 7}.s6{grid-column:span 6}
+  .s4{grid-column:span 4}.s8{grid-column:span 8}.s12{grid-column:span 12}
   @media(max-width:1000px){.grid>div{grid-column:span 12 !important}}
   .card{background:#fff;border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px}
   .card h3{margin:0 0 12px;font-size:14px;font-weight:600;display:flex;justify-content:space-between;align-items:center;gap:8px}
   .card h3 .sub{font-size:11px;color:var(--muted);font-weight:400}
-  .chart-box{position:relative;height:280px}
-  .tbl-scroll{overflow:auto;max-height:460px;border:1px solid var(--line);border-radius:8px}
+  .chart-box{position:relative;height:230px}
+  /* clickable status filter list */
+  .flt{display:flex;flex-direction:column;gap:7px}
+  .flt .row{display:flex;align-items:center;gap:10px;padding:9px 11px;border:1px solid var(--line);border-radius:9px;cursor:pointer;transition:.12s}
+  .flt .row:hover{background:#f6f8fa}
+  .flt .row.on{border-color:var(--brand);background:#fbeaea;box-shadow:0 0 0 1px var(--brand) inset}
+  .flt .dot{width:11px;height:11px;border-radius:50%;flex:0 0 auto}
+  .flt .nm{font-weight:600;font-size:12.5px;flex:1}
+  .flt .ct{font-weight:700;font-size:14px} .flt .vl{font-size:11px;color:var(--muted);width:92px;text-align:right}
+  .tbl-scroll{overflow:auto;max-height:520px;border:1px solid var(--line);border-radius:8px}
   table{border-collapse:collapse;width:100%;font-size:12.5px}
   th,td{padding:9px 12px;border-bottom:1px solid #eef0f2;text-align:left;white-space:nowrap}
   th{background:#f6f8fa;color:#5f6368;font-weight:600;position:sticky;top:0;cursor:pointer;user-select:none}
   th:hover{background:#eef1f4}
   td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+  td.act{white-space:normal;min-width:190px;color:#3c4043}
   tbody tr:nth-child(even){background:#fafbfc} tbody tr:hover{background:#fff4e0}
   .rank{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;font-size:11px;font-weight:700;background:#eef1f4;color:#5f6368}
-  .rank.r1{background:#e8a52b;color:#fff}.rank.r2{background:#9aa0a6;color:#fff}.rank.r3{background:#cd7f32;color:#fff}
-  .pill{font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;white-space:nowrap}
+  .rank.r1{background:var(--gold);color:#fff}.rank.r2{background:#9aa0a6;color:#fff}.rank.r3{background:#cd7f32;color:#fff}
+  .pill{font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;white-space:nowrap;color:#fff}
+  .segpill{font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;white-space:nowrap;background:#eef1f4;color:#3c4043}
   .drill-hint{color:var(--muted);text-align:center;padding:30px;font-size:13px}
   .pager{display:flex;justify-content:flex-end;align-items:center;gap:6px;font-size:11px;color:var(--muted);margin-top:7px}
   .pager button{padding:2px 8px}
@@ -73,17 +85,17 @@
 
 <nav class="appnav">
   <div class="brand">📊 Futuretech Dashboards</div>
-  <a href="sales-workspace.html" class="tab">🎯 Sales Workspace</a>
+  <a href="sales-workspace.html" class="tab active">🎯 Sales Workspace</a>
   <a href="sales-dashboard.html" class="tab">Sales Performance Overview</a>
   <a href="high-value-monitor.html" class="tab">High Value Monitor</a>
   <a href="all-segment-monitor.html" class="tab">All Segment Monitor</a>
   <a href="sales-performance.html" class="tab">Individual Sales Performance</a>
-  <a href="churn-winback.html" class="tab active">Churn &amp; Win-back</a>
+  <a href="churn-winback.html" class="tab">Churn &amp; Win-back</a>
   <a href="handbook.html" class="tab">📖 คู่มือ</a></nav>
 
 <div class="topbar">
-  <h1>FUTURETECH <span class="lite">CHURN</span> &amp; WIN-BACK</h1>
-  <span class="tag">Smart Fitting, Smart Living · ความเสี่ยงลูกค้าหลุด และเป้าหมายดึงกลับ</span>
+  <h1>FUTURETECH <span class="lite">SALES</span> WORKSPACE</h1>
+  <span class="tag">Smart Fitting, Smart Living · ลูกค้าของฉัน · งานที่ต้องติดตาม · สิ่งที่ควรทำ</span>
   <span class="spacer"></span>
   <span class="badge demo" id="modeBadge">DEMO MODE</span>
   <span id="status"></span>
@@ -104,36 +116,30 @@
   </details>
 
   <div class="toolbar">
-    <label>ตั้งแต่วันที่ (ซื้อล่าสุด)<input type="date" id="dFrom"></label>
-    <label>ถึง / ณ วันที่<input type="date" id="dTo"></label>
-    <label>เซลล์ผู้ดูแล<select id="fSeller"><option value="">— ทุกคน —</option></select></label>
-    <label>กลุ่มลูกค้า (segment)<select id="fSeg"><option value="">— ทุกกลุ่ม —</option></select></label>
-    <label>เกณฑ์เสี่ยงหลุด (วัน)<select id="fThresh">
-      <option value="90">ไม่ซื้อเกิน 90 วัน</option>
-      <option value="180" selected>ไม่ซื้อเกิน 180 วัน</option>
-      <option value="365">ไม่ซื้อเกิน 365 วัน</option></select></label>
-    <button id="applyBtn" class="primary">ใช้ตัวกรอง</button>
-    <button id="clearBtn">ล้างตัวกรอง</button>
+    <label>เซลล์ (ฉัน)<select id="fSeller"><option value="">— ทุกคน (ภาพรวมทีม) —</option></select></label>
+    <label>ดูข้อมูล ณ วันที่<input type="date" id="dTo"></label>
+    <label>ค้นหาลูกค้า<input id="search" placeholder="ชื่อ / รหัส / กลุ่ม…" style="min-width:190px"></label>
+    <button id="exportBtn">⬇ ส่งออก Excel/CSV</button>
     <span class="spacer" style="flex:1"></span>
   </div>
+  <div class="hintbar" id="hintbar">เลือก “ชื่อคุณ” ในช่องเซลล์ เพื่อดูเฉพาะลูกค้าที่คุณดูแล · ระบบจะจดจำไว้ในเครื่องนี้</div>
 
   <div class="kpis" id="kpis"></div>
 
   <div class="grid">
-    <div class="s5 card">
-      <h3>สถานะการซื้อของลูกค้า <span class="sub" id="statusSub">ตามวันที่ซื้อล่าสุด</span></h3>
+    <div class="s4 card">
+      <h3>ลูกค้าของฉันตามสถานะ <span class="sub" id="statusSub"></span></h3>
       <div class="chart-box"><canvas id="chartStatus"></canvas></div>
     </div>
-    <div class="s7 card">
-      <h3>การกระจายตัวตามระยะเวลาที่หายไป (Recency) <span class="sub">จำนวนลูกค้า</span></h3>
-      <div class="chart-box"><canvas id="chartRecency"></canvas></div>
+    <div class="s8 card">
+      <h3>เลือกกลุ่มเพื่อโฟกัสรายการ <span class="sub">คลิกเพื่อกรองตารางด้านล่าง</span></h3>
+      <div class="flt" id="statusFilter"></div>
     </div>
 
     <div class="s12 card">
-      <h3><span>🎯 เป้าหมายดึงกลับ (Win-back) <span class="sub" id="wbSub">ลูกค้ามูลค่าสูงที่กำลังหายไป · เรียงตามมูลค่า</span></span>
-        <input id="wbSearch" placeholder="ค้นหาลูกค้า…" style="font:inherit;padding:5px 9px;border:1px solid var(--line);border-radius:6px;min-width:170px;font-weight:400"></h3>
-      <div class="tbl-scroll"><table id="wbTable"><thead></thead><tbody></tbody></table></div>
-      <div class="pager" id="wbPager"></div>
+      <h3><span>📋 รายการลูกค้า <span class="sub" id="tblSub"></span></span></h3>
+      <div class="tbl-scroll"><table id="custTable"><thead></thead><tbody></tbody></table></div>
+      <div class="pager" id="pager"></div>
     </div>
   </div>
 
@@ -148,14 +154,26 @@ const $=s=>document.querySelector(s);
 const baht=n=>"฿"+Math.round(n||0).toLocaleString("en-US");
 const num=n=>Math.round(n||0).toLocaleString("en-US");
 const NUMERIC=["INTEGER","INT64","FLOAT","FLOAT64","NUMERIC","BIGNUMERIC"];
-const PAL=["#188038","#1a73e8","#e8a52b","#c5221f","#9334e6","#12b5cb"];
-const LS="churnWB.cfg";
+const LS="salesWS.cfg", LS_SELLER="salesWS.seller";
 Chart.defaults.font.family=getComputedStyle(document.body).fontFamily; Chart.defaults.color="#5f6368"; Chart.defaults.font.size=11;
-// status buckets (days since last purchase)
-const STATUS=[{k:"Active (≤90 วัน)",max:90,c:"#188038"},{k:"เฝ้าระวัง (91-180)",max:180,c:"#1a73e8"},{k:"เสี่ยงหลุด (181-365)",max:365,c:"#e8a52b"},{k:"หลุดแล้ว (>365)",max:1e9,c:"#c5221f"}];
-const RBUCKETS=[{k:"0-30",lo:0,hi:30},{k:"31-60",lo:31,hi:60},{k:"61-90",lo:61,hi:90},{k:"91-180",lo:91,hi:180},{k:"181-365",lo:181,hi:365},{k:">365",lo:366,hi:1e9}];
+// status buckets by days since last purchase
+const STATUS=[{k:"Active (≤90 วัน)",c:"#188038",f:"active"},{k:"เฝ้าระวัง (91-180)",c:"#1a73e8",f:"watch"},{k:"เสี่ยงหลุด (181-365)",c:"#e8a52b",f:"risk"},{k:"หลุดแล้ว (>365)",c:"#c5221f",f:"lost"}];
+const statusOf=r=>r<=90?0:r<=180?1:r<=365?2:3;
+const FOCUS={
+  follow:{label:"🎯 ต้องติดตามด่วน (91-365 วัน)",test:r=>r>90&&r<=365},
+  active:{label:"Active (≤90 วัน)",test:r=>r<=90},
+  watch:{label:"เฝ้าระวัง (91-180 วัน)",test:r=>r>90&&r<=180},
+  risk:{label:"เสี่ยงหลุด (181-365 วัน)",test:r=>r>180&&r<=365},
+  lost:{label:"หลุดแล้ว (>365 วัน)",test:r=>r>365},
+  all:{label:"ลูกค้าทั้งหมด",test:r=>true},
+};
+function nextAction(rec,seg){const hv=/High Value|Champion|VIP/i.test(seg||"");
+  if(rec<=90) return hv?"ดูแลใกล้ชิด · เสนอสินค้าใหม่/ออเดอร์ประจำ":"ขายเพิ่ม (upsell) · แนะนำสินค้าที่เกี่ยวข้อง";
+  if(rec<=180) return "โทรเช็คอิน · กระตุ้นการสั่งซื้อซ้ำ";
+  if(rec<=365) return "⚠ โทรด่วน · เสนอโปรโมชันดึงกลับ";
+  return "Win-back · ประเมินมูลค่าก่อนทุ่มทรัพยากร";}
 
-const S={mode:"demo",token:null,aggSchema:[],amap:{},wbSort:{c:"v",d:-1},wbPage:0,L:null,charts:{},demoCust:[]};
+const S={mode:"demo",token:null,aggSchema:[],focus:"follow",sort:{c:"mon",d:-1},page:0,L:null,charts:{},demoCust:[],dateHi:""};
 
 let tt; function toast(m,e){const t=$("#toast");t.textContent=m;t.className="toast show"+(e?" err":"");clearTimeout(tt);tt=setTimeout(()=>t.className="toast",4500);}
 function status(m,b){$("#status").innerHTML=(b?'<span class="spinner"></span> ':'')+(m||"");}
@@ -171,7 +189,7 @@ function initAuth(id){if(!window.google||!google.accounts){toast("Google SDK ย
     callback:r=>{if(r.error){toast("ล็อกอินไม่สำเร็จ: "+r.error,1);return;}S.token=r.access_token;try{sessionStorage.setItem("bqToken",r.access_token);}catch(e){}S.mode="live";badge();toast("เชื่อมต่อสำเร็จ");bootLive();}});return true;}
 function signIn(){const c=readCfg();if(!c.clientId){$("#cfgPanel").open=true;toast("ใส่ OAuth Client ID ก่อน",1);return;}if(!tc&&!initAuth(c.clientId))return;tc.requestAccessToken({prompt:S.token?"":"consent"});}
 async function bq(sql){const c=readCfg();
-  const res=await fetch(`https://bigquery.googleapis.com/bigquery/v2/projects/${c.billing}/queries`,{method:"POST",headers:{Authorization:"Bearer "+S.token,"Content-Type":"application/json"},body:JSON.stringify({query:sql,useLegacySql:false,timeoutMs:60000,maxResults:2000})});
+  const res=await fetch(`https://bigquery.googleapis.com/bigquery/v2/projects/${c.billing}/queries`,{method:"POST",headers:{Authorization:"Bearer "+S.token,"Content-Type":"application/json"},body:JSON.stringify({query:sql,useLegacySql:false,timeoutMs:60000,maxResults:5000})});
   const d=await res.json();
   if(!res.ok){if(res.status===401){try{sessionStorage.removeItem("bqToken");}catch(e){}S.token=null;}throw new Error(d.error?.message||("HTTP "+res.status));}
   if(d.jobComplete===false)throw new Error("Query นานเกินไป");
@@ -199,50 +217,33 @@ const dayDiff=(a,b)=>Math.round((a-b)/86400000);
 function buildDemo(){
   const sellers=["ศุภชัย (คุณชุบ)","สุวรรณี (นก)","ชนิสา (มุก)","อิษฎา (จี๋)","เจนทร (แอน)","พิชัย (กุ้ง)"];
   const segs=["1.High Value","2.High Potential","3.Potential","4.At Risk","5.New Customer","6.Non Focus","7.Lost"];
-  const segW=[0.05,0.06,0.16,0.30,0.05,0.33,0.05];
+  const segW=[0.08,0.09,0.18,0.26,0.07,0.27,0.05];
   const names=["วุ่นเทคเฟอร์นิช","พี.เอส.พีเฟอร์นิเจอร์","ชัคริชบุญมีลีค","วอร์มเบอร์บิวด์","ทองไทยเฟอร์นิเชอร์","สยามดีไซน์","ลัคกี้สโตนกรุ๊ป","เอเชียโปรดักส์","บ้านสวยวัสดุ","กรีนโฮมดีไซน์","เอ็มเจครีเอชั่น","ไอพลัสดีไซน์","เดอะวู้ดเวิร์ค","ครัวสวยสตูดิโอ"];
   const today=new Date(); const cust=[];
-  for(let i=0;i<200;i++){ let r=Math.random(),seg=segs[0],acc=0; for(let s=0;s<segs.length;s++){acc+=segW[s];if(r<=acc){seg=segs[s];break;}}
-    // recency by segment
-    let lastDays; if(/Lost/.test(seg))lastDays=370+((Math.random()*300)|0);
-      else if(/At Risk/.test(seg))lastDays=190+((Math.random()*160)|0);
-      else if(/Non Focus/.test(seg))lastDays=120+((Math.random()*260)|0);
+  for(let i=0;i<240;i++){ let r=Math.random(),seg=segs[0],acc=0; for(let s=0;s<segs.length;s++){acc+=segW[s];if(r<=acc){seg=segs[s];break;}}
+    let lastDays; if(/Lost/.test(seg))lastDays=370+((Math.random()*320)|0);
+      else if(/At Risk/.test(seg))lastDays=185+((Math.random()*175)|0);
+      else if(/Non Focus/.test(seg))lastDays=110+((Math.random()*270)|0);
       else if(/New/.test(seg))lastDays=((Math.random()*60)|0);
-      else lastDays=((Math.random()*110)|0);
+      else lastDays=((Math.random()*120)|0);
     const last=new Date(today); last.setDate(last.getDate()-lastDays);
     const tier=/High Value/.test(seg)?1:/High Potential/.test(seg)?0.7:/Potential/.test(seg)?0.45:0.25;
     const mon=Math.round((300000+Math.random()*4500000)*tier*(/Lost/.test(seg)?0.6:1));
     cust.push({code:("กพชวอตศมบ"[i%9]||"ก")+String(100+i).slice(-3),name:names[i%names.length]+(i>13?" "+i:""),
-      seller:sellers[i%sellers.length],seg,mon,freq:1+((Math.random()*40)|0),last:last.toISOString().slice(0,10)});
+      seller:sellers[i%sellers.length],seg,mon,freq:1+((Math.random()*45)|0),last:last.toISOString().slice(0,10)});
   }
   S.demoCust=cust; S.mode="demo"; badge();
-  fillOpts("#fSeller",sellers); fillOpts("#fSeg",segs);
+  fillOpts("#fSeller",sellers);
   const dts=cust.map(c=>c.last).sort(); S.dateLo=dts[0]; S.dateHi=dts[dts.length-1];
-  if(!$("#dFrom").value)$("#dFrom").value=S.dateLo; if(!$("#dTo").value)$("#dTo").value=S.dateHi;
+  if(!$("#dTo").value)$("#dTo").value=S.dateHi;
+  restoreSeller();
   $("#foot").textContent="DEMO data — ข้อมูลจำลอง · "+cust.length+" ลูกค้า";
 }
 function demoCompute(){
-  const seller=$("#fSeller").value, seg=$("#fSeg").value;
-  const f=$("#dFrom").value, t=$("#dTo").value;
-  const cust=S.demoCust.filter(c=>(!seller||c.seller===seller)&&(!seg||c.seg===seg)&&(!f||c.last>=f)&&(!t||c.last<=t));
-  const asOfStr=t||S.dateHi||new Date().toISOString().slice(0,10);   // อ้างอิงเดือนล่าสุดที่มีข้อมูล
-  const asOf=new Date(asOfStr);
-  const enriched=cust.map(c=>({...c,rec:dayDiff(asOf,new Date(c.last))}));
-  buildL(enriched,asOfStr);
-  render();
-}
-function buildL(enriched,asOf){
-  const thresh=+$("#fThresh").value;
-  const statusCnt=STATUS.map(s=>({k:s.k,c:s.c,n:0,v:0}));
-  const recCnt=RBUCKETS.map(b=>({k:b.k,n:0}));
-  let total=0,valAtRisk=0,riskN=0;
-  enriched.forEach(c=>{ total++;
-    for(let i=0;i<STATUS.length;i++){if(c.rec<=STATUS[i].max){statusCnt[i].n++;statusCnt[i].v+=c.mon;break;}}
-    for(let i=0;i<RBUCKETS.length;i++){if(c.rec>=RBUCKETS[i].lo&&c.rec<=RBUCKETS[i].hi){recCnt[i].n++;break;}}
-    if(c.rec>thresh){valAtRisk+=c.mon;riskN++;}
-  });
-  const wb=enriched.filter(c=>c.rec>thresh).sort((a,b)=>b.mon-a.mon);
-  S.L={total,statusCnt,recCnt,valAtRisk,riskN,thresh,asOf,wb};
+  const seller=$("#fSeller").value, t=$("#dTo").value;
+  const cust=S.demoCust.filter(c=>(!seller||c.seller===seller));
+  const asOfStr=t||S.dateHi||new Date().toISOString().slice(0,10);
+  enrichAndStore(cust,asOfStr);
 }
 
 /* =========================================================================
@@ -253,128 +254,138 @@ async function bootLive(){ try{ status("กำลังอ่าน schema…",t
   catch(e){status("");toast("โหลดไม่สำเร็จ: "+e.message,1);console.error(e);} }
 async function loadLive(){
   const a=AM(),A=aggT(); status("กำลังคำนวณ…",true);
-  const seller=$("#fSeller").value, seg=$("#fSeg").value, thresh=+$("#fThresh").value;
-  const f=$("#dFrom").value, t=$("#dTo").value;
+  const seller=$("#fSeller").value, t=$("#dTo").value;
   const conds=[`${qq(a.cust)} IS NOT NULL`,`${qq(a.last)} IS NOT NULL`];
-  if(seller)conds.push(`${qq(a.seller)}='${esc(seller)}'`);
-  if(seg)conds.push(`CAST(${qq(a.seg)} AS STRING)='${esc(seg)}'`);
-  if(f)conds.push(`DATE(${qq(a.last)})>='${f}'`);
-  if(t)conds.push(`DATE(${qq(a.last)})<='${t}'`);
+  if(seller)conds.push(`CAST(${qq(a.seller)} AS STRING)='${esc(seller)}'`);
   const W="WHERE "+conds.join(" AND ");
-  // reference date for recency = selected "ถึง/ณ วันที่" or the latest date that has data
   const asOfExpr=t?`DATE('${t}')`:`(SELECT MAX(DATE(${qq(a.last)})) FROM ${A} WHERE ${qq(a.last)} IS NOT NULL)`;
   const REC=`DATE_DIFF(${asOfExpr},DATE(${qq(a.last)}),DAY)`;
   try{
     const Q=[
-      // per-customer dedup → status + recency buckets + totals
-      bq(`WITH base AS (SELECT CAST(${qq(a.cust)} AS STRING) code, MAX(${REC}) rec, MAX(${qq(a.mon)}) v FROM ${A} ${W} GROUP BY code)
-          SELECT CASE WHEN rec<=90 THEN 0 WHEN rec<=180 THEN 1 WHEN rec<=365 THEN 2 ELSE 3 END st,
-                 CASE WHEN rec<=30 THEN 0 WHEN rec<=60 THEN 1 WHEN rec<=90 THEN 2 WHEN rec<=180 THEN 3 WHEN rec<=365 THEN 4 ELSE 5 END rb,
-                 COUNT(*) n, SUM(v) v FROM base GROUP BY st, rb`),
-      // selectable filter options
+      bq(`SELECT CAST(${qq(a.cust)} AS STRING) code, ANY_VALUE(${qq(a.name)}) name, ANY_VALUE(CAST(${qq(a.seller)} AS STRING)) seller, MAX(CAST(${qq(a.seg)} AS STRING)) seg, MAX(${qq(a.mon)}) mon${a.freq?`, MAX(${qq(a.freq)}) freq`:", CAST(NULL AS INT64) freq"}, MAX(${REC}) rec, MAX(DATE(${qq(a.last)})) last FROM ${A} ${W} GROUP BY code ORDER BY mon DESC LIMIT 3000`),
       bq(`SELECT DISTINCT CAST(${qq(a.seller)} AS STRING) v FROM ${A} WHERE ${qq(a.seller)} IS NOT NULL LIMIT 500`),
-      bq(`SELECT DISTINCT CAST(${qq(a.seg)} AS STRING) v FROM ${A} WHERE ${qq(a.seg)} IS NOT NULL LIMIT 100`),
-      // win-back targets
-      bq(`SELECT CAST(${qq(a.cust)} AS STRING) code, ANY_VALUE(${qq(a.name)}) name, ANY_VALUE(CAST(${qq(a.seller)} AS STRING)) seller, MAX(CAST(${qq(a.seg)} AS STRING)) seg, MAX(${qq(a.mon)}) v, MAX(${REC}) rec, MAX(DATE(${qq(a.last)})) last FROM ${A} ${W} GROUP BY code HAVING rec>${thresh} ORDER BY v DESC LIMIT 500`),
-      // available date range of the data (latest month with data)
-      bq(`SELECT MIN(DATE(${qq(a.last)})) lo, MAX(DATE(${qq(a.last)})) hi FROM ${A} WHERE ${qq(a.last)} IS NOT NULL`),
+      bq(`SELECT MAX(DATE(${qq(a.last)})) hi FROM ${A} WHERE ${qq(a.last)} IS NOT NULL`),
     ];
-    const[g,sl,sg,wb,rng]=await Promise.all(Q);
-    if(!S._optsInit){ fillOpts("#fSeller",sl.rows.map(r=>r.v)); fillOpts("#fSeg",sg.rows.map(r=>r.v)); S._optsInit=true; }
-    const lo=rng.rows[0]?.lo?String(rng.rows[0].lo).slice(0,10):"", hi=rng.rows[0]?.hi?String(rng.rows[0].hi).slice(0,10):"";
-    S.dateLo=lo; S.dateHi=hi;
-    if(!$("#dFrom").value&&lo)$("#dFrom").value=lo;   // default range = full data, reference = latest data date
-    if(!$("#dTo").value&&hi)$("#dTo").value=hi;
-    const statusCnt=STATUS.map(s=>({k:s.k,c:s.c,n:0,v:0}));
-    const recCnt=RBUCKETS.map(b=>({k:b.k,n:0}));
-    let total=0,valAtRisk=0,riskN=0;
-    g.rows.forEach(r=>{const st=Number(r.st),rb=Number(r.rb),n=Number(r.n)||0,v=Number(r.v)||0;
-      statusCnt[st].n+=n; statusCnt[st].v+=v; recCnt[rb].n+=n; total+=n;});
-    // at-risk (>thresh) derived from the FULL status buckets — not the 500-row win-back list
-    const thIdx=thresh<=90?1:thresh<=180?2:3;
-    for(let i=thIdx;i<4;i++){riskN+=statusCnt[i].n;valAtRisk+=statusCnt[i].v;}
-    S.L={total,statusCnt,recCnt,valAtRisk,riskN,thresh,asOf:(t||hi||""),
-      wb:wb.rows.map(r=>({code:r.code,name:r.name||r.code,seller:r.seller||"",seg:r.seg||"",mon:Number(r.v)||0,rec:Number(r.rec)||0,last:r.last?String(r.last).slice(0,10):""}))};
-    status(`${num(total)} ลูกค้า`);
-    render();
+    const[cr,sl,rng]=await Promise.all(Q);
+    if(!S._optsInit){ fillOpts("#fSeller",sl.rows.map(r=>r.v)); S._optsInit=true; restoreSeller(); }
+    const hi=rng.rows[0]?.hi?String(rng.rows[0].hi).slice(0,10):"";
+    S.dateHi=hi; if(!$("#dTo").value&&hi)$("#dTo").value=hi;
+    const cust=cr.rows.map(r=>({code:r.code,name:r.name||r.code,seller:r.seller||"",seg:r.seg||"",mon:Number(r.mon)||0,freq:Number(r.freq)||0,rec:Number(r.rec)||0,last:r.last?String(r.last).slice(0,10):""}));
+    enrichAndStore(cust,(t||hi||""),true);
+    status(`${num(cust.length)} ลูกค้า`);
   }catch(e){status("");toast("คำนวณไม่สำเร็จ: "+e.message,1);console.error(e);}
 }
 
 /* =========================================================================
-   Render
+   compute + render
    ========================================================================= */
+function enrichAndStore(cust,asOfStr,recReady){
+  const asOf=asOfStr?new Date(asOfStr):null;
+  const arr=cust.map(c=>({...c, rec:(recReady?c.rec:(asOf?dayDiff(asOf,new Date(c.last)):0)) }));
+  const statusCnt=STATUS.map(s=>({k:s.k,c:s.c,f:s.f,n:0,v:0}));
+  let totalV=0; arr.forEach(c=>{const st=statusOf(c.rec);statusCnt[st].n++;statusCnt[st].v+=c.mon;totalV+=c.mon;});
+  S.L={asOf:asOfStr,cust:arr,statusCnt,totalV,total:arr.length};
+  render();
+}
 function applyData(){ if(S.mode==="live")loadLive(); else demoCompute(); }
-function render(){ if(!S.L)return; renderKPIs(); renderStatus(); renderRecency(); renderWB(); }
+function render(){ if(!S.L)return; const seller=$("#fSeller").value;
+  $("#hintbar").innerHTML = seller ? `กำลังดูลูกค้าของ <b>${seller}</b>${S.L.asOf?` · เทียบ ณ ${S.L.asOf}`:""} — เปลี่ยนได้ที่ช่องเซลล์`
+    : `แสดง <b>ภาพรวมทีม (ทุกคน)</b> — เลือก “ชื่อคุณ” เพื่อดูเฉพาะลูกค้าของคุณ`;
+  renderKPIs(); renderStatusChart(); renderStatusFilter(); renderTable(); }
 function renderKPIs(){
-  const L=S.L; const sc=L.statusCnt;
-  // status buckets are mutually exclusive → 2-5 sum to "ลูกค้าทั้งหมด" (same as the donut)
+  const L=S.L, sc=L.statusCnt;
+  const followN=sc[1].n+sc[2].n, followV=sc[1].v+sc[2].v;
   const cards=[
-    {l:"ลูกค้าทั้งหมด",v:num(L.total),a:PAL[1]},
+    {l:"ลูกค้าของฉัน",v:num(L.total),a:"#ad1f23"},
+    {l:"มูลค่าลูกค้าที่ดูแล",v:baht(L.totalV),a:"#e8a52b"},
     {l:"Active (≤90 วัน)",v:num(sc[0].n),a:"#188038"},
-    {l:"เฝ้าระวัง (91-180 วัน)",v:num(sc[1].n),a:"#1a73e8"},
-    {l:"เสี่ยงหลุด (181-365 วัน)",v:num(sc[2].n),a:"#e8a52b"},
-    {l:"หลุดแล้ว (>365 วัน)",v:num(sc[3].n),a:"#c5221f"},
-    {l:`มูลค่าเสี่ยงสูญเสีย (>${L.thresh} วัน)`,v:baht(L.valAtRisk),a:"#c5221f"},
+    {l:"🎯 ต้องติดตาม (91-365)",v:num(followN),a:"#e8a52b",d:baht(followV)+" มูลค่าที่ควรรักษา"},
+    {l:"หลุดแล้ว (>365)",v:num(sc[3].n),a:"#c5221f"},
+    {l:"มูลค่าเสี่ยงสูญเสีย",v:baht(sc[2].v+sc[3].v),a:"#c5221f",d:"จากเสี่ยงหลุด + หลุดแล้ว"},
   ];
   $("#kpis").innerHTML=cards.map(c=>`<div class="kpi"><div class="accent" style="background:${c.a}"></div>
-    <div class="label">${c.l}</div><div class="value">${c.v}</div><div class="delta">&nbsp;</div></div>`).join("");
+    <div class="label">${c.l}</div><div class="value">${c.v}</div><div class="delta">${c.d||"&nbsp;"}</div></div>`).join("");
 }
-function renderStatus(){ const d=S.L.statusCnt;
-  $("#statusSub").textContent=`รวม ${num(S.L.total)} ลูกค้า`+(S.L.asOf?` · เทียบ ณ ${S.L.asOf}`:"");
+function renderStatusChart(){ const d=S.L.statusCnt;
+  $("#statusSub").textContent=`รวม ${num(S.L.total)} ราย`;
   if(S.charts.status)S.charts.status.destroy();
   S.charts.status=new Chart($("#chartStatus"),{type:"doughnut",
     data:{labels:d.map(x=>x.k),datasets:[{data:d.map(x=>x.n),backgroundColor:d.map(x=>x.c),borderWidth:2,borderColor:"#fff"}]},
-    options:{responsive:true,maintainAspectRatio:false,cutout:"56%",
+    options:{responsive:true,maintainAspectRatio:false,cutout:"58%",
       plugins:{legend:{position:"bottom",labels:{boxWidth:10,padding:6,font:{size:10}}},
-        tooltip:{callbacks:{label:c=>{const t=c.dataset.data.reduce((s,x)=>s+x,0);return ` ${c.label}: ${num(c.raw)} ราย (${t?(c.raw/t*100).toFixed(1):0}%)`;}}}}}});
+        tooltip:{callbacks:{label:c=>{const t=c.dataset.data.reduce((s,x)=>s+x,0);return ` ${c.label}: ${num(c.raw)} ราย (${t?(c.raw/t*100).toFixed(0):0}%)`;}}}}}});
 }
-function renderRecency(){ const d=S.L.recCnt;
-  if(S.charts.rec)S.charts.rec.destroy();
-  const colors=["#188038","#34a853","#1a73e8","#e8a52b","#e8710a","#c5221f"];
-  S.charts.rec=new Chart($("#chartRecency"),{type:"bar",
-    data:{labels:d.map(x=>x.k+" วัน"),datasets:[{data:d.map(x=>x.n),backgroundColor:colors,borderRadius:4}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>" "+num(c.raw)+" ราย"}}},
-      scales:{x:{grid:{display:false},ticks:{font:{size:10}}},y:{grid:{color:"#f1f3f4"},beginAtZero:true,ticks:{precision:0}}}}});
+function renderStatusFilter(){ const sc=S.L.statusCnt;
+  const followN=sc[1].n+sc[2].n, followV=sc[1].v+sc[2].v;
+  const rows=[
+    {f:"follow",dot:"#e8a52b",nm:"🎯 ต้องติดตามด่วน (91-365 วัน)",n:followN,v:followV},
+    {f:"active",dot:sc[0].c,nm:sc[0].k+" — รักษา/ขายเพิ่ม",n:sc[0].n,v:sc[0].v},
+    {f:"risk",dot:sc[2].c,nm:sc[2].k+" — โทรด่วน",n:sc[2].n,v:sc[2].v},
+    {f:"lost",dot:sc[3].c,nm:sc[3].k+" — Win-back",n:sc[3].n,v:sc[3].v},
+    {f:"all",dot:"#5f6368",nm:"ลูกค้าทั้งหมด",n:S.L.total,v:S.L.totalV},
+  ];
+  $("#statusFilter").innerHTML=rows.map(r=>`<div class="row ${S.focus===r.f?'on':''}" data-f="${r.f}">
+    <span class="dot" style="background:${r.dot}"></span><span class="nm">${r.nm}</span>
+    <span class="ct">${num(r.n)}</span><span class="vl">${baht(r.v)}</span></div>`).join("");
+  $("#statusFilter").querySelectorAll(".row").forEach(el=>el.onclick=()=>{S.focus=el.dataset.f;S.page=0;renderStatusFilter();renderTable();});
 }
-let WB_PP=12;
-function renderWB(){
-  const q=($("#wbSearch")?.value||"").trim().toLowerCase();
-  let r=S.L.wb.slice(); if(q)r=r.filter(c=>(c.name||"").toLowerCase().includes(q)||(c.code||"").toLowerCase().includes(q)||(c.seller||"").toLowerCase().includes(q));
-  const sc=S.wbSort.c,sd=S.wbSort.d;
-  r.sort((a,b)=>{if(sc==="name"||sc==="seller"||sc==="seg")return((a[sc]||"")<(b[sc]||"")?-1:1)*sd;return((a[sc]||0)-(b[sc]||0))*sd;});
-  $("#wbSub").textContent = q
-    ? `พบ ${num(r.length)} ราย จากการค้นหา`
-    : `${num(S.L.riskN)} ราย (ไม่ซื้อเกิน ${S.L.thresh} วัน) · มูลค่ารวม ${baht(S.L.valAtRisk)}`+((S.L.wb||[]).length>=500?` · ตารางแสดง Top 500 ตามมูลค่า`:"");
-  const pages=Math.max(1,Math.ceil(r.length/WB_PP)); S.wbPage=Math.min(S.wbPage,pages-1);
-  const sl=r.slice(S.wbPage*WB_PP,S.wbPage*WB_PP+WB_PP);
-  const cols=[{c:"rank",t:"#"},{c:"code",t:"รหัส"},{c:"name",t:"ชื่อลูกค้า"},{c:"seller",t:"เซลล์"},{c:"seg",t:"กลุ่ม"},{c:"rec",t:"หายไป (วัน)",num:1},{c:"mon",t:"มูลค่าลูกค้า",num:1},{c:"last",t:"ซื้อล่าสุด"}];
-  $("#wbTable thead").innerHTML="<tr>"+cols.map(c=>{const ar=S.wbSort.c===c.c?(sd>0?" ▲":" ▼"):"";return `<th class="${c.num?'num':''}" data-c="${c.c}">${c.t}${ar}</th>`;}).join("")+"</tr>";
-  const RISKY=/At Risk|Lost|Non.?Focus|เสี่ยง|หลุด/i;
-  $("#wbTable tbody").innerHTML=sl.map((c,i)=>{const rk=S.wbPage*WB_PP+i+1;
+let PP=15;
+function currentRows(){
+  const q=($("#search").value||"").trim().toLowerCase();
+  let r=S.L.cust.filter(c=>FOCUS[S.focus].test(c.rec));
+  if(q)r=r.filter(c=>(c.name||"").toLowerCase().includes(q)||(c.code||"").toLowerCase().includes(q)||(c.seg||"").toLowerCase().includes(q)||(c.seller||"").toLowerCase().includes(q));
+  const sc=S.sort.c,sd=S.sort.d;
+  r.sort((a,b)=>{if(sc==="name"||sc==="seg"||sc==="code")return((a[sc]||"")<(b[sc]||"")?-1:1)*sd;return((a[sc]||0)-(b[sc]||0))*sd;});
+  return r;
+}
+function renderTable(){
+  const r=currentRows();
+  $("#tblSub").textContent=`${FOCUS[S.focus].label} · ${num(r.length)} ราย · มูลค่ารวม ${baht(r.reduce((s,x)=>s+x.mon,0))}`;
+  const pages=Math.max(1,Math.ceil(r.length/PP)); S.page=Math.min(S.page,pages-1);
+  const sl=r.slice(S.page*PP,S.page*PP+PP);
+  const cols=[{c:"rank",t:"#"},{c:"code",t:"รหัส"},{c:"name",t:"ชื่อลูกค้า"},{c:"seg",t:"กลุ่ม"},{c:"status",t:"สถานะ"},{c:"mon",t:"มูลค่า",num:1},{c:"freq",t:"ความถี่",num:1},{c:"last",t:"ซื้อล่าสุด"},{c:"rec",t:"หายไป (วัน)",num:1},{c:"act",t:"💡 สิ่งที่ควรทำ"}];
+  $("#custTable thead").innerHTML="<tr>"+cols.map(c=>{const ar=S.sort.c===c.c?(S.sort.d>0?" ▲":" ▼"):"";const sortable=!["rank","status","act"].includes(c.c);return `<th class="${c.num?'num':''}" ${sortable?`data-c="${c.c}"`:""}>${c.t}${ar}</th>`;}).join("")+"</tr>";
+  $("#custTable tbody").innerHTML=sl.map((c,i)=>{const rk=S.page*PP+i+1;const st=STATUS[statusOf(c.rec)];
     return `<tr>
     <td><span class="rank ${rk<=3?'r'+rk:''}">${rk}</span></td>
-    <td>${c.code}</td><td title="${c.name}">${c.name}</td><td>${c.seller||"-"}</td>
-    <td><span class="pill" style="background:${RISKY.test(c.seg)?'#fce8e6':'#e8f0fe'};color:${RISKY.test(c.seg)?'#c5221f':'#1a73e8'}">${c.seg||"-"}</span></td>
-    <td class="num" style="color:${c.rec>365?'#c5221f':c.rec>180?'#e8710a':'#5f6368'};font-weight:600">${num(c.rec)}</td>
-    <td class="num">${baht(c.mon)}</td><td>${c.last||"–"}</td></tr>`;}).join("")||`<tr><td colspan="8" class="drill-hint">ไม่มีลูกค้าในเกณฑ์นี้ 🎉</td></tr>`;
-  $("#wbTable thead").querySelectorAll("th").forEach(th=>th.onclick=()=>{const c=th.dataset.c;if(c==="rank")return;if(S.wbSort.c===c)S.wbSort.d*=-1;else{S.wbSort.c=c;S.wbSort.d=(c==="name"||c==="seller"||c==="seg")?1:-1;}renderWB();});
-  $("#wbPager").innerHTML=`<span>${r.length?(S.wbPage*WB_PP+1):0} - ${Math.min((S.wbPage+1)*WB_PP,r.length)} / ${r.length}</span>
-    <button ${S.wbPage<=0?"disabled":""} id="wbPrev">‹</button><button ${S.wbPage>=pages-1?"disabled":""} id="wbNext">›</button>`;
-  $("#wbPrev")&&($("#wbPrev").onclick=()=>{S.wbPage--;renderWB();}); $("#wbNext")&&($("#wbNext").onclick=()=>{S.wbPage++;renderWB();});
+    <td>${c.code}</td><td title="${c.name}">${c.name}</td>
+    <td><span class="segpill">${c.seg||"-"}</span></td>
+    <td><span class="pill" style="background:${st.c}">${st.k.split(" ")[0]}</span></td>
+    <td class="num">${baht(c.mon)}</td>
+    <td class="num">${c.freq?num(c.freq):"–"}</td>
+    <td>${c.last||"–"}</td>
+    <td class="num" style="color:${c.rec>365?'#c5221f':c.rec>180?'#e8710a':c.rec>90?'#b06000':'#188038'};font-weight:600">${num(c.rec)}</td>
+    <td class="act">${nextAction(c.rec,c.seg)}</td></tr>`;}).join("")||`<tr><td colspan="10" class="drill-hint">ไม่มีลูกค้าในกลุ่มนี้ 🎉</td></tr>`;
+  $("#custTable thead").querySelectorAll("th[data-c]").forEach(th=>th.onclick=()=>{const c=th.dataset.c;if(S.sort.c===c)S.sort.d*=-1;else{S.sort.c=c;S.sort.d=(c==="name"||c==="seg"||c==="code")?1:-1;}renderTable();});
+  $("#pager").innerHTML=`<span>${r.length?(S.page*PP+1):0} - ${Math.min((S.page+1)*PP,r.length)} / ${r.length}</span>
+    <button ${S.page<=0?"disabled":""} id="pPrev">‹</button><button ${S.page>=pages-1?"disabled":""} id="pNext">›</button>`;
+  $("#pPrev")&&($("#pPrev").onclick=()=>{S.page--;renderTable();}); $("#pNext")&&($("#pNext").onclick=()=>{S.page++;renderTable();});
 }
+function exportCSV(){
+  if(!S.L){toast("ยังไม่มีข้อมูล",1);return;}
+  const r=currentRows(); if(!r.length){toast("ไม่มีข้อมูลให้ส่งออก",1);return;}
+  const head=["รหัส","ชื่อลูกค้า","เซลล์","กลุ่ม","สถานะ","มูลค่า","ความถี่","ซื้อล่าสุด","หายไป(วัน)","สิ่งที่ควรทำ"];
+  const esc=s=>{s=String(s==null?"":s);return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;};
+  const lines=[head.join(",")].concat(r.map(c=>[c.code,c.name,c.seller,c.seg,STATUS[statusOf(c.rec)].k,Math.round(c.mon),c.freq||"",c.last,c.rec,nextAction(c.rec,c.seg)].map(esc).join(",")));
+  const blob=new Blob(["﻿"+lines.join("\r\n")],{type:"text/csv;charset=utf-8;"});
+  const seller=($("#fSeller").value||"ทีม").replace(/[^\wก-๙]+/g,"_");
+  const url=URL.createObjectURL(blob); const a=document.createElement("a");
+  a.href=url; a.download=`ลูกค้า_${seller}_${FOCUS[S.focus].label.replace(/[^\wก-๙]+/g,"_")}.csv`; a.click(); URL.revokeObjectURL(url);
+  toast(`ส่งออก ${r.length} รายการแล้ว`);
+}
+
+/* ---------- seller persistence ---------- */
+function restoreSeller(){try{const s=localStorage.getItem(LS_SELLER);if(s){const el=$("#fSeller");if([...el.options].some(o=>o.value===s))el.value=s;}}catch(e){}}
+function rememberSeller(){try{localStorage.setItem(LS_SELLER,$("#fSeller").value||"");}catch(e){}}
 
 /* ---------- events / boot ---------- */
 $("#signinBtn").onclick=signIn;
 $("#connectBtn").onclick=()=>{saveCfg();$("#cfgPanel").open=false;if(S.token){S.mode="live";loadLive();}else signIn();};
 $("#refreshBtn").onclick=()=>{if(S.mode==="live")loadLive();else{buildDemo();demoCompute();}};
-$("#applyBtn").onclick=()=>{S.wbPage=0;applyData();};
-$("#clearBtn").onclick=()=>{$("#fSeller").value="";$("#fSeg").value="";$("#fThresh").value="180";if(S.dateLo)$("#dFrom").value=S.dateLo;if(S.dateHi)$("#dTo").value=S.dateHi;S.wbPage=0;applyData();};
-$("#dFrom").addEventListener("change",()=>{S.wbPage=0;applyData();});
-$("#dTo").addEventListener("change",()=>{S.wbPage=0;applyData();});
-$("#fSeller").addEventListener("change",()=>{S.wbPage=0;applyData();});
-$("#fSeg").addEventListener("change",()=>{S.wbPage=0;applyData();});
-$("#fThresh").addEventListener("change",()=>{S.wbPage=0;applyData();});
-$("#wbSearch").addEventListener("input",()=>{S.wbPage=0;renderWB();});
+$("#fSeller").addEventListener("change",()=>{rememberSeller();S.page=0;applyData();});
+$("#dTo").addEventListener("change",()=>{S.page=0;applyData();});
+$("#search").addEventListener("input",()=>{S.page=0;renderTable();});
+$("#exportBtn").onclick=exportCSV;
 
 loadCfg(); buildDemo(); demoCompute();
 (function(){let tok=null;try{tok=sessionStorage.getItem("bqToken");}catch(e){}if(tok){S.token=tok;S.mode="live";badge();bootLive();}})();
