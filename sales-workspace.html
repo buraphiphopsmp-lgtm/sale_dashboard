@@ -67,6 +67,7 @@
   td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
   td.act{white-space:normal;min-width:190px;color:#3c4043}
   tbody tr:nth-child(even){background:#fafbfc} tbody tr:hover{background:#fff4e0}
+  tbody tr.click{cursor:pointer} tbody tr.sel{background:#fbeaea!important;box-shadow:inset 3px 0 0 var(--brand)}
   .rank{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;font-size:11px;font-weight:700;background:#eef1f4;color:#5f6368}
   .rank.r1{background:var(--gold);color:#fff}.rank.r2{background:#9aa0a6;color:#fff}.rank.r3{background:#cd7f32;color:#fff}
   .pill{font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;white-space:nowrap;color:#fff}
@@ -110,6 +111,7 @@
       <div class="field"><label>Project ID</label><input id="cfgProject" value="futuretech-468203" /></div>
       <div class="field"><label>Dataset</label><input id="cfgDataset" value="sales_data" /></div>
       <div class="field"><label>Table (สรุปลูกค้า)</label><input id="cfgAgg" value="customer_dashboard_final_table" /></div>
+      <div class="field"><label>Table (ธุรกรรม/สินค้า)</label><input id="cfgTxn" value="sale_transaction" /></div>
       <div class="field full"><label>OAuth Client ID</label><input id="cfgClientId" value="860556755032-m7itkb5ljeiddlb1iii02kdv9l3f6j7g.apps.googleusercontent.com" /></div>
       <div class="field" style="justify-content:flex-end"><button id="connectBtn" class="primary">บันทึก &amp; โหลด</button></div>
     </div>
@@ -128,18 +130,27 @@
 
   <div class="grid">
     <div class="s4 card">
-      <h3>ลูกค้าของฉันตามสถานะ <span class="sub" id="statusSub"></span></h3>
+      <h3>สถานะลูกค้า <span class="sub" id="statusSub"></span></h3>
       <div class="chart-box"><canvas id="chartStatus"></canvas></div>
     </div>
-    <div class="s8 card">
-      <h3>เลือกกลุ่มเพื่อโฟกัสรายการ <span class="sub">คลิกเพื่อกรองตารางด้านล่าง</span></h3>
+    <div class="s4 card">
+      <h3>ประเภทลูกค้า (RFM Segment) <span class="sub">ของฉัน</span></h3>
+      <div id="segBox" style="max-height:262px;overflow:auto;padding-top:2px"></div>
+    </div>
+    <div class="s4 card">
+      <h3>โฟกัสรายการ <span class="sub">คลิกเพื่อกรอง</span></h3>
       <div class="flt" id="statusFilter"></div>
     </div>
 
     <div class="s12 card">
-      <h3><span>📋 รายการลูกค้า <span class="sub" id="tblSub"></span></span></h3>
+      <h3><span>📋 รายการลูกค้า <span class="sub" id="tblSub"></span></span><span class="sub">👆 คลิกแถวเพื่อดูสินค้า &amp; บทคุยกับลูกค้า</span></h3>
       <div class="tbl-scroll"><table id="custTable"><thead></thead><tbody></tbody></table></div>
       <div class="pager" id="pager"></div>
+    </div>
+
+    <div class="s12 card">
+      <h3 id="detailTitle">👤 รายละเอียดลูกค้า &amp; บทคุย <span class="sub">คลิกลูกค้าในตารางด้านบน</span></h3>
+      <div id="detailBody"><div class="drill-hint">เลือกลูกค้าจากตารางด้านบน เพื่อดู “สินค้าที่เคยซื้อ” และ “สินค้าที่ควรเสนอเพิ่ม” สำหรับใช้คุยกับลูกค้า</div></div>
     </div>
   </div>
 
@@ -173,16 +184,16 @@ function nextAction(rec,seg){const hv=/High Value|Champion|VIP/i.test(seg||"");
   if(rec<=365) return "⚠ โทรด่วน · เสนอโปรโมชันดึงกลับ";
   return "Win-back · ประเมินมูลค่าก่อนทุ่มทรัพยากร";}
 
-const S={mode:"demo",token:null,aggSchema:[],focus:"follow",sort:{c:"mon",d:-1},page:0,L:null,charts:{},demoCust:[],dateHi:""};
+const S={mode:"demo",token:null,aggSchema:[],txnSchema:[],focus:"follow",sort:{c:"mon",d:-1},page:0,L:null,charts:{},demoCust:[],topProds:[],sel:"",dateHi:""};
 
 let tt; function toast(m,e){const t=$("#toast");t.textContent=m;t.className="toast show"+(e?" err":"");clearTimeout(tt);tt=setTimeout(()=>t.className="toast",4500);}
 function status(m,b){$("#status").innerHTML=(b?'<span class="spinner"></span> ':'')+(m||"");}
 function badge(){const b=$("#modeBadge");if(S.mode==="live"){b.className="badge live";b.textContent="LIVE · BigQuery";}else{b.className="badge demo";b.textContent="DEMO MODE";}}
 
 /* ---------- config / auth / bq ---------- */
-function readCfg(){return{project:$("#cfgProject").value.trim(),dataset:$("#cfgDataset").value.trim(),aggTable:$("#cfgAgg").value.trim(),clientId:$("#cfgClientId").value.trim(),billing:$("#cfgProject").value.trim()};}
+function readCfg(){return{project:$("#cfgProject").value.trim(),dataset:$("#cfgDataset").value.trim(),aggTable:$("#cfgAgg").value.trim(),txnTable:$("#cfgTxn").value.trim(),clientId:$("#cfgClientId").value.trim(),billing:$("#cfgProject").value.trim()};}
 function saveCfg(){localStorage.setItem(LS,JSON.stringify(readCfg()));}
-function loadCfg(){try{const c=JSON.parse(localStorage.getItem(LS)||"{}");if(c.project)$("#cfgProject").value=c.project;if(c.dataset)$("#cfgDataset").value=c.dataset;if(c.aggTable)$("#cfgAgg").value=c.aggTable;if(c.clientId)$("#cfgClientId").value=c.clientId;}catch(e){}}
+function loadCfg(){try{const c=JSON.parse(localStorage.getItem(LS)||"{}");if(c.project)$("#cfgProject").value=c.project;if(c.dataset)$("#cfgDataset").value=c.dataset;if(c.aggTable)$("#cfgAgg").value=c.aggTable;if(c.txnTable)$("#cfgTxn").value=c.txnTable;if(c.clientId)$("#cfgClientId").value=c.clientId;}catch(e){}}
 let tc=null;
 function initAuth(id){if(!window.google||!google.accounts){toast("Google SDK ยังไม่พร้อม",1);return false;}
   tc=google.accounts.oauth2.initTokenClient({client_id:id,scope:"https://www.googleapis.com/auth/bigquery.readonly https://www.googleapis.com/auth/cloud-platform.read-only",
@@ -208,6 +219,15 @@ function AM(){const s=S.aggSchema;return{
   freq:hasCol(s,"frequency")||hasCol(s,"total_orders"),
   last:hasCol(s,"last_purchase")||hasCol(s,"Last_Purchase")||"last_purchase"};}
 function aggT(){const c=readCfg();return `\`${c.project}.${c.dataset}.${c.aggTable}\``;}
+function TM(){const s=S.txnSchema;return{
+  cust:hasCol(s,"customer_id")||"customer_id",
+  prodName:hasCol(s,"product_name")||"product_name",
+  sku:hasCol(s,"product_sku")||"product_sku",
+  cat:hasCol(s,"final_category")||hasCol(s,"category")||"final_category",
+  qty:hasCol(s,"qty")||"qty",
+  amount:hasCol(s,"product_price_amount")||"product_price_amount",
+  date:hasCol(s,"date")||"date"};}
+function txnT(){const c=readCfg();return `\`${c.project}.${c.dataset}.${c.txnTable}\``;}
 function fillOpts(sel,vals){const el=$(sel);if(!el)return;const cur=el.value;el.querySelectorAll("option:not([value=''])").forEach(o=>o.remove());[...new Set(vals.filter(Boolean))].forEach(v=>{const o=document.createElement("option");o.value=v;o.textContent=v;if(v===cur)o.selected=true;el.appendChild(o);});}
 const dayDiff=(a,b)=>Math.round((a-b)/86400000);
 
@@ -232,6 +252,14 @@ function buildDemo(){
     cust.push({code:("กพชวอตศมบ"[i%9]||"ก")+String(100+i).slice(-3),name:names[i%names.length]+(i>13?" "+i:""),
       seller:sellers[i%sellers.length],seg,mon,freq:1+((Math.random()*45)|0),last:last.toISOString().slice(0,10)});
   }
+  // product catalog + per-customer purchases (for product analysis & cross-sell talking points)
+  const CATS=["เฟรมอลูมิเนียม","บานพับถ้วย","รางลิ้นชัก","มือจับเฟอร์นิเจอร์","ปุ่มจับลิ้นชัก","อุปกรณ์จัดเก็บตู้เสื้อผ้า","อุปกรณ์จัดเก็บชุดครัว"];
+  const byCat={}; CATS.forEach((cn,ci)=>{byCat[cn]=[];const n=4+((Math.random()*4)|0);for(let i=0;i<n;i++){byCat[cn].push({sku:"APH"+(100000+ci*100+i),name:cn+" รุ่น "+String.fromCharCode(65+i)+"-"+(100+((Math.random()*800)|0)),cat:cn,unit:200+Math.random()*2400});}});
+  cust.forEach(c=>{ const nc=2+((Math.random()*3)|0); const mycats=[...CATS].sort(()=>Math.random()-.5).slice(0,nc); const items=[];
+    mycats.forEach(cat=>{ const pool=byCat[cat]; const np=1+((Math.random()*Math.min(3,pool.length))|0); [...pool].sort(()=>Math.random()-.5).slice(0,np).forEach(p=>{const qty=5+((Math.random()*60)|0);items.push({sku:p.sku,name:p.name,cat,qty,v:Math.round(qty*p.unit),last:c.last});});});
+    c.items=items; });
+  const tp=new Map(); cust.forEach(c=>c.items.forEach(it=>{if(!tp.has(it.sku))tp.set(it.sku,{sku:it.sku,name:it.name,cat:it.cat,v:0,custs:new Set()});const o=tp.get(it.sku);o.v+=it.v;o.custs.add(c.code);}));
+  S.topProds=[...tp.values()].map(p=>({sku:p.sku,name:p.name,cat:p.cat,v:p.v,custs:p.custs.size})).sort((a,b)=>b.v-a.v);
   S.demoCust=cust; S.mode="demo"; badge();
   fillOpts("#fSeller",sellers);
   const dts=cust.map(c=>c.last).sort(); S.dateLo=dts[0]; S.dateHi=dts[dts.length-1];
@@ -250,7 +278,9 @@ function demoCompute(){
    LIVE
    ========================================================================= */
 async function bootLive(){ try{ status("กำลังอ่าน schema…",true); const c=readCfg();
-    S.aggSchema=await fetchSchema(c.aggTable); if(!S.aggSchema.length)throw new Error("ไม่พบคอลัมน์ในตารางสรุปลูกค้า"); await loadLive(); }
+    S.aggSchema=await fetchSchema(c.aggTable); if(!S.aggSchema.length)throw new Error("ไม่พบคอลัมน์ในตารางสรุปลูกค้า");
+    try{ S.txnSchema=await fetchSchema(c.txnTable); }catch(e){ S.txnSchema=[]; }
+    await loadLive(); }
   catch(e){status("");toast("โหลดไม่สำเร็จ: "+e.message,1);console.error(e);} }
 async function loadLive(){
   const a=AM(),A=aggT(); status("กำลังคำนวณ…",true);
@@ -261,13 +291,16 @@ async function loadLive(){
   const asOfExpr=t?`DATE('${t}')`:`(SELECT MAX(DATE(${qq(a.last)})) FROM ${A} WHERE ${qq(a.last)} IS NOT NULL)`;
   const REC=`DATE_DIFF(${asOfExpr},DATE(${qq(a.last)}),DAY)`;
   try{
+    const m=TM();
     const Q=[
       bq(`SELECT CAST(${qq(a.cust)} AS STRING) code, ANY_VALUE(${qq(a.name)}) name, ANY_VALUE(CAST(${qq(a.seller)} AS STRING)) seller, MAX(CAST(${qq(a.seg)} AS STRING)) seg, MAX(${qq(a.mon)}) mon${a.freq?`, MAX(${qq(a.freq)}) freq`:", CAST(NULL AS INT64) freq"}, MAX(${REC}) rec, MAX(DATE(${qq(a.last)})) last FROM ${A} ${W} GROUP BY code ORDER BY mon DESC LIMIT 3000`),
       bq(`SELECT DISTINCT CAST(${qq(a.seller)} AS STRING) v FROM ${A} WHERE ${qq(a.seller)} IS NOT NULL LIMIT 500`),
       bq(`SELECT MAX(DATE(${qq(a.last)})) hi FROM ${A} WHERE ${qq(a.last)} IS NOT NULL`),
+      S.txnSchema.length?bq(`SELECT CAST(${qq(m.sku)} AS STRING) sku, ANY_VALUE(${qq(m.prodName)}) name, ANY_VALUE(CAST(${qq(m.cat)} AS STRING)) cat, SUM(${qq(m.amount)}) v, COUNT(DISTINCT ${qq(m.cust)}) custs FROM ${txnT()} GROUP BY sku ORDER BY v DESC LIMIT 60`):Promise.resolve({rows:[]}),
     ];
-    const[cr,sl,rng]=await Promise.all(Q);
+    const[cr,sl,rng,tp]=await Promise.all(Q);
     if(!S._optsInit){ fillOpts("#fSeller",sl.rows.map(r=>r.v)); S._optsInit=true; restoreSeller(); }
+    S.topProds=(tp.rows||[]).map(r=>({sku:r.sku,name:r.name||r.sku,cat:r.cat||"",v:Number(r.v)||0,custs:Number(r.custs)||0}));
     const hi=rng.rows[0]?.hi?String(rng.rows[0].hi).slice(0,10):"";
     S.dateHi=hi; if(!$("#dTo").value&&hi)$("#dTo").value=hi;
     const cust=cr.rows.map(r=>({code:r.code,name:r.name||r.code,seller:r.seller||"",seg:r.seg||"",mon:Number(r.mon)||0,freq:Number(r.freq)||0,rec:Number(r.rec)||0,last:r.last?String(r.last).slice(0,10):""}));
@@ -291,7 +324,9 @@ function applyData(){ if(S.mode==="live")loadLive(); else demoCompute(); }
 function render(){ if(!S.L)return; const seller=$("#fSeller").value;
   $("#hintbar").innerHTML = seller ? `กำลังดูลูกค้าของ <b>${seller}</b>${S.L.asOf?` · เทียบ ณ ${S.L.asOf}`:""} — เปลี่ยนได้ที่ช่องเซลล์`
     : `แสดง <b>ภาพรวมทีม (ทุกคน)</b> — เลือก “ชื่อคุณ” เพื่อดูเฉพาะลูกค้าของคุณ`;
-  renderKPIs(); renderStatusChart(); renderStatusFilter(); renderTable(); }
+  renderKPIs(); renderStatusChart(); renderSegment(); renderStatusFilter(); renderTable();
+  if(S.sel){ const c=S.L.cust.find(x=>x.code===S.sel); if(!c){S.sel="";renderDetailEmpty();} else if(S.mode==="demo")renderDetail(c,c.items||[]); }
+  else renderDetailEmpty(); }
 function renderKPIs(){
   const L=S.L, sc=L.statusCnt;
   const followN=sc[1].n+sc[2].n, followV=sc[1].v+sc[2].v;
@@ -346,7 +381,7 @@ function renderTable(){
   const cols=[{c:"rank",t:"#"},{c:"code",t:"รหัส"},{c:"name",t:"ชื่อลูกค้า"},{c:"seg",t:"กลุ่ม"},{c:"status",t:"สถานะ"},{c:"mon",t:"มูลค่า",num:1},{c:"freq",t:"ความถี่",num:1},{c:"last",t:"ซื้อล่าสุด"},{c:"rec",t:"หายไป (วัน)",num:1},{c:"act",t:"💡 สิ่งที่ควรทำ"}];
   $("#custTable thead").innerHTML="<tr>"+cols.map(c=>{const ar=S.sort.c===c.c?(S.sort.d>0?" ▲":" ▼"):"";const sortable=!["rank","status","act"].includes(c.c);return `<th class="${c.num?'num':''}" ${sortable?`data-c="${c.c}"`:""}>${c.t}${ar}</th>`;}).join("")+"</tr>";
   $("#custTable tbody").innerHTML=sl.map((c,i)=>{const rk=S.page*PP+i+1;const st=STATUS[statusOf(c.rec)];
-    return `<tr>
+    return `<tr class="click ${S.sel===c.code?'sel':''}" data-code="${c.code}">
     <td><span class="rank ${rk<=3?'r'+rk:''}">${rk}</span></td>
     <td>${c.code}</td><td title="${c.name}">${c.name}</td>
     <td><span class="segpill">${c.seg||"-"}</span></td>
@@ -356,6 +391,7 @@ function renderTable(){
     <td>${c.last||"–"}</td>
     <td class="num" style="color:${c.rec>365?'#c5221f':c.rec>180?'#e8710a':c.rec>90?'#b06000':'#188038'};font-weight:600">${num(c.rec)}</td>
     <td class="act">${nextAction(c.rec,c.seg)}</td></tr>`;}).join("")||`<tr><td colspan="10" class="drill-hint">ไม่มีลูกค้าในกลุ่มนี้ 🎉</td></tr>`;
+  $("#custTable tbody").querySelectorAll("tr[data-code]").forEach(tr=>tr.onclick=()=>selectCust(tr.dataset.code));
   $("#custTable thead").querySelectorAll("th[data-c]").forEach(th=>th.onclick=()=>{const c=th.dataset.c;if(S.sort.c===c)S.sort.d*=-1;else{S.sort.c=c;S.sort.d=(c==="name"||c==="seg"||c==="code")?1:-1;}renderTable();});
   $("#pager").innerHTML=`<span>${r.length?(S.page*PP+1):0} - ${Math.min((S.page+1)*PP,r.length)} / ${r.length}</span>
     <button ${S.page<=0?"disabled":""} id="pPrev">‹</button><button ${S.page>=pages-1?"disabled":""} id="pNext">›</button>`;
@@ -374,6 +410,59 @@ function exportCSV(){
   toast(`ส่งออก ${r.length} รายการแล้ว`);
 }
 
+/* ---------- product analysis: customer drill-down + cross-sell ---------- */
+function selectCust(code){ S.sel=(S.sel===code)?"":code; renderTable();
+  if(!S.sel){renderDetailEmpty();return;}
+  const c=S.L.cust.find(x=>x.code===code);
+  if(S.mode==="live") loadBuysLive(c); else renderDetail(c, c?c.items:[]);
+}
+async function loadBuysLive(c){
+  if(!c)return;
+  if(!S.txnSchema.length){renderDetail(c,[]);toast("ไม่พบตารางธุรกรรม (สินค้า) — แสดงเฉพาะข้อมูลลูกค้า",1);return;}
+  const m=TM(); status("กำลังโหลดสินค้า…",true);
+  try{const{rows}=await bq(`SELECT CAST(${qq(m.sku)} AS STRING) sku, ANY_VALUE(${qq(m.prodName)}) name, ANY_VALUE(CAST(${qq(m.cat)} AS STRING)) cat, SUM(${qq(m.qty)}) qty, SUM(${qq(m.amount)}) v FROM ${txnT()} WHERE CAST(${qq(m.cust)} AS STRING)='${esc(c.code)}' GROUP BY sku ORDER BY v DESC LIMIT 100`);
+    status(`${num(S.L.total)} ลูกค้า`);
+    renderDetail(c, rows.map(r=>({sku:r.sku,name:r.name||r.sku,cat:r.cat||"",qty:Number(r.qty)||0,v:Number(r.v)||0})));
+  }catch(e){status("");toast("โหลดสินค้าไม่สำเร็จ: "+e.message,1);console.error(e);renderDetail(c,[]);}
+}
+function renderDetailEmpty(){ $("#detailTitle").innerHTML=`👤 รายละเอียดลูกค้า &amp; บทคุย <span class="sub">คลิกลูกค้าในตารางด้านบน</span>`;
+  $("#detailBody").innerHTML=`<div class="drill-hint">เลือกลูกค้าจากตารางด้านบน เพื่อดู “สินค้าที่เคยซื้อ” และ “สินค้าที่ควรเสนอเพิ่ม” สำหรับใช้คุยกับลูกค้า</div>`; }
+function renderDetail(c, items){
+  if(!c){renderDetailEmpty();return;}
+  items=items||[]; const st=STATUS[statusOf(c.rec)];
+  const catV={}; items.forEach(it=>{catV[it.cat]=(catV[it.cat]||0)+it.v;});
+  const cats=Object.keys(catV).sort((a,b)=>catV[b]-catV[a]);
+  const prods=[...items].sort((a,b)=>b.v-a.v).slice(0,12);
+  const bought=new Set(items.map(it=>it.sku)); const myCats=new Set(items.map(it=>it.cat));
+  const rec=(S.topProds||[]).filter(p=>!bought.has(p.sku)).sort((a,b)=>{const am=myCats.has(a.cat)?0:1,bm=myCats.has(b.cat)?0:1;return am-bm||b.v-a.v;}).slice(0,8);
+  $("#detailTitle").innerHTML=`👤 ${c.name} <span class="sub">(${c.code})${c.seller?" · "+c.seller:""}</span>`;
+  $("#detailBody").innerHTML=`
+   <div style="display:flex;gap:8px 14px;flex-wrap:wrap;align-items:center;margin-bottom:11px;font-size:12px">
+     <span class="pill" style="background:${st.c}">${st.k}</span>
+     <span class="segpill">${c.seg||"-"}</span>
+     <span>มูลค่า <b>${baht(c.mon)}</b></span><span>ความถี่ <b>${c.freq?num(c.freq):"–"}</b></span>
+     <span>ซื้อล่าสุด <b>${c.last||"–"}</b> · หายไป <b>${num(c.rec)}</b> วัน</span></div>
+   <div style="background:#fbeaea;border:1px solid #f1c4c5;border-radius:8px;padding:10px 13px;margin-bottom:13px;font-size:12.5px;line-height:1.6">
+     💬 <b>บทคุยแนะนำ:</b> ลูกค้าซื้อกลุ่ม <b>${cats.slice(0,3).join(" · ")||"-"}</b> เป็นหลัก · <b>${nextAction(c.rec,c.seg)}</b>${rec.length?` · ลองชวนคุยเรื่อง <b>${rec[0].name}</b>`:""}</div>
+   <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+     <div><div style="font-weight:600;margin-bottom:6px">🛒 สินค้าที่เคยซื้อ (${num(items.length)} รายการ)</div>
+       <div class="tbl-scroll" style="max-height:300px"><table><thead><tr><th>กลุ่ม</th><th>สินค้า</th><th class="num">จำนวน</th><th class="num">มูลค่า</th></tr></thead><tbody>${
+         prods.map(p=>`<tr><td><span class="segpill">${p.cat||"-"}</span></td><td title="${p.name}">${p.name}</td><td class="num">${num(p.qty)}</td><td class="num">${baht(p.v)}</td></tr>`).join("")||`<tr><td colspan="4" class="drill-hint">ไม่พบสินค้า</td></tr>`}</tbody></table></div></div>
+     <div><div style="font-weight:600;margin-bottom:6px">💡 แนะนำให้เสนอเพิ่ม (Cross-sell)</div>
+       <div class="tbl-scroll" style="max-height:300px"><table><thead><tr><th>สินค้าแนะนำ</th><th>กลุ่ม</th><th class="num">ลูกค้าที่ซื้อ</th></tr></thead><tbody>${
+         rec.map(p=>`<tr><td title="${p.name}">${p.name}${myCats.has(p.cat)?' <span class="pill" style="background:#188038;font-size:9.5px;padding:1px 6px">ตรงกลุ่ม</span>':''}</td><td><span class="segpill">${p.cat||"-"}</span></td><td class="num">${num(p.custs)}</td></tr>`).join("")||`<tr><td colspan="3" class="drill-hint">${S.topProds.length?"ลูกค้าซื้อครบสินค้าขายดีแล้ว 🎉":"ไม่มีข้อมูลสินค้า"}</td></tr>`}</tbody></table></div></div>
+   </div>`;
+}
+/* ---------- customer-type analysis (RFM segment of my book) ---------- */
+function renderSegment(){ const m=new Map();
+  S.L.cust.forEach(c=>{const k=c.seg||"(ไม่ระบุ)";if(!m.has(k))m.set(k,{k,n:0,v:0});const o=m.get(k);o.n++;o.v+=c.mon;});
+  const arr=[...m.values()].sort((a,b)=>b.v-a.v); const mx=Math.max(1,...arr.map(x=>x.v));
+  const RISKY=/At Risk|Lost|Non.?Focus|เสี่ยง|หลุด/i;
+  $("#segBox").innerHTML=arr.map(s=>`<div style="margin:8px 2px">
+    <div style="display:flex;justify-content:space-between;font-size:11.5px;margin-bottom:3px"><span>${s.k}</span><span><b>${num(s.n)}</b> · ${baht(s.v)}</span></div>
+    <div style="background:#f1f3f4;border-radius:3px;height:9px;overflow:hidden"><i style="display:block;height:100%;width:${(s.v/mx*100).toFixed(0)}%;background:${RISKY.test(s.k)?'#c5221f':'#ad1f23'}"></i></div></div>`).join("")||`<div class="drill-hint">ไม่มีข้อมูล</div>`;
+}
+
 /* ---------- seller persistence ---------- */
 function restoreSeller(){try{const s=localStorage.getItem(LS_SELLER);if(s){const el=$("#fSeller");if([...el.options].some(o=>o.value===s))el.value=s;}}catch(e){}}
 function rememberSeller(){try{localStorage.setItem(LS_SELLER,$("#fSeller").value||"");}catch(e){}}
@@ -382,8 +471,8 @@ function rememberSeller(){try{localStorage.setItem(LS_SELLER,$("#fSeller").value
 $("#signinBtn").onclick=signIn;
 $("#connectBtn").onclick=()=>{saveCfg();$("#cfgPanel").open=false;if(S.token){S.mode="live";loadLive();}else signIn();};
 $("#refreshBtn").onclick=()=>{if(S.mode==="live")loadLive();else{buildDemo();demoCompute();}};
-$("#fSeller").addEventListener("change",()=>{rememberSeller();S.page=0;applyData();});
-$("#dTo").addEventListener("change",()=>{S.page=0;applyData();});
+$("#fSeller").addEventListener("change",()=>{rememberSeller();S.page=0;S.sel="";applyData();});
+$("#dTo").addEventListener("change",()=>{S.page=0;S.sel="";applyData();});
 $("#search").addEventListener("input",()=>{S.page=0;renderTable();});
 $("#exportBtn").onclick=exportCSV;
 
