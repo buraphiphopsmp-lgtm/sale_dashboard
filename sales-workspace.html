@@ -158,6 +158,11 @@
     </div>
 
     <div class="s12 card">
+      <h3>การกระจายตัวตามระยะเวลาที่หายไป (Recency) <span class="sub" id="recSub">จำนวนลูกค้า · ยิ่งหายไปนานยิ่งต้องรีบติดตาม</span></h3>
+      <div class="chart-box" style="height:240px"><canvas id="chartRecency"></canvas></div>
+    </div>
+
+    <div class="s12 card">
       <h3><span>📋 รายการลูกค้า <span class="sub" id="tblSub"></span></span><span class="sub">👆 คลิกแถวเพื่อดูสินค้า &amp; บทคุยกับลูกค้า</span></h3>
       <div class="tbl-scroll"><table id="custTable"><thead></thead><tbody></tbody></table></div>
       <div class="pager" id="pager"></div>
@@ -184,6 +189,7 @@ const LS="salesWS.cfg", LS_SELLER="salesWS.seller";
 Chart.defaults.font.family=getComputedStyle(document.body).fontFamily; Chart.defaults.color="#5f6368"; Chart.defaults.font.size=11;
 // status buckets by days since last purchase
 const STATUS=[{k:"Active (≤90 วัน)",c:"#188038",f:"active"},{k:"เฝ้าระวัง (91-180)",c:"#1a73e8",f:"watch"},{k:"เสี่ยงหลุด (181-365)",c:"#e8a52b",f:"risk"},{k:"หลุดแล้ว (>365)",c:"#c5221f",f:"lost"}];
+const RBUCKETS=[{k:"0-30",lo:0,hi:30},{k:"31-60",lo:31,hi:60},{k:"61-90",lo:61,hi:90},{k:"91-180",lo:91,hi:180},{k:"181-365",lo:181,hi:365},{k:">365",lo:366,hi:1e9}];
 const statusOf=r=>r<=90?0:r<=180?1:r<=365?2:3;
 const FOCUS={
   follow:{label:"🎯 ต้องติดตามด่วน (91-365 วัน)",test:r=>r>90&&r<=365},
@@ -381,7 +387,7 @@ function render(){ if(!S.L)return; const seller=$("#fSeller").value;
   $("#hintbar").innerHTML = (seller ? `กำลังดูลูกค้าของ <b>${seller}</b>${S.L.asOf?` · เทียบ ณ ${S.L.asOf}`:""}` : `แสดง <b>ภาพรวมทีม (ทุกคน)</b> — เลือก “ชื่อคุณ” เพื่อดูเฉพาะของคุณ`)
     + (fl.length?` · กรอง: ${fl.join(" + ")} <a href="#" id="clrFilt" style="color:var(--brand)">✕ ล้าง</a>`:"");
   const cf=$("#clrFilt"); if(cf)cf.onclick=e=>{e.preventDefault();S.fSeg="";S.fType="";S.focus="all";S.page=0;render();};
-  renderKPIs(); renderStatusChart(); renderSegment(); renderType(); renderStatusFilter(); renderTable();
+  renderKPIs(); renderStatusChart(); renderSegment(); renderType(); renderStatusFilter(); renderRecency(); renderTable();
   showDetailPanel(); }
 function renderKPIs(){
   const {sc,total,totalV}=statusCntOf(S._forStatus);
@@ -408,6 +414,16 @@ function renderStatusChart(){ const {sc:d,total}=statusCntOf(S._forStatus);
       onClick:(e,els)=>{if(els&&els[0])setFocus(STATUS[els[0].index].f);},
       plugins:{legend:{position:"bottom",labels:{boxWidth:10,padding:6,font:{size:10}}},
         tooltip:{callbacks:{label:c=>{const t=c.dataset.data.reduce((s,x)=>s+x,0);return ` ${c.label}: ${num(c.raw)} ราย (${t?(c.raw/t*100).toFixed(0):0}%)`;}}}}}});
+}
+function renderRecency(){ const src=S._forStatus||S.L.cust;
+  const cnt=RBUCKETS.map(b=>({k:b.k,n:0}));
+  src.forEach(c=>{for(let i=0;i<RBUCKETS.length;i++){if(c.rec>=RBUCKETS[i].lo&&c.rec<=RBUCKETS[i].hi){cnt[i].n++;break;}}});
+  const colors=["#188038","#34a853","#1a73e8","#e8a52b","#e8710a","#c5221f"];
+  if(S.charts.rec)S.charts.rec.destroy();
+  S.charts.rec=new Chart($("#chartRecency"),{type:"bar",
+    data:{labels:cnt.map(x=>x.k+" วัน"),datasets:[{data:cnt.map(x=>x.n),backgroundColor:colors,borderRadius:4}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>" "+num(c.raw)+" ราย"}}},
+      scales:{x:{grid:{display:false},ticks:{font:{size:10}}},y:{grid:{color:"#f1f3f4"},beginAtZero:true,ticks:{precision:0}}}}});
 }
 function renderStatusFilter(){ const {sc,total,totalV}=statusCntOf(S._forStatus);
   // mutually-exclusive buckets → the four rows sum exactly to "ลูกค้าทั้งหมด"
