@@ -171,7 +171,7 @@
     </div>
 
     <div class="s12 card">
-      <h3>การกระจายตัวตามระยะเวลาที่หายไป (Recency) <span class="sub">จำนวนลูกค้า · ยิ่งหายไปนานยิ่งต้องรีบติดตาม</span></h3>
+      <h3>การกระจายตัว Recency แยกตามประเภทลูกค้า <span class="sub">แต่ละแถบ = สัดส่วนช่วงเวลาที่หายไปของประเภทนั้น (เขียว=เพิ่งซื้อ → แดง=หลุด) · คลิกเพื่อกรอง</span></h3>
       <div id="recBox" style="max-height:236px;overflow:auto;padding-top:2px"></div>
     </div>
 
@@ -460,13 +460,21 @@ function renderStatusChart(){ const {sc:d,total}=statusCntOf(S._forStatus);
         tooltip:{callbacks:{label:c=>{const t=c.dataset.data.reduce((s,x)=>s+x,0);return ` ${c.label}: ${num(c.raw)} ราย (${t?(c.raw/t*100).toFixed(0):0}%)`;}}}}}});
 }
 function renderRecency(){ const src=S._forStatus||S.L.cust;
-  const cnt=RBUCKETS.map(b=>({k:b.k,n:0}));
-  src.forEach(c=>{for(let i=0;i<RBUCKETS.length;i++){if(c.rec>=RBUCKETS[i].lo&&c.rec<=RBUCKETS[i].hi){cnt[i].n++;break;}}});
   const colors=["#188038","#34a853","#1a73e8","#e8a52b","#e8710a","#c5221f"];
-  const mx=Math.max(1,...cnt.map(x=>x.n)), tot=cnt.reduce((s,x)=>s+x.n,0);
-  $("#recBox").innerHTML=cnt.map((s,i)=>`<div class="segrow" style="margin:5px 2px;padding:3px 5px;border-radius:6px">
-    <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:2px"><span>${s.k} วัน</span><span><b>${num(s.n)}</b> ราย · ${tot?(s.n/tot*100).toFixed(0):0}%</span></div>
-    <div style="background:#f1f3f4;border-radius:3px;height:8px;overflow:hidden"><i style="display:block;height:100%;width:${(s.n/mx*100).toFixed(0)}%;background:${colors[i]}"></i></div></div>`).join("")||`<div class="drill-hint">ไม่มีข้อมูล</div>`;
+  // recency composition per customer type — each row is a 100%-width stacked bar
+  const m=new Map();
+  src.forEach(c=>{const k=c.ctype||"(ไม่ระบุ)";if(!m.has(k))m.set(k,{k,n:[0,0,0,0,0,0],tot:0});const o=m.get(k);
+    for(let i=0;i<RBUCKETS.length;i++){if(c.rec>=RBUCKETS[i].lo&&c.rec<=RBUCKETS[i].hi){o.n[i]++;o.tot++;break;}}});
+  const rows=[...m.values()].sort((a,b)=>b.tot-a.tot);
+  const legend=`<div style="display:flex;gap:9px 12px;flex-wrap:wrap;font-size:10.5px;color:var(--muted);margin:0 2px 9px">${RBUCKETS.map((b,i)=>`<span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${colors[i]};vertical-align:middle;margin-right:3px"></span>${b.k} วัน</span>`).join("")}</div>`;
+  const body=rows.map(r=>{const sel=S.fType===r.k, dim=S.fType&&!sel;
+    const seg=r.n.map((n,i)=>n?`<div title="${RBUCKETS[i].k} วัน: ${num(n)} ราย (${(n/r.tot*100).toFixed(0)}%)" style="width:${(n/r.tot*100).toFixed(2)}%;background:${colors[i]}"></div>`:"").join("");
+    const recent=r.n[0]+r.n[1]+r.n[2];
+    return `<div class="segrow rrow" data-rt="${sattr(r.k)}" style="margin:5px 2px;padding:3px 5px;border-radius:6px;cursor:pointer;${sel?'background:#fbeaea;box-shadow:0 0 0 1px var(--brand) inset':''};opacity:${dim?.5:1}">
+      <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px"><span><b>${r.k}</b></span><span><b>${num(r.tot)}</b> ราย · เพิ่งซื้อ(≤90) ${r.tot?(recent/r.tot*100).toFixed(0):0}% · หลุด ${r.tot?(r.n[5]/r.tot*100).toFixed(0):0}%</span></div>
+      <div style="display:flex;height:11px;border-radius:3px;overflow:hidden;background:#f1f3f4">${seg}</div></div>`;}).join("")||`<div class="drill-hint">ไม่มีข้อมูล</div>`;
+  $("#recBox").innerHTML=legend+body;
+  $("#recBox").querySelectorAll(".rrow").forEach(el=>el.onclick=()=>setType(el.dataset.rt));
 }
 /* ---------- focus × customer-type matrix — click type / status / cell to filter ---------- */
 const FKEY=["active","watch","risk","lost"];
