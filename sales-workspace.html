@@ -74,6 +74,19 @@
   table.dtl td.num,table.dtl th.num{white-space:nowrap}
   table.dtl td .segpill{white-space:normal;display:inline-block;line-height:1.35;padding:2px 7px}
   #detailBody .tbl-scroll{overflow-x:hidden}
+  table.mtx{width:100%;border-collapse:collapse;font-size:12px}
+  table.mtx th,table.mtx td{padding:6px 10px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
+  table.mtx th.num,table.mtx td.num{text-align:right;font-variant-numeric:tabular-nums}
+  table.mtx th{background:#f6f8fa;color:#5f6368;font-weight:600;position:sticky;top:0;z-index:1}
+  table.mtx th.mcol,table.mtx td.mtype,table.mtx td.mcell{cursor:pointer;user-select:none}
+  table.mtx th.mcol:hover,table.mtx td.mtype:hover,table.mtx td.mcell:hover{background:#eef1f4}
+  table.mtx tbody tr:hover{background:#fafbfc}
+  table.mtx tr.tsel{background:#fbeaea}
+  table.mtx tr.tsel td.mtype{font-weight:700;box-shadow:inset 3px 0 0 var(--brand)}
+  table.mtx th.mcol.on{background:#fff4e0;box-shadow:inset 0 -3px 0 var(--brand)}
+  table.mtx td.cellon{background:#fbeaea!important;font-weight:700;box-shadow:inset 0 0 0 1px var(--brand)}
+  table.mtx tr.mtot td{border-top:2px solid var(--line);background:#f6f8fa;font-weight:700}
+  .mtx .dot2{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;vertical-align:middle}
   #chartStatus,#chartType{cursor:pointer}
   #segBox .segrow:hover{background:#f6f8fa}
   .catchips{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 10px}
@@ -159,6 +172,11 @@
     <div class="s12 card">
       <h3>การกระจายตัวตามระยะเวลาที่หายไป (Recency) <span class="sub">จำนวนลูกค้า · ยิ่งหายไปนานยิ่งต้องรีบติดตาม</span></h3>
       <div id="recBox" style="max-height:236px;overflow:auto;padding-top:2px"></div>
+    </div>
+
+    <div class="s12 card">
+      <h3>โฟกัส × ประเภทลูกค้า <span class="sub">คลิก ชื่อประเภท = กรองประเภท · หัวคอลัมน์ = กรองสถานะ · ตัวเลขในช่อง = กรองทั้งคู่</span></h3>
+      <div id="matrixBox" class="tbl-scroll" style="max-height:360px"></div>
     </div>
 
     <div class="s12 card">
@@ -402,6 +420,7 @@ function statusCntOf(arr){const sc=STATUS.map(s=>({k:s.k,c:s.c,f:s.f,n:0,v:0}));
 function setFocus(f){ S.focus=(S.focus===f)?"all":f; S.page=0; render(); }
 function setSeg(g){ S.fSeg=(S.fSeg===g)?"":g; S.page=0; render(); }
 function setType(g){ S.fType=(S.fType===g)?"":g; S.page=0; render(); }
+function setTypeFocus(t,f){ if(S.fType===t&&S.focus===f){S.fType="";S.focus="all";} else {S.fType=t;S.focus=f;} S.page=0; render(); }
 function render(){ if(!S.L)return; const seller=$("#fSeller").value;
   // cross-filter: each control shows its dimension over the customers filtered by the OTHER two; KPIs/table apply all
   S._forStatus=S.L.cust.filter(c=>segPred(c)&&typePred(c));   // KPIs · status doughnut · focus list
@@ -411,7 +430,7 @@ function render(){ if(!S.L)return; const seller=$("#fSeller").value;
   $("#hintbar").innerHTML = (seller ? `กำลังดูลูกค้าของ <b>${seller}</b>${S.L.asOf?` · เทียบ ณ ${S.L.asOf}`:""}` : `แสดง <b>ภาพรวมทีม (ทุกคน)</b> — เลือก “ชื่อคุณ” เพื่อดูเฉพาะของคุณ`)
     + (fl.length?` · กรอง: ${fl.join(" + ")} <a href="#" id="clrFilt" style="color:var(--brand)">✕ ล้าง</a>`:"");
   const cf=$("#clrFilt"); if(cf)cf.onclick=e=>{e.preventDefault();S.fSeg="";S.fType="";S.focus="all";S.page=0;render();};
-  renderKPIs(); renderStatusChart(); renderSegment(); renderType(); renderStatusFilter(); renderRecency(); renderTable();
+  renderKPIs(); renderStatusChart(); renderSegment(); renderType(); renderStatusFilter(); renderRecency(); renderMatrix(); renderTable();
   showDetailPanel(); }
 function renderKPIs(){
   const {sc,total,totalV}=statusCntOf(S._forStatus);
@@ -448,6 +467,27 @@ function renderRecency(){ const src=S._forStatus||S.L.cust;
     <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:2px"><span>${s.k} วัน</span><span><b>${num(s.n)}</b> ราย · ${tot?(s.n/tot*100).toFixed(0):0}%</span></div>
     <div style="background:#f1f3f4;border-radius:3px;height:8px;overflow:hidden"><i style="display:block;height:100%;width:${(s.n/mx*100).toFixed(0)}%;background:${colors[i]}"></i></div></div>`).join("")||`<div class="drill-hint">ไม่มีข้อมูล</div>`;
 }
+/* ---------- focus × customer-type matrix — click type / status / cell to filter ---------- */
+const FKEY=["active","watch","risk","lost"];
+function renderMatrix(){
+  const src=S.L.cust.filter(segPred);   // type & status are this table's own dimensions → respect only the seg filter
+  const m=new Map();
+  src.forEach(c=>{const k=c.ctype||"(ไม่ระบุ)";if(!m.has(k))m.set(k,{k,n:[0,0,0,0],v:[0,0,0,0],tot:0,totv:0});
+    const o=m.get(k),st=(c._st!=null?c._st:statusOf(c.rec));o.n[st]++;o.v[st]+=c.mon;o.tot++;o.totv+=c.mon;});
+  const rows=[...m.values()].sort((a,b)=>b.tot-a.tot);
+  const gt={n:[0,0,0,0],tot:0,totv:0}; rows.forEach(r=>{for(let i=0;i<4;i++)gt.n[i]+=r.n[i];gt.tot+=r.tot;gt.totv+=r.totv;});
+  const hdr=`<tr><th>ประเภทลูกค้า</th>${STATUS.map((s,i)=>`<th class="num mcol ${S.focus===FKEY[i]?'on':''}" data-mf="${FKEY[i]}" title="กรองสถานะ ${s.k}"><span class="dot2" style="background:${s.c}"></span>${s.k}</th>`).join("")}<th class="num">รวม</th><th class="num">มูลค่า</th></tr>`;
+  const body=rows.map(r=>{const tsel=S.fType===r.k;
+    return `<tr class="${tsel?'tsel':''}">
+      <td class="mtype" data-mt="${sattr(r.k)}" title="กรองประเภท ${r.k}">${r.k}</td>
+      ${r.n.map((n,i)=>`<td class="num mcell ${tsel&&S.focus===FKEY[i]?'cellon':''}" data-mt="${sattr(r.k)}" data-mf="${FKEY[i]}">${n?num(n):'·'}</td>`).join("")}
+      <td class="num"><b>${num(r.tot)}</b></td><td class="num">${baht(r.totv)}</td></tr>`;}).join("");
+  const foot=`<tr class="mtot"><td>รวมทั้งหมด</td>${gt.n.map(n=>`<td class="num">${num(n)}</td>`).join("")}<td class="num">${num(gt.tot)}</td><td class="num">${baht(gt.totv)}</td></tr>`;
+  $("#matrixBox").innerHTML=`<table class="mtx">${hdr}${body}${foot}</table>`||`<div class="drill-hint">ไม่มีข้อมูล</div>`;
+  $("#matrixBox").querySelectorAll("td.mtype").forEach(el=>el.onclick=()=>setType(el.dataset.mt));
+  $("#matrixBox").querySelectorAll("th.mcol").forEach(el=>el.onclick=()=>setFocus(el.dataset.mf));
+  $("#matrixBox").querySelectorAll("td.mcell").forEach(el=>el.onclick=()=>setTypeFocus(el.dataset.mt,el.dataset.mf));
+}
 function renderStatusFilter(){ const {sc,total,totalV}=statusCntOf(S._forStatus);
   // mutually-exclusive buckets → the four rows sum exactly to "ลูกค้าทั้งหมด"
   const rows=[
@@ -473,7 +513,7 @@ function currentRows(){
 }
 function renderTable(){
   const r=currentRows();
-  $("#tblSub").textContent=`${FOCUS[S.focus].label}${S.fSeg?" · "+S.fSeg:""} · ${num(r.length)} ราย · มูลค่ารวม ${baht(r.reduce((s,x)=>s+x.mon,0))}`;
+  $("#tblSub").textContent=`${FOCUS[S.focus].label}${S.fType?" · "+S.fType:""}${S.fSeg?" · "+S.fSeg:""} · ${num(r.length)} ราย · มูลค่ารวม ${baht(r.reduce((s,x)=>s+x.mon,0))}`;
   const pages=Math.max(1,Math.ceil(r.length/PP)); S.page=Math.min(S.page,pages-1);
   const sl=r.slice(S.page*PP,S.page*PP+PP);
   const cols=[{c:"rank",t:"#"},{c:"code",t:"รหัส"},{c:"name",t:"ชื่อลูกค้า"},{c:"seg",t:"กลุ่ม"},{c:"status",t:"สถานะ"},{c:"mon",t:"มูลค่า",num:1},{c:"freq",t:"ความถี่",num:1},{c:"last",t:"ซื้อล่าสุด"},{c:"rec",t:"หายไป (วัน)",num:1},{c:"act",t:"💡 สิ่งที่ควรทำ"}];
