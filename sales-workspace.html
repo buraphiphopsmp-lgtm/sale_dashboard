@@ -130,6 +130,7 @@
     <label>เซลล์ (ฉัน)<select id="fSeller"><option value="">— ทุกคน (ภาพรวมทีม) —</option></select></label>
     <label>ดูข้อมูล ณ วันที่<input type="date" id="dTo"></label>
     <label>ค้นหาลูกค้า<input id="search" placeholder="ชื่อ / รหัส / กลุ่ม…" style="min-width:190px"></label>
+    <label title="ตามพฤติกรรม = เกณฑ์สถานะคิดจากรอบการซื้อจริงของแต่ละกลุ่ม/ลูกค้า · ตายตัว = 90/180/365 วันเท่ากันทั้งหมด">เกณฑ์สถานะ<select id="stMode"><option value="hybrid">ตามพฤติกรรม (กลุ่ม+รายคน)</option><option value="fixed">ตายตัว 90/180/365</option></select></label>
     <button id="exportBtn">⬇ ส่งออก Excel/CSV</button>
     <span class="spacer" style="flex:1"></span>
   </div>
@@ -185,25 +186,45 @@ const num=n=>Math.round(n||0).toLocaleString("en-US");
 const NUMERIC=["INTEGER","INT64","FLOAT","FLOAT64","NUMERIC","BIGNUMERIC"];
 const LS="salesWS.cfg", LS_SELLER="salesWS.seller";
 Chart.defaults.font.family=getComputedStyle(document.body).fontFamily; Chart.defaults.color="#5f6368"; Chart.defaults.font.size=11;
-// status buckets by days since last purchase
-const STATUS=[{k:"Active (≤90 วัน)",c:"#188038",f:"active"},{k:"เฝ้าระวัง (91-180)",c:"#1a73e8",f:"watch"},{k:"เสี่ยงหลุด (181-365)",c:"#e8a52b",f:"risk"},{k:"หลุดแล้ว (>365)",c:"#c5221f",f:"lost"}];
+// status buckets — short name + the fixed-mode day range. Hybrid mode derives per-customer thresholds.
+const STATUS=[{k:"Active",rng:"≤90 วัน",c:"#188038",f:"active"},{k:"เฝ้าระวัง",rng:"91-180",c:"#1a73e8",f:"watch"},{k:"เสี่ยงหลุด",rng:"181-365",c:"#e8a52b",f:"risk"},{k:"หลุดแล้ว",rng:">365",c:"#c5221f",f:"lost"}];
 const RBUCKETS=[{k:"0-30",lo:0,hi:30},{k:"31-60",lo:31,hi:60},{k:"61-90",lo:61,hi:90},{k:"91-180",lo:91,hi:180},{k:"181-365",lo:181,hi:365},{k:">365",lo:366,hi:1e9}];
-const statusOf=r=>r<=90?0:r<=180?1:r<=365?2:3;
+const statusOf=r=>r<=90?0:r<=180?1:r<=365?2:3;   // fixed-mode classifier (fallback)
+function stLabel(i){return STATUS[i].k+(S.statusMode==="fixed"?` (${STATUS[i].rng})`:"");}
 const FOCUS={
-  follow:{label:"🎯 ต้องติดตามด่วน (91-365 วัน)",test:r=>r>90&&r<=365},
-  active:{label:"Active (≤90 วัน)",test:r=>r<=90},
-  watch:{label:"เฝ้าระวัง (91-180 วัน)",test:r=>r>90&&r<=180},
-  risk:{label:"เสี่ยงหลุด (181-365 วัน)",test:r=>r>180&&r<=365},
-  lost:{label:"หลุดแล้ว (>365 วัน)",test:r=>r>365},
-  all:{label:"ลูกค้าทั้งหมด",test:r=>true},
+  follow:{label:"🎯 ต้องติดตามด่วน"}, active:{label:"Active"}, watch:{label:"เฝ้าระวัง"},
+  risk:{label:"เสี่ยงหลุด"}, lost:{label:"หลุดแล้ว"}, all:{label:"ลูกค้าทั้งหมด"},
 };
-function nextAction(rec,seg){const hv=/High Value|Champion|VIP/i.test(seg||"");
-  if(rec<=90) return hv?"ดูแลใกล้ชิด · เสนอสินค้าใหม่/ออเดอร์ประจำ":"ขายเพิ่ม (upsell) · แนะนำสินค้าที่เกี่ยวข้อง";
-  if(rec<=180) return "โทรเช็คอิน · กระตุ้นการสั่งซื้อซ้ำ";
-  if(rec<=365) return "⚠ โทรด่วน · เสนอโปรโมชันดึงกลับ";
+function focusMatch(c){const st=(c._st!=null?c._st:statusOf(c.rec));
+  switch(S.focus){case"active":return st===0;case"watch":return st===1;case"risk":return st===2;case"lost":return st===3;case"follow":return st===1||st===2;default:return true;}}
+/* ---- hybrid status model: per-group interval distribution (P50/P75/P90) + personal cadence for frequent buyers ---- */
+const SCFG={kFreq:4,floorLevel:7,floorLost:90,fb:{p50:45,p75:90,p90:180}};   // kFreq = min orders to use the customer's own cadence
+const _q=(s,p)=>s.length?s[Math.min(s.length-1,Math.floor(p/100*s.length))]:null;
+function computeStatus(arr){
+  const g={},all=[];
+  arr.forEach(c=>{const k=c.ctype||"(ไม่ระบุ)",gp=+c.gap||0;if((+c.freq||0)>=2&&gp>0){(g[k]=g[k]||[]).push(gp);all.push(gp);}});
+  all.sort((a,b)=>a-b);
+  const gf={p50:_q(all,50)||SCFG.fb.p50,p75:_q(all,75)||SCFG.fb.p75,p90:_q(all,90)||SCFG.fb.p90};
+  const grp={};Object.keys(g).forEach(k=>{const s=g[k].sort((a,b)=>a-b);grp[k]={p50:_q(s,50)||gf.p50,p75:_q(s,75)||gf.p75,p90:_q(s,90)||gf.p90,n:s.length};});
+  S.statusGroups=grp;S.statusGlobal=gf;
+  arr.forEach(c=>{
+    if(S.statusMode==="fixed"){c._st=statusOf(c.rec);c._th=null;return;}
+    const gg=grp[c.ctype||"(ไม่ระบุ)"]||gf, p50=Math.max(gg.p50||gf.p50,1);
+    const r75=Math.max((gg.p75||p50*2)/p50,1.3), r90=Math.max((gg.p90||p50*4)/p50,r75+0.4);
+    const personal=((+c.freq||0)>=SCFG.kFreq&&(+c.gap||0)>0);
+    const level=Math.max(personal?(+c.gap):p50,SCFG.floorLevel);
+    const a=Math.round(level), w=Math.round(Math.max(level*r75,a+1)), rr=Math.round(Math.max(level*r90,w+1,SCFG.floorLost));
+    c._th={a,w,r:rr,src:personal?"ราย":"กลุ่ม"};
+    const rec=+c.rec||0; c._st=rec<=a?0:rec<=w?1:rec<=rr?2:3;
+  });
+}
+function nextAction(c){const st=(c._st!=null?c._st:statusOf(c.rec));const hv=/High Value|Champion|VIP/i.test(c.seg||"");
+  if(st===0) return hv?"ดูแลใกล้ชิด · เสนอสินค้าใหม่/ออเดอร์ประจำ":"ขายเพิ่ม (upsell) · แนะนำสินค้าที่เกี่ยวข้อง";
+  if(st===1) return "โทรเช็คอิน · กระตุ้นการสั่งซื้อซ้ำ";
+  if(st===2) return "⚠ โทรด่วน · เสนอโปรโมชันดึงกลับ";
   return "Win-back · ประเมินมูลค่าก่อนทุ่มทรัพยากร";}
 
-const S={mode:"demo",token:null,aggSchema:[],txnSchema:[],focus:"all",fSeg:"",fType:"",fProdCat:"",sort:{c:"mon",d:-1},prodSort:{c:"v",d:-1},page:0,L:null,charts:{},demoCust:[],topProds:[],bookProds:[],sel:"",dateHi:""};
+const S={mode:"demo",token:null,aggSchema:[],txnSchema:[],focus:"all",fSeg:"",fType:"",fProdCat:"",statusMode:"hybrid",statusGroups:{},statusGlobal:null,sort:{c:"mon",d:-1},prodSort:{c:"v",d:-1},page:0,L:null,charts:{},demoCust:[],topProds:[],bookProds:[],sel:"",dateHi:""};
 
 let tt; function toast(m,e){const t=$("#toast");t.textContent=m;t.className="toast show"+(e?" err":"");clearTimeout(tt);tt=setTimeout(()=>t.className="toast",4500);}
 function status(m,b){$("#status").innerHTML=(b?'<span class="spinner"></span> ':'')+(m||"");}
@@ -250,6 +271,7 @@ function TM(){const s=S.txnSchema;return{
   amount:hasCol(s,"product_price_amount")||"product_price_amount",
   order:hasCol(s,"order_number")||hasCol(s,"invoice_number"),
   ctype:hasCol(s,"customer_type_2")||hasCol(s,"customer_type_1")||hasCol(s,"customer_type"),
+  gap:hasCol(s,"avg_date_diff"),
   date:hasCol(s,"date")||"date"};}
 function txnT(){const c=readCfg();return `\`${c.project}.${c.dataset}.${c.txnTable}\``;}
 function fillOpts(sel,vals){const el=$(sel);if(!el)return;const cur=el.value;el.querySelectorAll("option:not([value=''])").forEach(o=>o.remove());[...new Set(vals.filter(Boolean))].forEach(v=>{const o=document.createElement("option");o.value=v;o.textContent=v;if(v===cur)o.selected=true;el.appendChild(o);});}
@@ -264,6 +286,7 @@ function buildDemo(){
   const segW=[0.08,0.09,0.18,0.26,0.07,0.27,0.05];
   const CTYPES=["โรงงานเฟอร์นิเจอร์","ผู้รับเหมา","ร้านค้า/ตัวแทน","ช่างมืออาชีพ","ออกแบบ-ตกแต่ง","ลูกค้าทั่วไป"];
   const ctW=[0.18,0.22,0.2,0.16,0.12,0.12];
+  const ctCycle=[40,55,22,45,50,75];   // typical days-between-orders per type (drives the hybrid status thresholds)
   const names=["วุ่นเทคเฟอร์นิช","พี.เอส.พีเฟอร์นิเจอร์","ชัคริชบุญมีลีค","วอร์มเบอร์บิวด์","ทองไทยเฟอร์นิเชอร์","สยามดีไซน์","ลัคกี้สโตนกรุ๊ป","เอเชียโปรดักส์","บ้านสวยวัสดุ","กรีนโฮมดีไซน์","เอ็มเจครีเอชั่น","ไอพลัสดีไซน์","เดอะวู้ดเวิร์ค","ครัวสวยสตูดิโอ"];
   const today=new Date(); const cust=[];
   for(let i=0;i<240;i++){ let r=Math.random(),seg=segs[0],acc=0; for(let s=0;s<segs.length;s++){acc+=segW[s];if(r<=acc){seg=segs[s];break;}}
@@ -275,9 +298,11 @@ function buildDemo(){
     const last=new Date(today); last.setDate(last.getDate()-lastDays);
     const tier=/High Value/.test(seg)?1:/High Potential/.test(seg)?0.7:/Potential/.test(seg)?0.45:0.25;
     const mon=Math.round((300000+Math.random()*4500000)*tier*(/Lost/.test(seg)?0.6:1));
-    let tr=Math.random(),ctype=CTYPES[0],ac2=0; for(let t=0;t<CTYPES.length;t++){ac2+=ctW[t];if(tr<=ac2){ctype=CTYPES[t];break;}}
+    let tr=Math.random(),ti=0,ctype=CTYPES[0],ac2=0; for(let t=0;t<CTYPES.length;t++){ac2+=ctW[t];if(tr<=ac2){ctype=CTYPES[t];ti=t;break;}}
+    const freq=1+((Math.random()*45)|0);
+    const gap=freq>=2?Math.max(5,Math.round(ctCycle[ti]*(0.5+Math.random()*1.6))):0;   // per-customer avg interval (0 = single purchase)
     cust.push({code:("กพชวอตศมบ"[i%9]||"ก")+String(100+i).slice(-3),name:names[i%names.length]+(i>13?" "+i:""),
-      seller:sellers[i%sellers.length],seg,ctype,mon,freq:1+((Math.random()*45)|0),last:last.toISOString().slice(0,10)});
+      seller:sellers[i%sellers.length],seg,ctype,mon,freq,gap,last:last.toISOString().slice(0,10)});
   }
   // product catalog + per-customer purchases (for product analysis & cross-sell talking points)
   const CATS=["เฟรมอลูมิเนียม","บานพับถ้วย","รางลิ้นชัก","มือจับเฟอร์นิเจอร์","ปุ่มจับลิ้นชัก","อุปกรณ์จัดเก็บตู้เสื้อผ้า","อุปกรณ์จัดเก็บชุดครัว"];
@@ -326,11 +351,11 @@ async function loadLive(){
       bq(`SELECT DISTINCT CAST(${qq(a.seller)} AS STRING) v FROM ${A} WHERE ${qq(a.seller)} IS NOT NULL LIMIT 500`),
       bq(`SELECT MAX(DATE(${qq(a.last)})) hi FROM ${A} WHERE ${qq(a.last)} IS NOT NULL`),
       S.txnSchema.length?bq(`SELECT CAST(${qq(m.sku)} AS STRING) sku, ANY_VALUE(${qq(m.prodName)}) name, ANY_VALUE(CAST(${qq(m.cat)} AS STRING)) cat${m.model?`, ANY_VALUE(CAST(${qq(m.model)} AS STRING)) model`:", CAST(NULL AS STRING) model"}${m.color?`, ANY_VALUE(CAST(${qq(m.color)} AS STRING)) color`:", CAST(NULL AS STRING) color"}, SUM(${qq(m.qty)}) qty${m.order?`, COUNT(DISTINCT ${qq(m.order)}) ord`:", 0 ord"}, SUM(${qq(m.amount)}) v, COUNT(DISTINCT ${qq(m.cust)}) custs FROM ${txnT()} GROUP BY sku ORDER BY v DESC LIMIT 200`):Promise.resolve({rows:[]}),
-      // customer_type lives in the transaction table → fetch one type per customer to merge by customer_id
-      (S.txnSchema.length&&m.ctype)?bq(`SELECT CAST(${qq(m.cust)} AS STRING) code, ANY_VALUE(CAST(${qq(m.ctype)} AS STRING)) ctype FROM ${txnT()} WHERE ${qq(m.cust)} IS NOT NULL GROUP BY code LIMIT 100000`):Promise.resolve({rows:[]}),
+      // customer_type + purchase interval live in the transaction table → fetch per customer to merge by customer_id
+      (S.txnSchema.length&&(m.ctype||m.gap))?bq(`SELECT CAST(${qq(m.cust)} AS STRING) code${m.ctype?`, ANY_VALUE(CAST(${qq(m.ctype)} AS STRING)) ctype`:", CAST(NULL AS STRING) ctype"}${m.gap?`, MAX(${qq(m.gap)}) gap`:", CAST(NULL AS FLOAT64) gap"} FROM ${txnT()} WHERE ${qq(m.cust)} IS NOT NULL GROUP BY code LIMIT 100000`):Promise.resolve({rows:[]}),
     ];
     const[cr,sl,rng,tp,ct]=await Promise.all(Q);
-    const tyMap={}; (ct.rows||[]).forEach(r=>{if(r.code)tyMap[r.code]=(r.ctype||"").trim();});
+    const tyMap={},gapMap={}; (ct.rows||[]).forEach(r=>{if(r.code){tyMap[r.code]=(r.ctype||"").trim();gapMap[r.code]=Number(r.gap)||0;}});
     if(!S._optsInit){ fillOpts("#fSeller",sl.rows.map(r=>r.v)); S._optsInit=true; restoreSeller(); }
     S.topProds=(tp.rows||[]).map(r=>{const d=parseDetail(r.name);return{sku:r.sku,name:r.name||r.sku,cat:r.cat||"",model:r.model||d.model||"",color:r.color||d.color||"",qty:Number(r.qty)||0,ord:Number(r.ord)||0,v:Number(r.v)||0,custs:Number(r.custs)||0};});
     const hi=rng.rows[0]?.hi?String(rng.rows[0].hi).slice(0,10):"";
@@ -342,7 +367,7 @@ async function loadLive(){
         S.bookProds=bp.rows.map(r=>{const d=parseDetail(r.name);return{sku:r.sku,name:r.name||r.sku,cat:r.cat||"",model:r.model||d.model||"",color:r.color||d.color||"",qty:Number(r.qty)||0,ord:Number(r.ord)||0,v:Number(r.v)||0,custs:Number(r.custs)||0};});
       }catch(e){S.bookProds=S.topProds;}
     } else S.bookProds=S.topProds;
-    const cust=cr.rows.map(r=>({code:r.code,name:r.name||r.code,seller:r.seller||"",seg:r.seg||"",ctype:(r.ctype||"").trim()||tyMap[r.code]||"",mon:Number(r.mon)||0,freq:Number(r.freq)||0,rec:Number(r.rec)||0,last:r.last?String(r.last).slice(0,10):""}));
+    const cust=cr.rows.map(r=>({code:r.code,name:r.name||r.code,seller:r.seller||"",seg:r.seg||"",ctype:(r.ctype||"").trim()||tyMap[r.code]||"",mon:Number(r.mon)||0,freq:Number(r.freq)||0,gap:gapMap[r.code]||0,rec:Number(r.rec)||0,last:r.last?String(r.last).slice(0,10):""}));
     enrichAndStore(cust,(useDt?t:hi)||t||"",true);
     status(`${num(cust.length)} ลูกค้า`);
   }catch(e){status("");toast("คำนวณไม่สำเร็จ: "+e.message,1);console.error(e);}
@@ -354,8 +379,9 @@ async function loadLive(){
 function enrichAndStore(cust,asOfStr,recReady){
   const asOf=asOfStr?new Date(asOfStr):null;
   const arr=cust.map(c=>({...c, rec:(recReady?c.rec:(asOf?dayDiff(asOf,new Date(c.last)):0)) }));
+  computeStatus(arr);   // hybrid (or fixed) per-customer status into c._st / c._th
   const statusCnt=STATUS.map(s=>({k:s.k,c:s.c,f:s.f,n:0,v:0}));
-  let totalV=0; arr.forEach(c=>{const st=statusOf(c.rec);statusCnt[st].n++;statusCnt[st].v+=c.mon;totalV+=c.mon;});
+  let totalV=0; arr.forEach(c=>{const st=c._st;statusCnt[st].n++;statusCnt[st].v+=c.mon;totalV+=c.mon;});
   const bp=computeBookProds(arr); if(bp)S.bookProds=bp;   // DEMO: aggregate my customers' purchases (LIVE set in loadLive)
   S.L={asOf:asOfStr,cust:arr,statusCnt,totalV,total:arr.length};
   render();
@@ -370,9 +396,9 @@ function parseDetail(name){ name=name||"";
   return {model,color};}
 function applyData(){ if(S.mode==="live")loadLive(); else demoCompute(); }
 const segPred=c=>!S.fSeg||c.seg===S.fSeg;
-const statusPred=c=>FOCUS[S.focus].test(c.rec);
+const statusPred=c=>focusMatch(c);
 const typePred=c=>!S.fType||(c.ctype||"(ไม่ระบุ)")===S.fType;
-function statusCntOf(arr){const sc=STATUS.map(s=>({k:s.k,c:s.c,f:s.f,n:0,v:0}));let tv=0;arr.forEach(c=>{const st=statusOf(c.rec);sc[st].n++;sc[st].v+=c.mon;tv+=c.mon;});return{sc,total:arr.length,totalV:tv};}
+function statusCntOf(arr){const sc=STATUS.map(s=>({k:s.k,c:s.c,f:s.f,n:0,v:0}));let tv=0;arr.forEach(c=>{const st=(c._st!=null?c._st:statusOf(c.rec));sc[st].n++;sc[st].v+=c.mon;tv+=c.mon;});return{sc,total:arr.length,totalV:tv};}
 function setFocus(f){ S.focus=(S.focus===f)?"all":f; S.page=0; render(); }
 function setSeg(g){ S.fSeg=(S.fSeg===g)?"":g; S.page=0; render(); }
 function setType(g){ S.fType=(S.fType===g)?"":g; S.page=0; render(); }
@@ -393,16 +419,16 @@ function renderKPIs(){
   const cards=[
     {l:S.fSeg?`ลูกค้า: ${S.fSeg}`:"ลูกค้าของฉัน",v:num(total),a:"#ad1f23"},
     {l:"มูลค่าลูกค้าที่ดูแล",v:baht(totalV),a:"#e8a52b"},
-    {l:"Active (≤90 วัน)",v:num(sc[0].n),a:"#188038"},
-    {l:"🎯 ต้องติดตาม (91-365)",v:num(followN),a:"#e8a52b",d:baht(followV)+" มูลค่าที่ควรรักษา"},
-    {l:"หลุดแล้ว (>365)",v:num(sc[3].n),a:"#c5221f"},
+    {l:S.statusMode==="hybrid"?"Active":"Active (≤90 วัน)",v:num(sc[0].n),a:"#188038"},
+    {l:"🎯 ต้องติดตาม"+(S.statusMode==="hybrid"?"":" (91-365)"),v:num(followN),a:"#e8a52b",d:baht(followV)+" มูลค่าที่ควรรักษา"},
+    {l:S.statusMode==="hybrid"?"หลุดแล้ว":"หลุดแล้ว (>365)",v:num(sc[3].n),a:"#c5221f"},
     {l:"มูลค่าเสี่ยงสูญเสีย",v:baht(sc[2].v+sc[3].v),a:"#c5221f",d:"จากเสี่ยงหลุด + หลุดแล้ว"},
   ];
   $("#kpis").innerHTML=cards.map(c=>`<div class="kpi"><div class="accent" style="background:${c.a}"></div>
     <div class="label">${c.l}</div><div class="value">${c.v}</div><div class="delta">${c.d||"&nbsp;"}</div></div>`).join("");
 }
 function renderStatusChart(){ const {sc:d,total}=statusCntOf(S._forStatus);
-  $("#statusSub").textContent=`รวม ${num(total)} ราย${S.fSeg?" · "+S.fSeg:""} · คลิกเพื่อกรอง`;
+  $("#statusSub").textContent=`รวม ${num(total)} ราย · เกณฑ์${S.statusMode==="hybrid"?"ตามพฤติกรรม":"ตายตัว"}${S.fSeg?" · "+S.fSeg:""} · คลิกเพื่อกรอง`;
   const dim=(S.focus!=="all"&&S.focus!=="follow");   // highlight only when a single status is picked
   const bg=d.map((x,i)=>(!dim||S.focus===STATUS[i].f)?x.c:"#dde1e5");
   if(S.charts.status)S.charts.status.destroy();
@@ -425,10 +451,10 @@ function renderRecency(){ const src=S._forStatus||S.L.cust;
 function renderStatusFilter(){ const {sc,total,totalV}=statusCntOf(S._forStatus);
   // mutually-exclusive buckets → the four rows sum exactly to "ลูกค้าทั้งหมด"
   const rows=[
-    {f:"active",dot:sc[0].c,nm:sc[0].k+" — รักษา/ขายเพิ่ม",n:sc[0].n,v:sc[0].v},
-    {f:"watch",dot:sc[1].c,nm:sc[1].k+" — เช็คอิน/ติดตาม",n:sc[1].n,v:sc[1].v},
-    {f:"risk",dot:sc[2].c,nm:sc[2].k+" — ⚠ โทรด่วน",n:sc[2].n,v:sc[2].v},
-    {f:"lost",dot:sc[3].c,nm:sc[3].k+" — Win-back",n:sc[3].n,v:sc[3].v},
+    {f:"active",dot:sc[0].c,nm:stLabel(0)+" — รักษา/ขายเพิ่ม",n:sc[0].n,v:sc[0].v},
+    {f:"watch",dot:sc[1].c,nm:stLabel(1)+" — เช็คอิน/ติดตาม",n:sc[1].n,v:sc[1].v},
+    {f:"risk",dot:sc[2].c,nm:stLabel(2)+" — ⚠ โทรด่วน",n:sc[2].n,v:sc[2].v},
+    {f:"lost",dot:sc[3].c,nm:stLabel(3)+" — Win-back",n:sc[3].n,v:sc[3].v},
     {f:"all",dot:"#5f6368",nm:"ลูกค้าทั้งหมด",n:total,v:totalV},
   ];
   $("#statusFilter").innerHTML=rows.map(r=>`<div class="row ${S.focus===r.f?'on':''}" data-f="${r.f}">
@@ -439,7 +465,7 @@ function renderStatusFilter(){ const {sc,total,totalV}=statusCntOf(S._forStatus)
 let PP=15;
 function currentRows(){
   const q=($("#search").value||"").trim().toLowerCase();
-  let r=S.L.cust.filter(c=>FOCUS[S.focus].test(c.rec)&&segPred(c)&&typePred(c));
+  let r=S.L.cust.filter(c=>focusMatch(c)&&segPred(c)&&typePred(c));
   if(q)r=r.filter(c=>(c.name||"").toLowerCase().includes(q)||(c.code||"").toLowerCase().includes(q)||(c.seg||"").toLowerCase().includes(q)||(c.seller||"").toLowerCase().includes(q));
   const sc=S.sort.c,sd=S.sort.d;
   r.sort((a,b)=>{if(sc==="name"||sc==="seg"||sc==="code")return((a[sc]||"")<(b[sc]||"")?-1:1)*sd;return((a[sc]||0)-(b[sc]||0))*sd;});
@@ -452,17 +478,17 @@ function renderTable(){
   const sl=r.slice(S.page*PP,S.page*PP+PP);
   const cols=[{c:"rank",t:"#"},{c:"code",t:"รหัส"},{c:"name",t:"ชื่อลูกค้า"},{c:"seg",t:"กลุ่ม"},{c:"status",t:"สถานะ"},{c:"mon",t:"มูลค่า",num:1},{c:"freq",t:"ความถี่",num:1},{c:"last",t:"ซื้อล่าสุด"},{c:"rec",t:"หายไป (วัน)",num:1},{c:"act",t:"💡 สิ่งที่ควรทำ"}];
   $("#custTable thead").innerHTML="<tr>"+cols.map(c=>{const ar=S.sort.c===c.c?(S.sort.d>0?" ▲":" ▼"):"";const sortable=!["rank","status","act"].includes(c.c);return `<th class="${c.num?'num':''}" ${sortable?`data-c="${c.c}"`:""}>${c.t}${ar}</th>`;}).join("")+"</tr>";
-  $("#custTable tbody").innerHTML=sl.map((c,i)=>{const rk=S.page*PP+i+1;const st=STATUS[statusOf(c.rec)];
+  $("#custTable tbody").innerHTML=sl.map((c,i)=>{const rk=S.page*PP+i+1;const si=(c._st!=null?c._st:statusOf(c.rec));const st=STATUS[si];
     return `<tr class="click ${S.sel===c.code?'sel':''}" data-code="${c.code}">
     <td><span class="rank ${rk<=3?'r'+rk:''}">${rk}</span></td>
     <td>${c.code}</td><td title="${c.name}">${c.name}</td>
     <td><span class="segpill">${c.seg||"-"}</span></td>
-    <td><span class="pill" style="background:${st.c}">${st.k.split(" ")[0]}</span></td>
+    <td><span class="pill" style="background:${st.c}"${c._th?` title="เกณฑ์${c._th.src}: หลุด >${c._th.r} วัน"`:""}>${st.k}</span></td>
     <td class="num">${baht(c.mon)}</td>
     <td class="num">${c.freq?num(c.freq):"–"}</td>
     <td>${c.last||"–"}</td>
-    <td class="num" style="color:${c.rec>365?'#c5221f':c.rec>180?'#e8710a':c.rec>90?'#b06000':'#188038'};font-weight:600">${num(c.rec)}</td>
-    <td class="act">${nextAction(c.rec,c.seg)}</td></tr>`;}).join("")||`<tr><td colspan="10" class="drill-hint">ไม่มีลูกค้าในกลุ่มนี้ 🎉</td></tr>`;
+    <td class="num" style="color:${st.c};font-weight:600">${num(c.rec)}</td>
+    <td class="act">${nextAction(c)}</td></tr>`;}).join("")||`<tr><td colspan="10" class="drill-hint">ไม่มีลูกค้าในกลุ่มนี้ 🎉</td></tr>`;
   $("#custTable tbody").querySelectorAll("tr[data-code]").forEach(tr=>tr.onclick=()=>selectCust(tr.dataset.code));
   $("#custTable thead").querySelectorAll("th[data-c]").forEach(th=>th.onclick=()=>{const c=th.dataset.c;if(S.sort.c===c)S.sort.d*=-1;else{S.sort.c=c;S.sort.d=(c==="name"||c==="seg"||c==="code")?1:-1;}renderTable();});
   $("#pager").innerHTML=`<span>${r.length?(S.page*PP+1):0} - ${Math.min((S.page+1)*PP,r.length)} / ${r.length}</span>
@@ -472,9 +498,9 @@ function renderTable(){
 function exportCSV(){
   if(!S.L){toast("ยังไม่มีข้อมูล",1);return;}
   const r=currentRows(); if(!r.length){toast("ไม่มีข้อมูลให้ส่งออก",1);return;}
-  const head=["รหัส","ชื่อลูกค้า","เซลล์","กลุ่ม","สถานะ","มูลค่า","ความถี่","ซื้อล่าสุด","หายไป(วัน)","สิ่งที่ควรทำ"];
+  const head=["รหัส","ชื่อลูกค้า","เซลล์","กลุ่ม","สถานะ","มูลค่า","ความถี่","ซื้อล่าสุด","หายไป(วัน)","เกณฑ์หลุด>(วัน)","สิ่งที่ควรทำ"];
   const esc=s=>{s=String(s==null?"":s);return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;};
-  const lines=[head.join(",")].concat(r.map(c=>[c.code,c.name,c.seller,c.seg,STATUS[statusOf(c.rec)].k,Math.round(c.mon),c.freq||"",c.last,c.rec,nextAction(c.rec,c.seg)].map(esc).join(",")));
+  const lines=[head.join(",")].concat(r.map(c=>[c.code,c.name,c.seller,c.seg,STATUS[(c._st!=null?c._st:statusOf(c.rec))].k,Math.round(c.mon),c.freq||"",c.last,c.rec,(c._th?c._th.r:""),nextAction(c)].map(esc).join(",")));
   const blob=new Blob(["﻿"+lines.join("\r\n")],{type:"text/csv;charset=utf-8;"});
   const seller=($("#fSeller").value||"ทีม").replace(/[^\wก-๙]+/g,"_");
   const url=URL.createObjectURL(blob); const a=document.createElement("a");
@@ -529,7 +555,8 @@ function renderOverview(){
 function renderDetailEmpty(){ renderOverview(); }
 function renderDetail(c, items){
   if(!c){renderOverview();return;}
-  items=items||[]; const st=STATUS[statusOf(c.rec)];
+  items=items||[]; const si=(c._st!=null?c._st:statusOf(c.rec)); const st=STATUS[si];
+  const thNote=c._th?`<span class="sub" style="color:var(--muted)">เกณฑ์${c._th.src=="ราย"?"รายคน":"กลุ่ม"} · Active ≤${c._th.a} · เฝ้าระวัง ≤${c._th.w} · หลุด >${c._th.r} วัน</span>`:"";
   const catV={}; items.forEach(it=>{catV[it.cat]=(catV[it.cat]||0)+it.v;});
   const cats=Object.keys(catV).sort((a,b)=>catV[b]-catV[a]);
   const bought=new Set(items.map(it=>it.sku)); const myCats=new Set(items.map(it=>it.cat));
@@ -542,9 +569,9 @@ function renderDetail(c, items){
      <span class="pill" style="background:${st.c}">${st.k}</span>
      <span class="segpill">${c.seg||"-"}</span>
      <span>มูลค่า <b>${baht(c.mon)}</b></span><span>ความถี่ <b>${c.freq?num(c.freq):"–"}</b></span>
-     <span>ซื้อล่าสุด <b>${c.last||"–"}</b> · หายไป <b>${num(c.rec)}</b> วัน</span></div>
+     <span>ซื้อล่าสุด <b>${c.last||"–"}</b> · หายไป <b>${num(c.rec)}</b> วัน</span>${thNote}</div>
    <div style="background:#fbeaea;border:1px solid #f1c4c5;border-radius:8px;padding:10px 13px;margin-bottom:13px;font-size:12.5px;line-height:1.6">
-     💬 <b>บทคุยแนะนำ:</b> ลูกค้าซื้อกลุ่ม <b>${cats.slice(0,3).join(" · ")||"-"}</b> เป็นหลัก · <b>${nextAction(c.rec,c.seg)}</b>${rec.length?` · ลองชวนคุยเรื่อง <b>${rec[0].name}</b>`:""}</div>
+     💬 <b>บทคุยแนะนำ:</b> ลูกค้าซื้อกลุ่ม <b>${cats.slice(0,3).join(" · ")||"-"}</b> เป็นหลัก · <b>${nextAction(c)}</b>${rec.length?` · ลองชวนคุยเรื่อง <b>${rec[0].name}</b>`:""}</div>
    ${catChips(items)}
    <div style="font-weight:600;margin:2px 0 6px">🛒 สินค้าที่เคยซื้อ (${num(items.length)} รายการ)</div>${boughtTableHTML(prods)}
    <div style="font-weight:600;margin:16px 0 6px">💡 แนะนำให้เสนอเพิ่ม (Cross-sell) <span class="sub" style="font-weight:400;color:var(--muted)">รุ่น/สี ขายดีในกลุ่มที่ลูกค้าซื้ออยู่ · ยังไม่เคยซื้อ</span></div>${recTableHTML(rec,myCats,"ลูกค้าซื้อครบรุ่น/สีขายดีในกลุ่มที่สนใจแล้ว 🎉")}`;
@@ -591,6 +618,7 @@ $("#refreshBtn").onclick=()=>{if(S.mode==="live")loadLive();else{buildDemo();dem
 $("#fSeller").addEventListener("change",()=>{rememberSeller();S.page=0;S.sel="";S.fSeg="";S.fType="";S.fProdCat="";applyData();});
 $("#dTo").addEventListener("change",()=>{S._dtoTouched=true;S.page=0;S.sel="";S.fSeg="";S.fType="";S.fProdCat="";applyData();});
 $("#search").addEventListener("input",()=>{S.page=0;renderTable();});
+$("#stMode").addEventListener("change",()=>{S.statusMode=$("#stMode").value;if(S.L){computeStatus(S.L.cust);render();}});
 $("#exportBtn").onclick=exportCSV;
 
 loadCfg(); buildDemo(); demoCompute();
