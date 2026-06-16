@@ -612,9 +612,9 @@ function renderTable(){
 function exportCSV(){
   if(!S.L){toast("ยังไม่มีข้อมูล",1);return;}
   const r=currentRows(); if(!r.length){toast("ไม่มีข้อมูลให้ส่งออก",1);return;}
-  const head=["รหัส","ชื่อลูกค้า","เซลล์","กลุ่ม","สถานะ","มูลค่า","ความถี่","ซื้อล่าสุด","หายไป(วัน)","เกณฑ์หลุด>(วัน)","สิ่งที่ควรทำ"];
+  const head=["รหัส","ชื่อลูกค้า","เซลล์","กลุ่ม","ประเภทลูกค้า","สถานะ","มูลค่า","ความถี่","ซื้อล่าสุด","หายไป(วัน)","เกณฑ์หลุด>(วัน)","สิ่งที่ควรทำ"];
   const esc=s=>{s=String(s==null?"":s);return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;};
-  const lines=[head.join(",")].concat(r.map(c=>[c.code,c.name,c.seller,c.seg,STATUS[(c._st!=null?c._st:statusOf(c.rec))].k,Math.round(c.mon),c.freq||"",c.last,c.rec,(c._th?c._th.r:""),nextAction(c)].map(esc).join(",")));
+  const lines=[head.join(",")].concat(r.map(c=>[c.code,c.name,c.seller,c.seg,c.ctype||"",STATUS[(c._st!=null?c._st:statusOf(c.rec))].k,Math.round(c.mon),c.freq||"",c.last,c.rec,(c._th?c._th.r:""),nextAction(c)].map(esc).join(",")));
   const blob=new Blob(["﻿"+lines.join("\r\n")],{type:"text/csv;charset=utf-8;"});
   const seller=($("#fSeller").value||"ทีม").replace(/[^\wก-๙]+/g,"_");
   const url=URL.createObjectURL(blob); const a=document.createElement("a");
